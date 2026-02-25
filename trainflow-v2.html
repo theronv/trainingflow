@@ -1,0 +1,1768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#fafaf9">
+<meta name="description" content="TrainFlow — Department Training & Certification">
+<title>TrainFlow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+/* ══════════════════════════════════════════
+   DESIGN SYSTEM — Refined Corporate Light
+   ══════════════════════════════════════════ */
+:root {
+  /* Palette */
+  --ink:       #1a1917;
+  --ink-2:     #44403c;
+  --ink-3:     #78716c;
+  --ink-4:     #a8a29e;
+  --rule:      #e7e5e4;
+  --rule-2:    #f5f4f2;
+  --canvas:    #fafaf9;
+  --white:     #ffffff;
+  --accent:    #2563eb;
+  --accent-lt: #eff4ff;
+  --accent-md: #bfcfff;
+  --pass:      #15803d;
+  --pass-lt:   #f0fdf4;
+  --fail:      #b91c1c;
+  --fail-lt:   #fef2f2;
+  --warn:      #b45309;
+  --warn-lt:   #fffbeb;
+  --gold:      #92400e;
+
+  /* Brand overrides (set by branding page) */
+  --brand-1:   #2563eb;
+  --brand-2:   #1d4ed8;
+
+  /* Type scale */
+  --text-xs:   11px;
+  --text-sm:   13px;
+  --text-base: 15px;
+  --text-md:   17px;
+  --text-lg:   20px;
+  --text-xl:   26px;
+  --text-2xl:  34px;
+  --text-3xl:  46px;
+  --text-hero: 64px;
+
+  /* Spacing */
+  --space-1: 4px; --space-2: 8px; --space-3: 12px;
+  --space-4: 16px; --space-5: 20px; --space-6: 24px;
+  --space-8: 32px; --space-10: 40px; --space-12: 48px;
+  --space-16: 64px;
+
+  /* Radii */
+  --r-sm: 4px; --r: 8px; --r-lg: 12px; --r-xl: 16px; --r-full: 9999px;
+
+  /* Shadows */
+  --shadow-xs: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow:    0 4px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,0.1), 0 2px 6px rgba(0,0,0,0.04);
+  --shadow-xl: 0 24px 80px rgba(0,0,0,0.14);
+}
+
+/* ── RESET ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { height: 100%; scroll-behavior: smooth; }
+body {
+  font-family: 'Outfit', sans-serif;
+  font-size: var(--text-base);
+  background: var(--canvas);
+  color: var(--ink);
+  line-height: 1.6;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+img { max-width: 100%; display: block; }
+button { cursor: pointer; font-family: inherit; }
+input, select, textarea { font-family: inherit; }
+
+/* ── UTIL ── */
+.hidden { display: none !important; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--rule); border-radius: var(--r-full); }
+
+/* ══════════════════ BUTTONS ══════════════════ */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
+  padding: 9px 20px; border-radius: var(--r); border: 1.5px solid transparent;
+  font-size: var(--text-sm); font-weight: 600; letter-spacing: 0.01em;
+  transition: all 0.15s; white-space: nowrap; user-select: none; text-decoration: none;
+  line-height: 1;
+}
+.btn-primary {
+  background: var(--brand-1); color: var(--white); border-color: var(--brand-1);
+}
+.btn-primary:hover { background: var(--brand-2); border-color: var(--brand-2); box-shadow: 0 4px 14px rgba(37,99,235,0.3); transform: translateY(-1px); }
+.btn-outline {
+  background: var(--white); color: var(--ink-2); border-color: var(--rule);
+  box-shadow: var(--shadow-xs);
+}
+.btn-outline:hover { border-color: var(--ink-4); background: var(--canvas); }
+.btn-ghost { background: transparent; color: var(--ink-3); border-color: transparent; }
+.btn-ghost:hover { background: var(--rule-2); color: var(--ink); }
+.btn-danger { background: var(--fail-lt); color: var(--fail); border-color: #fecaca; }
+.btn-danger:hover { background: var(--fail); color: var(--white); }
+.btn-sm { padding: 6px 14px; font-size: var(--text-xs); border-radius: var(--r-sm); }
+.btn-lg { padding: 13px 28px; font-size: var(--text-base); border-radius: var(--r-lg); }
+.btn-xl { padding: 16px 36px; font-size: var(--text-md); border-radius: var(--r-lg); font-weight: 700; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+.btn-icon { width: 32px; height: 32px; padding: 0; border-radius: var(--r); }
+
+/* ══════════════════ INPUTS ══════════════════ */
+.input, input[type=text], input[type=password], input[type=number], input[type=email], textarea, select {
+  width: 100%;
+  background: var(--white);
+  border: 1.5px solid var(--rule);
+  color: var(--ink);
+  border-radius: var(--r);
+  padding: 10px 14px;
+  font-size: var(--text-sm);
+  transition: border-color 0.15s, box-shadow 0.15s;
+  box-shadow: var(--shadow-xs);
+  appearance: none;
+}
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: var(--brand-1);
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+}
+textarea { resize: vertical; min-height: 90px; line-height: 1.6; }
+label {
+  display: block;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--ink-3);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.field { margin-bottom: var(--space-5); }
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
+select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23a8a29e' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+
+/* ══════════════════ CHIPS / BADGES ══════════════════ */
+.chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 10px; border-radius: var(--r-full);
+  font-size: var(--text-xs); font-weight: 600; letter-spacing: 0.04em;
+}
+.chip-blue  { background: var(--accent-lt); color: var(--accent); border: 1px solid var(--accent-md); }
+.chip-green { background: var(--pass-lt);   color: var(--pass);   border: 1px solid #bbf7d0; }
+.chip-red   { background: var(--fail-lt);   color: var(--fail);   border: 1px solid #fecaca; }
+.chip-amber { background: var(--warn-lt);   color: var(--warn);   border: 1px solid #fde68a; }
+
+/* ══════════════════ PROGRESS ══════════════════ */
+.progress-track { background: var(--rule); border-radius: var(--r-full); overflow: hidden; }
+.progress-fill {
+  height: 100%; border-radius: var(--r-full);
+  background: var(--brand-1);
+  transition: width 0.5s cubic-bezier(0.4,0,0.2,1);
+}
+
+/* ══════════════════ APP SHELL ══════════════════ */
+#app { min-height: 100vh; display: flex; flex-direction: column; }
+.screen { display: none; flex: 1; flex-direction: column; }
+.screen.active { display: flex; }
+
+/* ══════════════════ TOP HEADER ══════════════════ */
+.topbar {
+  background: var(--white);
+  border-bottom: 1px solid var(--rule);
+  height: 58px;
+  display: flex; align-items: center;
+  padding: 0 var(--space-8);
+  gap: var(--space-6);
+  position: sticky; top: 0; z-index: 100;
+  box-shadow: var(--shadow-xs);
+}
+.brand {
+  display: flex; align-items: center; gap: 10px;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px; font-weight: 700; letter-spacing: -0.01em;
+  color: var(--ink); white-space: nowrap;
+}
+.brand-logo { width: 28px; height: 28px; border-radius: var(--r-sm); object-fit: cover; }
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: var(--space-3); }
+.user-pill {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 12px 5px 8px;
+  background: var(--rule-2); border-radius: var(--r-full);
+  font-size: var(--text-sm); color: var(--ink-2); font-weight: 500;
+}
+.user-avatar {
+  width: 22px; height: 22px; border-radius: var(--r-full);
+  background: var(--brand-1); display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; color: var(--white);
+}
+
+/* ══════════════════ APP LAYOUT ══════════════════ */
+.app-layout { display: flex; flex: 1; overflow: hidden; }
+
+/* ══════════════════ SIDEBAR NAV ══════════════════ */
+.sidenav {
+  width: 224px; flex-shrink: 0;
+  background: var(--white); border-right: 1px solid var(--rule);
+  overflow-y: auto; padding: var(--space-4) var(--space-3);
+  display: flex; flex-direction: column;
+}
+.sidenav-section { margin-top: var(--space-6); }
+.sidenav-section:first-child { margin-top: 0; }
+.sidenav-label {
+  font-size: var(--text-xs); font-weight: 700;
+  color: var(--ink-4); letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 0 10px; margin-bottom: 4px;
+}
+.nav-btn {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; padding: 8px 10px;
+  border: none; background: none; color: var(--ink-3);
+  font-size: var(--text-sm); font-weight: 500;
+  border-radius: var(--r); cursor: pointer;
+  transition: all 0.12s; text-align: left;
+}
+.nav-btn:hover { background: var(--rule-2); color: var(--ink); }
+.nav-btn.active { background: var(--accent-lt); color: var(--brand-1); font-weight: 600; }
+.nav-btn .nav-icon { font-size: 15px; width: 18px; text-align: center; opacity: 0.7; }
+.nav-btn.active .nav-icon { opacity: 1; }
+
+/* ══════════════════ MAIN CONTENT ══════════════════ */
+.main { flex: 1; overflow-y: auto; padding: var(--space-10) var(--space-12); background: var(--canvas); }
+@media (max-width: 900px) { .main { padding: var(--space-6); } }
+
+/* ══════════════════ PAGE STRUCTURE ══════════════════ */
+.page { display: none; }
+.page.active { display: block; animation: fadeUp 0.25s ease forwards; }
+
+.page-head { margin-bottom: var(--space-8); }
+.page-eyebrow {
+  font-size: var(--text-xs); font-weight: 700; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--brand-1); margin-bottom: var(--space-2);
+}
+.page-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: var(--text-2xl); font-weight: 700; letter-spacing: -0.02em;
+  color: var(--ink); line-height: 1.15; margin-bottom: var(--space-2);
+}
+.page-sub { font-size: var(--text-base); color: var(--ink-3); font-weight: 400; }
+.page-head-row { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-6); }
+
+/* ══════════════════ DIVIDER ══════════════════ */
+.divider { height: 1px; background: var(--rule); margin: var(--space-6) 0; }
+
+/* ══════════════════ CARDS ══════════════════ */
+.card {
+  background: var(--white); border: 1px solid var(--rule);
+  border-radius: var(--r-lg); padding: var(--space-6);
+  box-shadow: var(--shadow-xs);
+}
+.card-sm { padding: var(--space-4); border-radius: var(--r); }
+.card + .card { margin-top: var(--space-4); }
+.card-title { font-weight: 700; font-size: var(--text-md); margin-bottom: var(--space-1); color: var(--ink); }
+.card-sub { font-size: var(--text-sm); color: var(--ink-3); }
+
+/* ══════════════════ STATS ══════════════════ */
+.stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-4); margin-bottom: var(--space-8); }
+@media (max-width: 900px) { .stats-row { grid-template-columns: 1fr 1fr; } }
+.stat-tile {
+  background: var(--white); border: 1px solid var(--rule);
+  border-radius: var(--r-lg); padding: var(--space-5) var(--space-6);
+  box-shadow: var(--shadow-xs); position: relative;
+}
+.stat-tile::before {
+  content: ''; position: absolute; bottom: 0; left: var(--space-6); right: var(--space-6);
+  height: 2px; background: var(--brand-1); border-radius: var(--r-full) var(--r-full) 0 0;
+  opacity: 0; transition: opacity 0.2s;
+}
+.stat-tile:hover::before { opacity: 1; }
+.stat-value {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 40px; font-weight: 700; line-height: 1; color: var(--ink);
+  letter-spacing: -0.02em;
+}
+.stat-label { font-size: var(--text-sm); color: var(--ink-3); margin-top: 4px; }
+
+/* ══════════════════ COURSE GRID ══════════════════ */
+.courses-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--space-5); }
+.course-card {
+  background: var(--white); border: 1px solid var(--rule);
+  border-radius: var(--r-lg); padding: var(--space-6);
+  cursor: pointer; transition: all 0.18s;
+  box-shadow: var(--shadow-xs); position: relative; overflow: hidden;
+}
+.course-card::after {
+  content: ''; position: absolute; left: 0; top: 0; width: 3px; height: 0;
+  background: var(--brand-1); transition: height 0.2s;
+}
+.course-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); border-color: var(--rule); }
+.course-card:hover::after { height: 100%; }
+.course-icon { font-size: 28px; margin-bottom: var(--space-4); }
+.course-name { font-size: var(--text-md); font-weight: 700; color: var(--ink); margin-bottom: 6px; line-height: 1.3; }
+.course-desc { font-size: var(--text-sm); color: var(--ink-3); margin-bottom: var(--space-5); line-height: 1.6; }
+.course-meta { display: flex; gap: var(--space-4); align-items: center; font-size: var(--text-xs); color: var(--ink-4); padding-top: var(--space-4); border-top: 1px solid var(--rule); }
+.course-meta-item { display: flex; align-items: center; gap: 4px; }
+
+/* ══════════════════ TABLE ══════════════════ */
+.table-wrap { background: var(--white); border: 1px solid var(--rule); border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--shadow-xs); }
+table { width: 100%; border-collapse: collapse; }
+thead th {
+  background: var(--canvas); padding: 10px 16px;
+  text-align: left; font-size: var(--text-xs); font-weight: 700;
+  color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.06em;
+  border-bottom: 1px solid var(--rule);
+}
+tbody td { padding: 12px 16px; border-bottom: 1px solid var(--rule-2); font-size: var(--text-sm); color: var(--ink-2); }
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover td { background: var(--rule-2); }
+
+/* ══════════════════ MODAL ══════════════════ */
+.overlay {
+  position: fixed; inset: 0; z-index: 400;
+  background: rgba(26,25,23,0.5);
+  display: flex; align-items: center; justify-content: center;
+  padding: var(--space-5);
+  backdrop-filter: blur(3px);
+  animation: fadeIn 0.15s ease;
+}
+.modal {
+  background: var(--white); border-radius: var(--r-xl);
+  width: 100%; max-width: 600px; max-height: 90vh; overflow-y: auto;
+  box-shadow: var(--shadow-xl);
+  animation: slideUp 0.2s ease;
+}
+.modal-wide { max-width: 820px; }
+.modal-head {
+  padding: var(--space-6) var(--space-8) var(--space-5);
+  border-bottom: 1px solid var(--rule);
+  position: sticky; top: 0; background: var(--white); z-index: 1;
+}
+.modal-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: var(--text-xl); font-weight: 700; color: var(--ink);
+}
+.modal-sub { font-size: var(--text-sm); color: var(--ink-3); margin-top: 4px; }
+.modal-body { padding: var(--space-6) var(--space-8); }
+.modal-foot {
+  padding: var(--space-5) var(--space-8);
+  border-top: 1px solid var(--rule);
+  display: flex; gap: var(--space-3); justify-content: flex-end;
+  background: var(--canvas);
+}
+
+/* ══════════════════ UPLOAD ZONE ══════════════════ */
+.upload-zone {
+  border: 2px dashed var(--rule);
+  border-radius: var(--r-lg);
+  padding: var(--space-12) var(--space-8);
+  text-align: center; cursor: pointer;
+  transition: all 0.15s;
+  background: var(--canvas);
+}
+.upload-zone:hover, .upload-zone.drag-active {
+  border-color: var(--brand-1);
+  background: var(--accent-lt);
+}
+.upload-icon { font-size: 36px; margin-bottom: var(--space-3); opacity: 0.6; }
+.upload-text { font-weight: 600; color: var(--ink-2); margin-bottom: 4px; }
+.upload-hint { font-size: var(--text-sm); color: var(--ink-4); }
+
+/* ══════════════════ EMPTY STATE ══════════════════ */
+.empty {
+  text-align: center; padding: var(--space-16) var(--space-8);
+  color: var(--ink-4);
+}
+.empty-icon { font-size: 40px; margin-bottom: var(--space-4); opacity: 0.5; }
+.empty-title { font-size: var(--text-md); font-weight: 600; color: var(--ink-3); margin-bottom: var(--space-2); }
+.empty-hint { font-size: var(--text-sm); }
+
+/* ══════════════════ TOAST ══════════════════ */
+#toast-root { position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+.toast {
+  background: var(--ink); color: var(--white);
+  padding: 11px 16px; border-radius: var(--r-lg);
+  font-size: var(--text-sm); font-weight: 500;
+  display: flex; align-items: center; gap: 8px;
+  box-shadow: var(--shadow-lg);
+  animation: slideUp 0.25s ease;
+  max-width: 340px; pointer-events: auto;
+}
+.toast.t-success { background: #14532d; }
+.toast.t-error   { background: #7f1d1d; }
+.toast.t-info    { background: var(--ink-2); }
+
+/* ══════════════════ LANDING ══════════════════ */
+#screen-landing {
+  align-items: center; justify-content: center;
+  background: var(--canvas);
+  padding: var(--space-8);
+}
+.landing-wrap {
+  width: 100%; max-width: 520px;
+  text-align: center;
+}
+.landing-logo {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: var(--text-hero); font-weight: 700;
+  letter-spacing: -0.04em; color: var(--ink);
+  line-height: 1; margin-bottom: var(--space-3);
+}
+.landing-sub {
+  font-size: var(--text-md); color: var(--ink-3); font-weight: 300;
+  margin-bottom: var(--space-12); line-height: 1.5;
+}
+.landing-rule { width: 40px; height: 2px; background: var(--brand-1); margin: 0 auto var(--space-10); }
+.role-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-8); }
+.role-tile {
+  background: var(--white); border: 1.5px solid var(--rule);
+  border-radius: var(--r-xl); padding: var(--space-6) var(--space-5);
+  cursor: pointer; transition: all 0.2s; text-align: left;
+  box-shadow: var(--shadow-xs);
+}
+.role-tile:hover {
+  border-color: var(--brand-1);
+  box-shadow: var(--shadow), 0 0 0 4px var(--accent-lt);
+  transform: translateY(-2px);
+}
+.role-tile-icon { font-size: 26px; margin-bottom: var(--space-3); }
+.role-tile-title { font-weight: 700; font-size: var(--text-base); margin-bottom: 4px; color: var(--ink); }
+.role-tile-desc { font-size: var(--text-sm); color: var(--ink-3); line-height: 1.5; }
+.landing-foot { font-size: var(--text-xs); color: var(--ink-4); }
+
+/* ══════════════════ LOGIN ══════════════════ */
+#screen-login { align-items: center; justify-content: center; padding: var(--space-8); }
+.login-wrap { width: 100%; max-width: 400px; }
+.login-header { margin-bottom: var(--space-8); }
+.login-title { font-family: 'Cormorant Garamond', serif; font-size: var(--text-2xl); font-weight: 700; color: var(--ink); margin-bottom: 4px; }
+.login-sub { font-size: var(--text-sm); color: var(--ink-3); }
+.login-card { background: var(--white); border: 1px solid var(--rule); border-radius: var(--r-xl); padding: var(--space-8); box-shadow: var(--shadow); }
+
+/* ══════════════════ LEARNER NAME ══════════════════ */
+.name-wrap { max-width: 420px; margin: var(--space-16) auto; text-align: center; }
+.name-greeting { font-family: 'Cormorant Garamond', serif; font-size: var(--text-3xl); font-weight: 600; font-style: italic; color: var(--ink); margin-bottom: var(--space-3); }
+.name-hint { color: var(--ink-3); margin-bottom: var(--space-8); }
+
+/* ══════════════════ COURSE VIEWER ══════════════════ */
+#screen-course { background: var(--canvas); }
+.course-header {
+  background: var(--white); border-bottom: 1px solid var(--rule);
+  padding: var(--space-4) var(--space-8);
+  display: flex; align-items: center; gap: var(--space-6);
+}
+.course-header-title { font-weight: 600; font-size: var(--text-base); color: var(--ink); }
+.course-header-progress { flex: 1; max-width: 320px; }
+.course-header-meta { font-size: var(--text-xs); color: var(--ink-4); margin-bottom: 5px; }
+.course-body { display: flex; flex: 1; overflow: hidden; }
+.module-nav {
+  width: 260px; flex-shrink: 0;
+  background: var(--white); border-right: 1px solid var(--rule);
+  overflow-y: auto; padding: var(--space-5);
+}
+.module-nav-title { font-size: var(--text-xs); font-weight: 700; color: var(--ink-4); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: var(--space-4); }
+.mod-item {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: 8px 10px; border-radius: var(--r);
+  cursor: pointer; margin-bottom: 2px;
+  transition: all 0.12s; font-size: var(--text-sm);
+}
+.mod-item:hover { background: var(--rule-2); }
+.mod-item.active { background: var(--accent-lt); color: var(--brand-1); font-weight: 600; }
+.mod-bullet {
+  width: 20px; height: 20px; border-radius: var(--r-full);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; flex-shrink: 0;
+  border: 1.5px solid var(--rule); color: var(--ink-4);
+  background: var(--white);
+}
+.mod-item.active .mod-bullet { border-color: var(--brand-1); color: var(--brand-1); background: var(--accent-lt); }
+.mod-item.done-pass .mod-bullet { border-color: var(--pass); background: var(--pass); color: var(--white); }
+.mod-item.done-fail .mod-bullet { border-color: var(--fail); background: var(--fail); color: var(--white); }
+
+.module-main { flex: 1; overflow-y: auto; }
+.module-prose {
+  max-width: 680px; margin: 0 auto;
+  padding: var(--space-12) var(--space-10);
+}
+.module-prose h2 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: var(--text-2xl); font-weight: 700; color: var(--ink);
+  margin-bottom: var(--space-4); letter-spacing: -0.02em;
+}
+.module-prose h3 { font-size: var(--text-lg); font-weight: 700; color: var(--ink); margin: var(--space-6) 0 var(--space-3); }
+.module-prose p { color: var(--ink-2); line-height: 1.8; margin-bottom: var(--space-4); }
+.module-prose ul, .module-prose ol { color: var(--ink-2); padding-left: var(--space-6); margin-bottom: var(--space-4); line-height: 1.8; }
+.module-prose li { margin-bottom: 4px; }
+
+.quiz-wrap { max-width: 620px; margin: 0 auto; padding: var(--space-12) var(--space-10); }
+.quiz-header { margin-bottom: var(--space-8); }
+.quiz-step { font-size: var(--text-xs); font-weight: 700; color: var(--ink-4); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: var(--space-3); }
+.quiz-q { font-size: var(--text-xl); font-weight: 600; color: var(--ink); line-height: 1.4; }
+.quiz-options { display: flex; flex-direction: column; gap: var(--space-3); margin-bottom: var(--space-6); }
+.quiz-opt {
+  display: flex; align-items: center; gap: var(--space-4);
+  padding: 14px var(--space-5); border-radius: var(--r-lg);
+  border: 1.5px solid var(--rule); cursor: pointer;
+  transition: all 0.12s; background: var(--white); font-size: var(--text-base);
+  box-shadow: var(--shadow-xs);
+}
+.quiz-opt:hover { border-color: var(--brand-1); background: var(--accent-lt); }
+.quiz-opt.selected { border-color: var(--brand-1); background: var(--accent-lt); color: var(--brand-1); }
+.quiz-opt.correct { border-color: var(--pass); background: var(--pass-lt); color: var(--pass); }
+.quiz-opt.wrong   { border-color: var(--fail); background: var(--fail-lt); color: var(--fail); }
+.opt-letter {
+  width: 28px; height: 28px; border-radius: var(--r-full); flex-shrink: 0;
+  background: var(--rule-2); display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 800; color: var(--ink-3); font-family: 'Outfit', sans-serif;
+}
+.quiz-opt.selected .opt-letter { background: var(--brand-1); color: var(--white); }
+.quiz-opt.correct .opt-letter  { background: var(--pass); color: var(--white); }
+.quiz-opt.wrong .opt-letter    { background: var(--fail); color: var(--white); }
+.quiz-feedback {
+  padding: var(--space-4) var(--space-5); border-radius: var(--r);
+  font-size: var(--text-sm); font-weight: 500; margin-bottom: var(--space-5);
+}
+.quiz-feedback.fb-pass { background: var(--pass-lt); color: var(--pass); border: 1px solid #bbf7d0; }
+.quiz-feedback.fb-fail { background: var(--fail-lt); color: var(--fail); border: 1px solid #fecaca; }
+
+.results-wrap { max-width: 540px; margin: 0 auto; padding: var(--space-16) var(--space-8); text-align: center; }
+.score-ring-wrap { position: relative; width: 140px; height: 140px; margin: 0 auto var(--space-6); }
+.score-ring-wrap svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+.score-ring-inner { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.score-big { font-family: 'Cormorant Garamond', serif; font-size: 40px; font-weight: 700; line-height: 1; }
+.score-lbl { font-size: var(--text-xs); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-4); }
+.results-title { font-family: 'Cormorant Garamond', serif; font-size: var(--text-2xl); font-weight: 700; margin-bottom: var(--space-2); }
+.results-sub { color: var(--ink-3); margin-bottom: var(--space-8); }
+
+/* ══════════════════ BRANDING PAGE ══════════════════ */
+.brand-preview { background: var(--rule-2); border: 1px solid var(--rule); border-radius: var(--r-lg); padding: var(--space-5); margin-bottom: var(--space-6); }
+.brand-preview-bar { height: 6px; border-radius: var(--r-full); margin-top: var(--space-3); }
+.color-row { display: flex; gap: var(--space-3); align-items: center; }
+.swatch { width: 36px; height: 36px; border-radius: var(--r); border: 1px solid var(--rule); overflow: hidden; flex-shrink: 0; cursor: pointer; }
+.swatch input[type=color] { width: 200%; height: 200%; margin: -25%; border: none; cursor: pointer; padding: 0; }
+
+/* ══════════════════ MODULE BUILDER ══════════════════ */
+.mod-builder {
+  background: var(--white); border: 1px solid var(--rule);
+  border-radius: var(--r-lg); margin-bottom: var(--space-4); overflow: hidden;
+}
+.mod-builder-head {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-4) var(--space-5); cursor: pointer;
+  background: var(--canvas);
+}
+.mod-builder-head:hover { background: var(--rule-2); }
+.mod-builder-body { padding: var(--space-5); border-top: 1px solid var(--rule); }
+.q-block {
+  background: var(--canvas); border: 1px solid var(--rule);
+  border-radius: var(--r); padding: var(--space-4); margin-bottom: var(--space-3);
+}
+.q-opts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); margin: var(--space-3) 0; }
+.q-opt-row { display: flex; align-items: center; gap: var(--space-2); }
+.opt-ltr { font-size: var(--text-xs); font-weight: 800; color: var(--ink-4); width: 14px; }
+
+/* ══════════════════ CERTIFICATE TEMPLATE ══════════════════ */
+#cert-overlay {
+  position: fixed; inset: 0; z-index: 600;
+  background: rgba(26,25,23,0.75);
+  display: flex; align-items: center; justify-content: center;
+  padding: var(--space-6);
+  backdrop-filter: blur(4px);
+}
+#cert-sheet {
+  background: #fff;
+  width: 100%; max-width: 800px;
+  font-family: 'Outfit', sans-serif;
+  box-shadow: var(--shadow-xl);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+.cert-accent-bar { height: 6px; background: var(--brand-1); }
+.cert-body { padding: 52px 64px 48px; text-align: center; }
+.cert-org-name {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.18em;
+  text-transform: uppercase; color: #888; margin-bottom: 32px;
+}
+.cert-heading {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 52px; font-weight: 600; font-style: italic;
+  color: #1a1917; line-height: 1; margin-bottom: 28px;
+}
+.cert-of { font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: #aaa; margin-bottom: 28px; }
+.cert-presents { font-size: 13px; color: #888; margin-bottom: 8px; }
+.cert-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 42px; font-weight: 700; color: #1a1917;
+  letter-spacing: -0.02em; margin-bottom: 28px;
+  display: inline-block;
+}
+.cert-completed { font-size: 13px; color: #888; margin-bottom: 8px; }
+.cert-course { font-size: 20px; font-weight: 700; color: #1a1917; margin-bottom: 36px; }
+.cert-rule { width: 60px; height: 1px; background: #ddd; margin: 0 auto 32px; }
+.cert-meta-row { display: flex; justify-content: center; gap: 64px; margin-bottom: 36px; }
+.cert-meta-item { text-align: center; }
+.cert-meta-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.14em; color: #bbb; margin-bottom: 4px; }
+.cert-meta-val { font-size: 14px; font-weight: 700; color: #1a1917; }
+.cert-sig-row { display: flex; justify-content: center; gap: 80px; padding-top: 28px; border-top: 1px solid #eee; }
+.cert-sig-item { text-align: center; }
+.cert-sig-line { width: 120px; height: 1px; background: #ccc; margin: 0 auto 6px; }
+.cert-sig-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: #bbb; }
+.cert-controls { display: flex; gap: 12px; justify-content: center; margin-top: 20px; }
+
+/* ══════════════════ CODE / FORMAT ══════════════════ */
+code {
+  font-family: 'Courier New', monospace;
+  font-size: 12px; background: var(--rule-2);
+  padding: 2px 6px; border-radius: var(--r-sm); color: var(--ink-2);
+}
+pre code { display: block; padding: var(--space-4); line-height: 1.7; }
+
+/* ══════════════════ ANIMATIONS ══════════════════ */
+@keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeUp  { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ══════════════════ PRINT ══════════════════ */
+@media print {
+  body > *:not(#cert-overlay) { display: none !important; }
+  #cert-overlay {
+    position: static; background: none;
+    display: block !important; padding: 0;
+  }
+  .cert-controls { display: none !important; }
+  #cert-sheet { box-shadow: none; max-width: none; border-radius: 0; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+<div id="toast-root"></div>
+
+<!-- ══════════ SCREEN: LANDING ══════════ -->
+<div id="screen-landing" class="screen active">
+  <div class="landing-wrap">
+    <div class="landing-logo" id="ldg-brand">TrainFlow</div>
+    <div id="ldg-org" style="font-size:var(--text-sm);color:var(--ink-4);font-weight:600;letter-spacing:0.1em;text-transform:uppercase;margin-top:-8px;margin-bottom:8px;"></div>
+    <p class="landing-sub" id="ldg-tagline">Training &amp; Certification Platform</p>
+    <div class="landing-rule"></div>
+    <div class="role-grid">
+      <div class="role-tile" onclick="App.goLearner()">
+        <div class="role-tile-icon">🎓</div>
+        <div class="role-tile-title">Learner</div>
+        <div class="role-tile-desc">Access courses, complete training, earn certificates.</div>
+      </div>
+      <div class="role-tile" onclick="App.goAdmin()">
+        <div class="role-tile-icon">⚙️</div>
+        <div class="role-tile-title">Manager</div>
+        <div class="role-tile-desc">Create content, manage courses, track completions.</div>
+      </div>
+    </div>
+    <p class="landing-foot">All data stored locally in your browser &mdash; no account required</p>
+  </div>
+</div>
+
+<!-- ══════════ SCREEN: LOGIN ══════════ -->
+<div id="screen-login" class="screen">
+  <div class="login-wrap">
+    <div class="login-header">
+      <div class="login-title">Manager Access</div>
+      <div class="login-sub">Sign in to manage courses and settings.</div>
+    </div>
+    <div class="login-card">
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="pw-input" placeholder="Enter password…" onkeydown="if(event.key==='Enter')App.doLogin()">
+      </div>
+      <p style="font-size:var(--text-xs);color:var(--ink-4);margin-bottom:var(--space-5);">Default: <code>admin123</code></p>
+      <div style="display:flex;gap:var(--space-3);">
+        <button class="btn btn-primary" style="flex:1" onclick="App.doLogin()">Sign In</button>
+        <button class="btn btn-outline" onclick="App.show('screen-landing')">Back</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ SCREEN: LEARNER ══════════ -->
+<div id="screen-learner" class="screen">
+  <div class="topbar">
+    <div class="brand">
+      <img id="l-logo" class="brand-logo hidden" src="" alt="">
+      <span id="l-brand">TrainFlow</span>
+    </div>
+    <div class="topbar-right">
+      <div class="user-pill" id="l-user-pill" style="display:none">
+        <div class="user-avatar" id="l-avatar">?</div>
+        <span id="l-name-display"></span>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="App.show('screen-landing')">Exit</button>
+    </div>
+  </div>
+  <div class="app-layout">
+    <nav class="sidenav">
+      <button class="nav-btn active" id="ln-courses"  onclick="App.lNav('courses')"><span class="nav-icon">📚</span>Courses</button>
+      <button class="nav-btn"        id="ln-progress" onclick="App.lNav('progress')"><span class="nav-icon">📊</span>Progress</button>
+      <button class="nav-btn"        id="ln-certs"    onclick="App.lNav('certs')"><span class="nav-icon">🏅</span>Certificates</button>
+    </nav>
+    <div class="main">
+      <div class="page active" id="lp-name">
+        <div class="name-wrap">
+          <div class="name-greeting">Welcome.</div>
+          <p class="name-hint">Please enter your name to begin your training.</p>
+          <div class="field">
+            <input type="text" id="name-input" placeholder="Your full name…" onkeydown="if(event.key==='Enter')App.setName()">
+          </div>
+          <button class="btn btn-primary btn-xl w-full" onclick="App.setName()">Begin Training</button>
+        </div>
+      </div>
+      <div class="page hidden" id="lp-courses">
+        <div class="page-head page-head-row">
+          <div>
+            <div class="page-eyebrow">Learning</div>
+            <div class="page-title">Available Courses</div>
+          </div>
+        </div>
+        <div class="courses-grid" id="l-courses-grid"></div>
+      </div>
+      <div class="page hidden" id="lp-progress">
+        <div class="page-head">
+          <div class="page-eyebrow">Learning</div>
+          <div class="page-title">My Progress</div>
+        </div>
+        <div id="l-progress-content"></div>
+      </div>
+      <div class="page hidden" id="lp-certs">
+        <div class="page-head">
+          <div class="page-eyebrow">Achievements</div>
+          <div class="page-title">My Certificates</div>
+        </div>
+        <div id="l-certs-content"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ SCREEN: COURSE VIEWER ══════════ -->
+<div id="screen-course" class="screen">
+  <div class="course-header">
+    <button class="btn btn-outline btn-sm" onclick="App.exitCourse()">← Back</button>
+    <div style="flex:1;max-width:360px;">
+      <div class="course-header-meta" id="ch-meta"></div>
+      <div class="progress-track" style="height:5px;">
+        <div class="progress-fill" id="ch-prog" style="width:0%"></div>
+      </div>
+    </div>
+    <span style="font-size:var(--text-xs);color:var(--ink-4);" id="ch-label"></span>
+  </div>
+  <div class="course-body">
+    <aside class="module-nav">
+      <div class="module-nav-title">Modules</div>
+      <div id="mod-nav-list"></div>
+    </aside>
+    <div class="module-main" id="mod-main"></div>
+  </div>
+</div>
+
+<!-- ══════════ SCREEN: ADMIN ══════════ -->
+<div id="screen-admin" class="screen">
+  <div class="topbar">
+    <div class="brand">
+      <img id="a-logo" class="brand-logo hidden" src="" alt="">
+      <span id="a-brand">TrainFlow</span>
+    </div>
+    <div style="margin-left:var(--space-3);">
+      <span class="chip chip-amber" style="font-size:10px;">Manager</span>
+    </div>
+    <div class="topbar-right">
+      <button class="btn btn-ghost btn-sm" onclick="App.adminLogout()">Sign Out</button>
+    </div>
+  </div>
+  <div class="app-layout">
+    <nav class="sidenav">
+      <button class="nav-btn active" id="an-dashboard"   onclick="App.aNav('dashboard')"><span class="nav-icon">▦</span>Dashboard</button>
+      <button class="nav-btn"        id="an-courses"     onclick="App.aNav('courses')"><span class="nav-icon">📚</span>Courses</button>
+      <button class="nav-btn"        id="an-completions" onclick="App.aNav('completions')"><span class="nav-icon">✓</span>Completions</button>
+      <div class="sidenav-section">
+        <div class="sidenav-label">Settings</div>
+        <button class="nav-btn" id="an-branding"  onclick="App.aNav('branding')"><span class="nav-icon">◈</span>Branding</button>
+        <button class="nav-btn" id="an-settings"  onclick="App.aNav('settings')"><span class="nav-icon">⚙</span>Settings</button>
+      </div>
+    </nav>
+    <div class="main">
+      <div class="page active" id="ap-dashboard">
+        <div class="page-head">
+          <div class="page-eyebrow">Overview</div>
+          <div class="page-title">Dashboard</div>
+        </div>
+        <div class="stats-row" id="a-stats"></div>
+        <div id="a-recent"></div>
+      </div>
+      <div class="page hidden" id="ap-courses">
+        <div class="page-head page-head-row">
+          <div>
+            <div class="page-eyebrow">Content</div>
+            <div class="page-title">Courses</div>
+          </div>
+          <button class="btn btn-primary" onclick="App.openBuilder()">+ New Course</button>
+        </div>
+        <div class="courses-grid" id="a-courses-grid"></div>
+      </div>
+      <div class="page hidden" id="ap-completions">
+        <div class="page-head page-head-row">
+          <div>
+            <div class="page-eyebrow">Records</div>
+            <div class="page-title">Completions</div>
+          </div>
+          <button class="btn btn-outline btn-sm" onclick="App.exportCSV()">↓ Export CSV</button>
+        </div>
+        <div class="table-wrap">
+          <table><thead><tr><th>Name</th><th>Course</th><th>Score</th><th>Status</th><th>Date</th><th>Action</th></tr></thead>
+          <tbody id="comp-tbody"></tbody></table>
+        </div>
+      </div>
+      <div class="page hidden" id="ap-branding">
+        <div class="page-head">
+          <div class="page-eyebrow">Customisation</div>
+          <div class="page-title">Branding</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-6);max-width:760px;">
+          <div class="card">
+            <div class="card-title">Organisation</div>
+            <div class="card-sub" style="margin-bottom:var(--space-5);">Displayed on all learner-facing screens.</div>
+            <div class="field"><label>Organisation Name</label><input type="text" id="br-name" placeholder="Your Organisation" oninput="App.previewBrand()"></div>
+            <div class="field"><label>Tagline</label><input type="text" id="br-tag" placeholder="Training & Certification Platform"></div>
+            <div class="field">
+              <label>Logo</label>
+              <input type="text" id="br-logo-url" placeholder="https://… or upload below" oninput="App.previewBrand()" style="margin-bottom:8px;">
+              <input type="file" id="br-logo-file" accept="image/*" onchange="App.uploadLogo(event)" style="font-size:var(--text-xs);background:none;border:none;padding:0;box-shadow:none;color:var(--ink-3);">
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Colours</div>
+            <div class="card-sub" style="margin-bottom:var(--space-5);">Applied to accents, buttons and certificates.</div>
+            <div class="field">
+              <label>Primary</label>
+              <div class="color-row">
+                <div class="swatch"><input type="color" id="br-c1" value="#2563eb" oninput="App.previewBrand()"></div>
+                <input type="text" id="br-c1-hex" value="#2563eb" style="font-size:var(--text-sm);" oninput="App.syncHex('br-c1','br-c1-hex')">
+              </div>
+            </div>
+            <div class="field">
+              <label>Secondary</label>
+              <div class="color-row">
+                <div class="swatch"><input type="color" id="br-c2" value="#1d4ed8" oninput="App.previewBrand()"></div>
+                <input type="text" id="br-c2-hex" value="#1d4ed8" style="font-size:var(--text-sm);" oninput="App.syncHex('br-c2','br-c2-hex')">
+              </div>
+            </div>
+            <div class="field" style="margin-top:var(--space-3);">
+              <label>Pass Threshold (%)</label>
+              <input type="number" id="br-pass" value="80" min="1" max="100">
+            </div>
+          </div>
+        </div>
+        <div class="brand-preview" style="max-width:760px;">
+          <div style="font-size:var(--text-sm);color:var(--ink-3);margin-bottom:var(--space-2);">Live preview</div>
+          <div style="display:flex;align-items:center;gap:var(--space-3);">
+            <img id="br-prev-logo" src="" alt="" style="width:28px;height:28px;border-radius:var(--r-sm);object-fit:cover;display:none">
+            <span id="br-prev-name" style="font-family:'Cormorant Garamond',serif;font-size:var(--text-xl);font-weight:700;"></span>
+          </div>
+          <div class="progress-track brand-preview-bar" style="height:6px;margin-top:12px;">
+            <div class="progress-fill" id="br-prev-bar" style="width:65%;"></div>
+          </div>
+        </div>
+        <div style="display:flex;gap:var(--space-3);">
+          <button class="btn btn-primary" onclick="App.saveBrand()">Save Branding</button>
+          <button class="btn btn-outline" onclick="App.resetBrand()">Reset</button>
+        </div>
+      </div>
+      <div class="page hidden" id="ap-settings">
+        <div class="page-head">
+          <div class="page-eyebrow">Configuration</div>
+          <div class="page-title">Settings</div>
+        </div>
+        <div style="max-width:480px;display:flex;flex-direction:column;gap:var(--space-4);">
+          <div class="card">
+            <div class="card-title">Change Password</div>
+            <div class="divider"></div>
+            <div class="field"><label>New Password</label><input type="password" id="np1" placeholder="New password…"></div>
+            <div class="field"><label>Confirm</label><input type="password" id="np2" placeholder="Confirm…"></div>
+            <button class="btn btn-primary" onclick="App.changePw()">Update</button>
+          </div>
+          <div class="card">
+            <div class="card-title">Data</div>
+            <div class="card-sub" style="margin-bottom:var(--space-4);">Backup and restore your courses and records.</div>
+            <div style="display:flex;gap:var(--space-3);flex-wrap:wrap;">
+              <button class="btn btn-outline" onclick="App.exportBackup()">↓ Export Backup</button>
+              <button class="btn btn-outline" onclick="document.getElementById('restore-file').click()">↑ Import Backup</button>
+              <input type="file" id="restore-file" accept=".json" class="hidden" onchange="App.importBackup(event)">
+              <button class="btn btn-danger" onclick="App.clearRecords()">Clear Records</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ MODAL: COURSE BUILDER ══════════ -->
+<div class="overlay hidden" id="builder-overlay">
+  <div class="modal modal-wide">
+    <div class="modal-head">
+      <div class="modal-title" id="builder-title">New Course</div>
+      <div class="modal-sub">Build training modules with questions and content.</div>
+    </div>
+    <div class="modal-body">
+      <div class="field-row">
+        <div class="field"><label>Title</label><input type="text" id="cb-title" placeholder="e.g. Q2 Compliance Training"></div>
+        <div class="field"><label>Icon</label><input type="text" id="cb-icon" placeholder="📋" maxlength="4"></div>
+      </div>
+      <div class="field"><label>Description</label><input type="text" id="cb-desc" placeholder="Brief description for learners…"></div>
+      <div class="divider"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-4);">
+        <div style="font-weight:700;font-size:var(--text-base);">Modules</div>
+        <div style="display:flex;gap:var(--space-2);">
+          <button class="btn btn-outline btn-sm" onclick="App.csvImportOpen()">↑ Import CSV / JSON</button>
+          <button class="btn btn-primary btn-sm" onclick="App.addMod()">+ Module</button>
+        </div>
+      </div>
+      <div id="mods-builder"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="App.closeBuilder()">Cancel</button>
+      <button class="btn btn-primary" onclick="App.saveCourse()">Save Course</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ MODAL: CSV IMPORT ══════════ -->
+<div class="overlay hidden" id="csv-overlay">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">Import Questions</div>
+      <div class="modal-sub">Upload a CSV or JSON file to populate modules automatically.</div>
+    </div>
+    <div class="modal-body">
+      <div class="upload-zone" id="drop-zone"
+        onclick="document.getElementById('csv-file-input').click()"
+        ondragover="event.preventDefault();this.classList.add('drag-active')"
+        ondragleave="this.classList.remove('drag-active')"
+        ondrop="App.csvDrop(event)">
+        <div class="upload-icon">⬆</div>
+        <div class="upload-text">Drop file here or click to browse</div>
+        <div class="upload-hint">Supports .csv and .json</div>
+      </div>
+      <input type="file" id="csv-file-input" accept=".csv,.json" class="hidden" onchange="App.csvFileSelected(event)">
+      <div id="csv-preview" class="hidden" style="margin-top:var(--space-5);"></div>
+      <div class="divider"></div>
+      <div style="font-weight:600;font-size:var(--text-sm);margin-bottom:var(--space-3);">Format reference</div>
+      <pre><code>module,question,optionA,optionB,optionC,optionD,correct,explanation
+"Intro","What is X?","Option A","Option B","Option C","Option D","A","Reason…"</code></pre>
+      <p style="font-size:var(--text-xs);color:var(--ink-4);margin-top:var(--space-3);">For JSON: array of objects with <code>module</code>, <code>question</code>, <code>options</code> (array), <code>correct</code> (0-based index), <code>explanation</code>.</p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="App.csvClose()">Cancel</button>
+      <button class="btn btn-primary" id="csv-confirm" disabled onclick="App.csvConfirm()">Add to Course</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ CERTIFICATE ══════════ -->
+<div id="cert-overlay" class="hidden">
+  <div style="display:flex;flex-direction:column;align-items:center;width:100%;max-width:820px;">
+    <div class="cert-controls">
+      <button class="btn btn-outline" onclick="App.downloadCertPDF()">↓ Download PDF</button>
+      <button class="btn btn-ghost" onclick="App.closeCert()">✕ Close</button>
+    </div>
+    <div id="cert-sheet">
+      <div class="cert-accent-bar" id="cert-accent"></div>
+      <div class="cert-body">
+        <div class="cert-org-name" id="c-org"></div>
+        <div class="cert-heading">Certificate</div>
+        <div class="cert-of">of Completion</div>
+        <div class="cert-presents">This certifies that</div>
+        <div class="cert-name" id="c-name"></div>
+        <div class="cert-completed">has successfully completed</div>
+        <div class="cert-course" id="c-course"></div>
+        <div class="cert-rule"></div>
+        <div class="cert-meta-row">
+          <div class="cert-meta-item">
+            <div class="cert-meta-label">Date</div>
+            <div class="cert-meta-val" id="c-date"></div>
+          </div>
+          <div class="cert-meta-item">
+            <div class="cert-meta-label">Score</div>
+            <div class="cert-meta-val" id="c-score"></div>
+          </div>
+          <div class="cert-meta-item">
+            <div class="cert-meta-label">Certificate ID</div>
+            <div class="cert-meta-val" id="c-id" style="font-size:12px;font-family:'Courier New',monospace;"></div>
+          </div>
+        </div>
+        <div class="cert-sig-row">
+          <div class="cert-sig-item">
+            <div class="cert-sig-line"></div>
+            <div class="cert-sig-label" id="c-sig-dept">Training Department</div>
+          </div>
+          <div class="cert-sig-item">
+            <div class="cert-sig-line"></div>
+            <div class="cert-sig-label">Authorised Signatory</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- #app -->
+
+<script>
+// ══════════════════════════════════════════════════════════
+//  TRAINFLOW — Application Logic
+// ══════════════════════════════════════════════════════════
+
+const K = { courses:'tf2_courses', completions:'tf2_completions', brand:'tf2_brand', pw:'tf2_pw', lname:'tf2_lname' };
+
+const store = {
+  g(k)        { try { return JSON.parse(localStorage.getItem(k)) } catch { return null } },
+  s(k,v)      { localStorage.setItem(k, JSON.stringify(v)) },
+  courses()   { return store.g(K.courses) || [] },
+  records()   { return store.g(K.completions) || [] },
+  brand()     { return store.g(K.brand) || { name:'TrainFlow', tagline:'Training & Certification Platform', logo:'', c1:'#2563eb', c2:'#1d4ed8', pass:80 } },
+  pw()        { return store.g(K.pw) || 'admin123' },
+  addRecord(r){ const a = store.records(); a.push(r); store.s(K.completions, a); }
+};
+
+// ── State ──
+let curLearner = '';
+let curCourse  = null;
+let curModIdx  = 0;
+let quizSt     = {};
+let cbState    = { editId: null, mods: [] };
+let csvParsed  = null;
+
+// ══════════════════ UTILITIES ══════════════════
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
+// ══════════════════ TOAST ══════════════════
+const Toast = {
+  show(msg, type='info') {
+    const el = document.createElement('div');
+    el.className = `toast t-${type}`;
+    el.textContent = msg;
+    document.getElementById('toast-root').appendChild(el);
+    setTimeout(() => { el.style.transition='opacity 0.3s'; el.style.opacity='0'; setTimeout(()=>el.remove(),300); }, 3200);
+  },
+  ok(m)   { Toast.show(m,'success'); },
+  err(m)  { Toast.show(m,'error'); },
+  info(m) { Toast.show(m,'info'); }
+};
+
+// ══════════════════ BRANDING ══════════════════
+function applyBrand() {
+  const b = store.brand();
+  document.documentElement.style.setProperty('--brand-1', b.c1 || '#2563eb');
+  document.documentElement.style.setProperty('--brand-2', b.c2 || '#1d4ed8');
+  // Text
+  ['ldg-brand','l-brand','a-brand'].forEach(id => { const el = $$(id); if(el) el.textContent = b.name || 'TrainFlow'; });
+  const tg = $$('ldg-tagline'); if(tg) tg.textContent = b.tagline || 'Training & Certification Platform';
+  const org = $$('ldg-org');
+  if(org) { if(b.name && b.name !== 'TrainFlow') { org.textContent = b.name; org.style.display=''; } else org.style.display='none'; }
+  // Logo
+  ['l-logo','a-logo'].forEach(id => { const img = $$(id); if(!img) return; if(b.logo){ img.src=b.logo; img.classList.remove('hidden'); } else { img.src=''; img.classList.add('hidden'); } });
+  // Branding form sync
+  if($$('br-name')) $$('br-name').value = b.name||'';
+  if($$('br-tag'))  $$('br-tag').value  = b.tagline||'';
+  if($$('br-logo-url')) $$('br-logo-url').value = b.logo||'';
+  if($$('br-c1'))   { $$('br-c1').value = b.c1||'#2563eb'; $$('br-c1-hex').value = b.c1||'#2563eb'; }
+  if($$('br-c2'))   { $$('br-c2').value = b.c2||'#1d4ed8'; $$('br-c2-hex').value = b.c2||'#1d4ed8'; }
+  if($$('br-pass')) $$('br-pass').value = b.pass||80;
+  // Preview
+  const pn = $$('br-prev-name'); if(pn) pn.textContent = b.name || 'TrainFlow';
+  const pl = $$('br-prev-logo'); if(pl){ if(b.logo){pl.src=b.logo;pl.style.display='block';}else{pl.style.display='none';} }
+}
+
+function $$(id) { return document.getElementById(id); }
+
+const App = {
+
+  // ─── INIT ───
+  init() {
+    applyBrand();
+    curLearner = store.g(K.lname) || '';
+    App.seedDemo();
+  },
+
+  seedDemo() {
+    if (store.courses().length) return;
+    store.s(K.courses, [{
+      id: 'demo1', icon: '📋', title: 'Corporate Onboarding Essentials',
+      desc: 'Core policies and procedures for all new team members.',
+      mods: [
+        {
+          id: 'm1', title: 'Company Policies',
+          content: `<h2>Company Policies</h2><p>Understanding our company policies is essential for every team member. These guidelines ensure we maintain a professional, respectful, and compliant workplace for everyone.</p><h3>Code of Conduct</h3><p>All employees are expected to conduct themselves with integrity and professionalism at all times, both in the office and when representing the company externally.</p><h3>Confidentiality</h3><p>Employees must safeguard confidential company information and client data. This obligation continues after employment ends. Never share proprietary information with unauthorised parties.</p><ul><li>Do not share login credentials</li><li>Lock your screen when leaving your desk</li><li>Report suspected breaches immediately</li></ul>`,
+          questions: [
+            { q: 'What is the primary purpose of a company Code of Conduct?', opts: ['To restrict employee freedom', 'To ensure professional and ethical behaviour', 'To outline salary structures', 'To manage holiday requests'], correct: 1, exp: 'A Code of Conduct sets the standard for professional and ethical behaviour expected of all employees.' },
+            { q: 'Confidentiality obligations apply:', opts: ['Only while employed', 'Only to senior staff', 'After employment ends as well', 'Only to client-facing roles'], correct: 2, exp: 'Confidentiality obligations typically extend beyond the period of employment.' }
+          ]
+        },
+        {
+          id: 'm2', title: 'Data Protection',
+          content: `<h2>Data Protection</h2><p>Protecting personal and sensitive data is both a legal requirement and a professional responsibility. Our data protection policy aligns with applicable regulations and best practices.</p><h3>Key Principles</h3><ol><li><strong>Lawfulness:</strong> Data must be processed lawfully and transparently.</li><li><strong>Purpose limitation:</strong> Data collected for one purpose must not be used for another.</li><li><strong>Data minimisation:</strong> Only collect what is necessary.</li><li><strong>Accuracy:</strong> Keep data up to date and correct.</li><li><strong>Storage limitation:</strong> Do not retain data longer than necessary.</li></ol><p>If you receive a data subject access request or suspect a breach, escalate to the Data Protection Officer immediately.</p>`,
+          questions: [
+            { q: 'Which principle states you should only collect data that is strictly necessary?', opts: ['Purpose limitation', 'Data minimisation', 'Storage limitation', 'Accuracy'], correct: 1, exp: 'Data minimisation means collecting only the data that is necessary for the specified purpose.' },
+            { q: 'Who should you contact if you suspect a data breach?', opts: ['Your line manager', 'IT helpdesk', 'The Data Protection Officer', 'HR department'], correct: 2, exp: 'Data breaches must be escalated to the Data Protection Officer immediately.' },
+            { q: 'Data collected for one purpose must not be used for another. This is called:', opts: ['Accuracy', 'Data minimisation', 'Purpose limitation', 'Storage limitation'], correct: 2, exp: 'Purpose limitation means data collected for a specified purpose cannot be repurposed without consent.' }
+          ]
+        }
+      ]
+    }]);
+  },
+
+  // ─── SCREEN ───
+  show(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    $$(id).classList.add('active');
+  },
+
+  // ─── LANDING ───
+  goLearner() { App.show('screen-learner'); applyBrand(); if(curLearner) App.showLearner(); else App.showPage('lp-name'); },
+  goAdmin()   { App.show('screen-login'); setTimeout(()=>$$('pw-input').focus(),80); },
+
+  // ─── LOGIN ───
+  doLogin() {
+    if($$('pw-input').value === store.pw()) {
+      $$('pw-input').value = '';
+      applyBrand();
+      App.show('screen-admin');
+      App.aNav('dashboard');
+    } else {
+      Toast.err('Incorrect password.');
+    }
+  },
+  adminLogout() { App.show('screen-landing'); },
+
+  // ─── LEARNER ───
+  setName() {
+    const n = $$('name-input').value.trim();
+    if (!n) { Toast.err('Please enter your name.'); return; }
+    curLearner = n; store.s(K.lname, n);
+    App.showLearner();
+  },
+  showLearner() {
+    const pill = $$('l-user-pill');
+    if(pill) { pill.style.display='flex'; $$('l-name-display').textContent = curLearner; $$('l-avatar').textContent = curLearner[0].toUpperCase(); }
+    App.lNav('courses');
+  },
+  lNav(p) {
+    ['courses','progress','certs'].forEach(k => {
+      $$(`ln-${k}`).classList.toggle('active', k===p);
+      $$(`lp-${k}`).classList.toggle('hidden', k!==p);
+      $$(`lp-${k}`).classList.toggle('active', k===p);
+    });
+    $$('lp-name').classList.add('hidden');
+    if(p==='courses')  App.renderLCourses();
+    if(p==='progress') App.renderLProgress();
+    if(p==='certs')    App.renderLCerts();
+  },
+  showPage(id) { ['lp-name','lp-courses','lp-progress','lp-certs'].forEach(p=>{$$(p).classList.add('hidden');$$(p).classList.remove('active');}); $$(id).classList.remove('hidden'); $$(id).classList.add('active'); },
+
+  renderLCourses() {
+    const courses = store.courses();
+    const recs = store.records().filter(r=>r.learner===curLearner);
+    const b = store.brand();
+    const grid = $$('l-courses-grid');
+    if(!courses.length){ grid.innerHTML=`<div class="empty"><div class="empty-icon">📭</div><div class="empty-title">No courses yet</div><div class="empty-hint">Ask your manager to create training courses.</div></div>`; return; }
+    grid.innerHTML = courses.map(c => {
+      const best = recs.filter(r=>r.cid===c.id).sort((a,z)=>z.score-a.score)[0];
+      const passed = best && best.score >= (b.pass||80);
+      const qc = (c.mods||[]).reduce((s,m)=>s+(m.questions||[]).length,0);
+      return `<div class="course-card" onclick="App.startCourse('${c.id}')">
+        <div class="course-icon">${esc(c.icon||'📚')}</div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+          <div class="course-name">${esc(c.title)}</div>
+          ${passed?'<span class="chip chip-green">✓ Passed</span>':best?'<span class="chip chip-amber">Retry</span>':'<span class="chip chip-blue">New</span>'}
+        </div>
+        <div class="course-desc">${esc(c.desc||'')}</div>
+        <div class="course-meta">
+          <span class="course-meta-item">📝 ${(c.mods||[]).length} module${(c.mods||[]).length!==1?'s':''}</span>
+          <span class="course-meta-item">❓ ${qc} question${qc!==1?'s':''}</span>
+          ${best?`<span class="course-meta-item">Best: ${best.score}%</span>`:''}
+        </div>
+      </div>`;
+    }).join('');
+  },
+
+  renderLProgress() {
+    const recs = store.records().filter(r=>r.learner===curLearner);
+    const courses = store.courses();
+    const b = store.brand();
+    const el = $$('l-progress-content');
+    if(!recs.length){ el.innerHTML=`<div class="empty"><div class="empty-icon">📊</div><div class="empty-title">No activity yet</div><div class="empty-hint">Complete a course to see your progress here.</div></div>`; return; }
+    const byCourse = {};
+    recs.forEach(r=>{ if(!byCourse[r.cid]) byCourse[r.cid]=[]; byCourse[r.cid].push(r); });
+    el.innerHTML = Object.entries(byCourse).map(([cid,rs])=>{
+      const c = courses.find(x=>x.id===cid)||{title:'Unknown',icon:'📚'};
+      const best = rs.sort((a,z)=>z.score-a.score)[0];
+      const passed = best.score>=(b.pass||80);
+      return `<div class="card" style="margin-bottom:var(--space-4);">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-4);">
+          <div style="display:flex;align-items:center;gap:var(--space-3);">
+            <span style="font-size:22px;">${esc(c.icon||'📚')}</span>
+            <div><div style="font-weight:700;">${esc(c.title)}</div><div style="font-size:var(--text-xs);color:var(--ink-4);">${rs.length} attempt${rs.length!==1?'s':''}</div></div>
+          </div>
+          <span class="chip ${passed?'chip-green':'chip-red'}">${passed?'Passed':'Not Passed'}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:var(--space-4);">
+          <div class="progress-track" style="flex:1;height:6px;"><div class="progress-fill" style="width:${best.score}%"></div></div>
+          <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;">${best.score}%</div>
+          ${passed?`<button class="btn btn-outline btn-sm" onclick="App.showCert('${cid}','${curLearner}')">Certificate</button>`:''}
+        </div>
+      </div>`;
+    }).join('');
+  },
+
+  renderLCerts() {
+    const passed = store.records().filter(r=>r.learner===curLearner&&r.passed);
+    const courses = store.courses();
+    const el = $$('l-certs-content');
+    if(!passed.length){ el.innerHTML=`<div class="empty"><div class="empty-icon">🏅</div><div class="empty-title">No certificates yet</div><div class="empty-hint">Pass a course to earn your first certificate.</div></div>`; return; }
+    const best={};
+    passed.forEach(r=>{if(!best[r.cid]||r.score>best[r.cid].score) best[r.cid]=r;});
+    el.innerHTML = Object.values(best).map(r=>{
+      const c = courses.find(x=>x.id===r.cid)||{title:'Unknown',icon:'📚'};
+      return `<div class="card" style="display:flex;align-items:center;gap:var(--space-5);margin-bottom:var(--space-4);">
+        <div style="font-size:36px;">🏅</div>
+        <div style="flex:1;">
+          <div style="font-weight:700;font-size:var(--text-md);">${esc(c.title)}</div>
+          <div style="font-size:var(--text-xs);color:var(--ink-4);margin-top:2px;">Score: ${r.score}% · ${new Date(r.date).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="App.showCert('${r.cid}','${curLearner}')">View</button>
+      </div>`;
+    }).join('');
+  },
+
+  // ─── ADMIN NAV ───
+  aNav(p) {
+    ['dashboard','courses','completions','branding','settings'].forEach(k=>{
+      $$(`an-${k}`).classList.toggle('active',k===p);
+      $$(`ap-${k}`).classList.toggle('hidden',k!==p);
+      $$(`ap-${k}`).classList.toggle('active',k===p);
+    });
+    if(p==='dashboard')   App.renderDash();
+    if(p==='courses')     App.renderACourses();
+    if(p==='completions') App.renderComps();
+  },
+
+  renderDash() {
+    const courses = store.courses();
+    const recs = store.records();
+    const passed = recs.filter(r=>r.passed);
+    const learners = [...new Set(recs.map(r=>r.learner))];
+    $$('a-stats').innerHTML = [
+      ['Courses', courses.length],
+      ['Attempts', recs.length],
+      ['Certificates', passed.length],
+      ['Learners', learners.length]
+    ].map(([l,v])=>`<div class="stat-tile"><div class="stat-value">${v}</div><div class="stat-label">${l}</div></div>`).join('');
+    const recent = recs.slice(-6).reverse();
+    $$('a-recent').innerHTML = recent.length ? `
+      <div style="font-weight:700;font-size:var(--text-base);margin-bottom:var(--space-4);">Recent Activity</div>
+      <div class="table-wrap"><table><thead><tr><th>Name</th><th>Course</th><th>Score</th><th>Date</th></tr></thead><tbody>
+        ${recent.map(r=>{const c=courses.find(x=>x.id===r.cid);return`<tr><td>${esc(r.learner)}</td><td>${esc(c?.title||'Unknown')}</td><td><span class="chip ${r.passed?'chip-green':'chip-red'}">${r.score}%</span></td><td>${new Date(r.date).toLocaleDateString()}</td></tr>`;}).join('')}
+      </tbody></table></div>` : '<p style="color:var(--ink-4);font-size:var(--text-sm);">No activity yet.</p>';
+  },
+
+  renderACourses() {
+    const courses = store.courses();
+    const grid = $$('a-courses-grid');
+    if(!courses.length){ grid.innerHTML=`<div class="empty"><div class="empty-icon">📝</div><div class="empty-title">No courses</div><div class="empty-hint">Create your first training course.</div></div>`; return; }
+    grid.innerHTML = courses.map(c=>{
+      const qc=(c.mods||[]).reduce((s,m)=>s+(m.questions||[]).length,0);
+      return `<div class="course-card">
+        <div class="course-icon">${esc(c.icon||'📚')}</div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+          <div class="course-name">${esc(c.title)}</div>
+          <div style="display:flex;gap:4px;">
+            <button class="btn btn-ghost btn-sm btn-icon" title="Edit" onclick="event.stopPropagation();App.editCourse('${c.id}')">✏</button>
+            <button class="btn btn-ghost btn-sm btn-icon" title="Delete" onclick="event.stopPropagation();App.delCourse('${c.id}')">✕</button>
+          </div>
+        </div>
+        <div class="course-desc">${esc(c.desc||'')}</div>
+        <div class="course-meta">
+          <span>${(c.mods||[]).length} module${(c.mods||[]).length!==1?'s':''}</span>
+          <span>${qc} question${qc!==1?'s':''}</span>
+        </div>
+      </div>`;
+    }).join('');
+  },
+
+  renderComps() {
+    const recs = store.records();
+    const courses = store.courses();
+    const tbody = $$('comp-tbody');
+    if(!recs.length){ tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--ink-4);">No records yet.</td></tr>'; return; }
+    tbody.innerHTML = recs.slice().reverse().map(r=>{
+      const c=courses.find(x=>x.id===r.cid);
+      return `<tr>
+        <td>${esc(r.learner)}</td>
+        <td>${esc(c?.title||'Unknown')}</td>
+        <td><span class="chip ${r.passed?'chip-green':'chip-red'}">${r.score}%</span></td>
+        <td><span class="chip ${r.passed?'chip-green':'chip-red'}">${r.passed?'Passed':'Failed'}</span></td>
+        <td>${new Date(r.date).toLocaleDateString()}</td>
+        <td>${r.passed?`<button class="btn btn-ghost btn-sm" onclick="App.showCert('${r.cid}','${r.learner}')">Certificate</button>`:'—'}</td>
+      </tr>`;
+    }).join('');
+  },
+
+  // ─── COURSE BUILDER ───
+  openBuilder(editId) {
+    cbState.editId = editId || null;
+    cbState.mods = [];
+    if(editId) {
+      const c = store.courses().find(x=>x.id===editId);
+      if(c) {
+        $$('cb-title').value = c.title;
+        $$('cb-icon').value  = c.icon||'';
+        $$('cb-desc').value  = c.desc||'';
+        cbState.mods = JSON.parse(JSON.stringify(c.mods||[]));
+        $$('builder-title').textContent = 'Edit Course';
+      }
+    } else {
+      $$('cb-title').value = ''; $$('cb-icon').value = ''; $$('cb-desc').value = '';
+      $$('builder-title').textContent = 'New Course';
+    }
+    App.renderMods();
+    $$('builder-overlay').classList.remove('hidden');
+  },
+  closeBuilder() { $$('builder-overlay').classList.add('hidden'); },
+  editCourse(id)  { App.openBuilder(id); App.aNav('courses'); },
+  delCourse(id)   { if(!confirm('Delete this course?')) return; store.s(K.courses, store.courses().filter(c=>c.id!==id)); App.renderACourses(); Toast.ok('Course deleted.'); },
+
+  addMod() {
+    cbState.mods.push({ id: uid(), title: 'New Module', content: '', questions: [] });
+    App.renderMods();
+  },
+
+  renderMods() {
+    const el = $$('mods-builder');
+    if(!cbState.mods.length) { el.innerHTML=`<div class="empty" style="padding:var(--space-8) 0;"><div class="empty-icon">📝</div><div class="empty-title">No modules</div><div class="empty-hint">Add a module or import from CSV / JSON.</div></div>`; return; }
+    el.innerHTML = cbState.mods.map((m,mi)=>`
+    <div class="mod-builder">
+      <div class="mod-builder-head" onclick="App.toggleMod(${mi})">
+        <span style="font-size:var(--text-xs);color:var(--ink-4);font-weight:700;">MODULE ${mi+1}</span>
+        <input type="text" value="${esc(m.title)}" placeholder="Module title…" onclick="event.stopPropagation()" oninput="cbState.mods[${mi}].title=this.value" style="flex:1;margin:0 var(--space-3);background:transparent;border:none;font-weight:600;font-size:var(--text-base);color:var(--ink);padding:0;box-shadow:none;" tabindex="0">
+        <span style="font-size:var(--text-xs);color:var(--ink-4);">${(m.questions||[]).length} q</span>
+        <button class="btn btn-ghost btn-sm btn-icon" onclick="event.stopPropagation();cbState.mods.splice(${mi},1);App.renderMods()" style="margin-left:4px;">✕</button>
+      </div>
+      <div class="mod-builder-body" id="mb-${mi}">
+        <div class="field">
+          <label>Content (HTML or plain text)</label>
+          <textarea placeholder="<h2>Topic</h2><p>Content…</p>" oninput="cbState.mods[${mi}].content=this.value">${esc(m.content||'')}</textarea>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3);">
+          <label style="margin:0;">Questions (${(m.questions||[]).length})</label>
+          <button class="btn btn-outline btn-sm" onclick="App.addQ(${mi})">+ Question</button>
+        </div>
+        <div id="qs-${mi}">${(m.questions||[]).map((q,qi)=>App.renderQBlock(mi,qi,q)).join('')}</div>
+      </div>
+    </div>`).join('');
+  },
+
+  toggleMod(mi) { const b=$$(`mb-${mi}`); b.style.display=b.style.display==='none'?'':'none'; },
+
+  renderQBlock(mi, qi, q) {
+    const ls=['A','B','C','D'];
+    return `<div class="q-block">
+      <div class="field"><label>Question ${qi+1}</label><input type="text" value="${esc(q.q||q.question||'')}" placeholder="Question text…" oninput="cbState.mods[${mi}].questions[${qi}].q=this.value;cbState.mods[${mi}].questions[${qi}].question=this.value"></div>
+      <div class="q-opts-grid">${(q.opts||q.options||['','','','']).map((o,oi)=>`<div class="q-opt-row"><span class="opt-ltr">${ls[oi]}</span><input type="text" value="${esc(o)}" placeholder="Option ${ls[oi]}" oninput="(cbState.mods[${mi}].questions[${qi}].opts||(cbState.mods[${mi}].questions[${qi}].opts=['','','','']))[${oi}]=this.value;(cbState.mods[${mi}].questions[${qi}].options||(cbState.mods[${mi}].questions[${qi}].options=['','','','']))[${oi}]=this.value"></div>`).join('')}</div>
+      <div class="field-row" style="margin-top:var(--space-3);">
+        <div class="field" style="margin:0;"><label>Correct Answer</label><select oninput="cbState.mods[${mi}].questions[${qi}].correct=parseInt(this.value)">${['A','B','C','D'].map((l,i)=>`<option value="${i}"${q.correct===i?' selected':''}>${l}</option>`).join('')}</select></div>
+        <div class="field" style="margin:0;"><label>Explanation</label><input type="text" value="${esc(q.exp||q.explanation||'')}" placeholder="Why this is correct…" oninput="cbState.mods[${mi}].questions[${qi}].exp=this.value"></div>
+      </div>
+      <div style="text-align:right;margin-top:8px;"><button class="btn btn-ghost btn-sm" onclick="cbState.mods[${mi}].questions.splice(${qi},1);App.renderMods()">Remove</button></div>
+    </div>`;
+  },
+
+  addQ(mi) {
+    cbState.mods[mi].questions.push({ q:'', opts:['','','',''], correct:0, exp:'' });
+    App.renderMods();
+    setTimeout(()=>{ const c=$$(`qs-${mi}`); if(c&&c.lastElementChild) c.lastElementChild.scrollIntoView({behavior:'smooth',block:'nearest'}); },50);
+  },
+
+  saveCourse() {
+    const title = $$('cb-title').value.trim();
+    if(!title){ Toast.err('Please enter a course title.'); return; }
+    const course = {
+      id: cbState.editId || uid(),
+      title, icon: $$('cb-icon').value||'📋', desc: $$('cb-desc').value,
+      mods: cbState.mods.map(m=>({
+        ...m,
+        questions: (m.questions||[]).map(q=>({
+          q: q.q||q.question||'',
+          opts: q.opts||q.options||['','','',''],
+          correct: typeof q.correct==='number'?q.correct:0,
+          exp: q.exp||q.explanation||''
+        }))
+      }))
+    };
+    const courses = store.courses();
+    const idx = courses.findIndex(c=>c.id===course.id);
+    if(idx>=0) courses[idx]=course; else courses.push(course);
+    store.s(K.courses, courses);
+    App.closeBuilder();
+    App.renderACourses();
+    Toast.ok(cbState.editId?'Course updated.':'Course created.');
+  },
+
+  // ─── CSV IMPORT ───
+  csvImportOpen() { csvParsed=null; $$('csv-preview').classList.add('hidden'); $$('csv-confirm').disabled=true; $$('csv-overlay').classList.remove('hidden'); },
+  csvClose()      { $$('csv-overlay').classList.add('hidden'); },
+  csvDrop(e) { e.preventDefault(); $$('drop-zone').classList.remove('drag-active'); const f=e.dataTransfer.files[0]; if(f) App.csvProcess(f); },
+  csvFileSelected(e) { if(e.target.files[0]) App.csvProcess(e.target.files[0]); },
+
+  csvProcess(file) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        if(file.name.endsWith('.json')) csvParsed = JSON.parse(e.target.result);
+        else csvParsed = App.parseCSV(e.target.result);
+        App.csvPreview();
+      } catch(err) { Toast.err('Could not read file: '+err.message); }
+    };
+    reader.readAsText(file);
+  },
+
+  parseCSV(raw) {
+    const lines = raw.trim().split(/\r?\n/);
+    const hdr = lines[0].split(',').map(h=>h.replace(/^"|"$/g,'').trim());
+    return lines.slice(1).filter(l=>l.trim()).map(line=>{
+      // handle quoted CSV values
+      const vals=[]; let cur='', inQ=false;
+      for(let i=0;i<line.length;i++){
+        if(line[i]==='"'){inQ=!inQ;}
+        else if(line[i]===','&&!inQ){vals.push(cur.trim());cur='';}
+        else cur+=line[i];
+      }
+      vals.push(cur.trim());
+      const obj={}; hdr.forEach((h,i)=>obj[h]=vals[i]||'');
+      const correctLetter = (obj.correct||obj.Correct||'A').toUpperCase();
+      return {
+        module: obj.module||obj.Module||'Imported',
+        question: obj.question||obj.Question||obj.q||'',
+        options: [obj.optionA||obj.A||'',obj.optionB||obj.B||'',obj.optionC||obj.C||'',obj.optionD||obj.D||''],
+        correct: Math.max(0,['A','B','C','D'].indexOf(correctLetter)),
+        explanation: obj.explanation||obj.Explanation||''
+      };
+    }).filter(q=>q.question);
+  },
+
+  csvPreview() {
+    if(!csvParsed||!csvParsed.length){ Toast.err('No questions found.'); return; }
+    const mods = [...new Set(csvParsed.map(q=>q.module||'General'))];
+    const prev = $$('csv-preview');
+    prev.classList.remove('hidden');
+    prev.innerHTML = `<div class="card" style="background:var(--pass-lt);border-color:#bbf7d0;">
+      <div style="font-weight:600;color:var(--pass);margin-bottom:var(--space-2);">✓ ${csvParsed.length} question${csvParsed.length!==1?'s':''} ready to import</div>
+      <div style="font-size:var(--text-xs);color:var(--ink-3);">Modules: ${mods.map(m=>`<span class="chip chip-blue" style="margin:2px;">${esc(m)}</span>`).join('')}</div>
+    </div>`;
+    $$('csv-confirm').disabled = false;
+  },
+
+  csvConfirm() {
+    if(!csvParsed) return;
+    const byMod = {};
+    csvParsed.forEach(q=>{ const m=q.module||'General'; if(!byMod[m]) byMod[m]=[]; byMod[m].push({q:q.question,opts:q.options,correct:q.correct>=0?q.correct:0,exp:q.explanation}); });
+    Object.entries(byMod).forEach(([name,qs])=>{
+      const ex = cbState.mods.find(m=>m.title===name);
+      if(ex) ex.questions.push(...qs);
+      else cbState.mods.push({id:uid(),title:name,content:`<h2>${name}</h2><p>Complete the competency questions below.</p>`,questions:qs});
+    });
+    App.csvClose();
+    App.renderMods();
+    Toast.ok(`Imported ${csvParsed.length} questions into ${Object.keys(byMod).length} module${Object.keys(byMod).length!==1?'s':''}.`);
+    csvParsed = null;
+  },
+
+  // ─── COURSE VIEWER ───
+  startCourse(cid) {
+    curCourse = store.courses().find(c=>c.id===cid);
+    if(!curCourse) return;
+    curModIdx = 0; quizSt = {};
+    $$('ch-meta').textContent = curCourse.title;
+    App.show('screen-course');
+    App.renderModNav();
+    App.loadMod(0);
+  },
+
+  exitCourse() { App.show('screen-learner'); App.lNav('courses'); },
+
+  renderModNav() {
+    const list = $$('mod-nav-list');
+    list.innerHTML = (curCourse.mods||[]).map((m,i)=>{
+      const st = quizSt[i];
+      let cls = i===curModIdx?'active':'';
+      let icon = i+1;
+      if(st?.done && st?.passed) { cls+=' done-pass'; icon='✓'; }
+      else if(st?.done) { cls+=' done-fail'; icon='✗'; }
+      return `<div class="mod-item ${cls}" onclick="App.loadMod(${i})">
+        <div class="mod-bullet">${icon}</div>
+        <span>${esc(m.title)}</span>
+      </div>`;
+    }).join('');
+    App.updateProgress();
+  },
+
+  updateProgress() {
+    const total = (curCourse.mods||[]).length;
+    const done = Object.keys(quizSt).length;
+    const pct = total ? Math.round(done/total*100) : 0;
+    $$('ch-prog').style.width = pct+'%';
+    $$('ch-label').textContent = `${done} / ${total} complete`;
+  },
+
+  loadMod(idx) {
+    curModIdx = idx;
+    App.renderModNav();
+    const mod = curCourse.mods[idx];
+    const main = $$('mod-main');
+    if(quizSt[idx]?.done) { App.showModResults(idx); return; }
+    main.innerHTML = `<div class="module-prose">
+      ${mod.content || `<h2>${esc(mod.title)}</h2><p>Study this module carefully before attempting the competency check.</p>`}
+      <div style="border-top:1px solid var(--rule);margin-top:var(--space-10);padding-top:var(--space-8);text-align:center;">
+        <p style="color:var(--ink-3);margin-bottom:var(--space-5);">${(mod.questions||[]).length} question${(mod.questions||[]).length!==1?'s':''} in the competency check.</p>
+        <button class="btn btn-primary btn-lg" onclick="App.startQuiz(${idx})">Begin Competency Check →</button>
+      </div>
+    </div>`;
+  },
+
+  startQuiz(idx) {
+    const qs = curCourse.mods[idx].questions || [];
+    if (!qs.length) {
+      quizSt[idx] = { done:true, passed:true, score:100, ans:[], session:null };
+      App.renderModNav(); App.checkDone();
+      App.loadMod(idx + 1 < curCourse.mods.length ? idx + 1 : idx);
+      return;
+    }
+    // Store session state in quizSt — no data travels through onclick attributes
+    quizSt[idx] = { done: false, session: { qs, ans: [] } };
+    App.renderQ(idx, 0);
+  },
+
+  renderQ(mi, qi) {
+    // Use quizSt[mi].session to hold live quiz session data — no data in onclick attrs
+    const session = quizSt[mi].session;
+    const qs = session.qs;
+    const q = qs[qi];
+    const ls = ['A','B','C','D'];
+    const main = $$('mod-main');
+    main.innerHTML = `<div class="quiz-wrap">
+      <div class="quiz-header">
+        <div class="quiz-step">${esc(curCourse.mods[mi].title)} · Question ${qi+1} of ${qs.length}</div>
+        <div class="progress-track" style="height:4px;margin-bottom:var(--space-5);"><div class="progress-fill" style="width:${qi/qs.length*100}%"></div></div>
+        <div class="quiz-q">${esc(q.q||q.question||'')}</div>
+      </div>
+      <div class="quiz-options" id="quiz-opts">
+        ${(q.opts||q.options||[]).map((o,oi)=>o?`<div class="quiz-opt" data-idx="${oi}">
+          <div class="opt-letter">${ls[oi]}</div><span>${esc(o)}</span>
+        </div>`:'').join('')}
+      </div>
+    </div>`;
+    // Attach click handlers via JS — safe from any special characters in question text
+    main.querySelectorAll('.quiz-opt').forEach(el => {
+      el.addEventListener('click', () => App.answer(mi, qi, parseInt(el.dataset.idx)));
+    });
+  },
+
+  answer(mi, qi, sel) {
+    const session = quizSt[mi].session;
+    const qs = session.qs;
+    const q = qs[qi];
+    const ok = sel === q.correct;
+    session.ans.push({sel, correct: q.correct, ok});
+
+    const opts = $$('mod-main').querySelectorAll('.quiz-opt');
+    opts.forEach((el, i) => {
+      el.style.pointerEvents = 'none';
+      if (i === q.correct) el.classList.add('correct');
+      if (i === sel && !ok) el.classList.add('wrong');
+    });
+
+    const fb = document.createElement('div');
+    fb.className = `quiz-feedback ${ok?'fb-pass':'fb-fail'}`;
+    fb.innerHTML = ok
+      ? `✓ Correct${q.exp ? ` — ${esc(q.exp)}` : ''}`
+      : `✗ Incorrect${q.exp ? ` — ${esc(q.exp)}` : ''}`;
+    const wrap = $$('mod-main').querySelector('.quiz-wrap');
+    wrap.querySelector('.quiz-options').after(fb);
+
+    const next = document.createElement('button');
+    const last = qi + 1 >= qs.length;
+    next.className = 'btn btn-primary'; next.style.marginTop = 'var(--space-2)';
+    next.textContent = last ? 'View Results' : 'Next →';
+    next.addEventListener('click', () => last ? App.finishQuiz(mi) : App.renderQ(mi, qi + 1));
+    fb.after(next);
+  },
+
+  finishQuiz(mi) {
+    const session = quizSt[mi].session;
+    const ans = session.ans;
+    const score = Math.round(ans.filter(a=>a.ok).length / ans.length * 100);
+    const b = store.brand();
+    const passed = score >= (b.pass || 80);
+    quizSt[mi] = { done:true, passed, score, ans, session: null };
+    App.renderModNav();
+    App.showModResults(mi);
+    App.checkDone();
+  },
+
+  showModResults(mi) {
+    const st = quizSt[mi];
+    const mod = curCourse.mods[mi];
+    const isLast = mi+1 >= curCourse.mods.length;
+    const r=54, c=2*Math.PI*r, offset=c-(st.score/100)*c;
+    const col = st.passed?'var(--pass)':'var(--fail)';
+    $$('mod-main').innerHTML = `<div class="results-wrap">
+      <div class="score-ring-wrap">
+        <svg viewBox="0 0 140 140">
+          <circle cx="70" cy="70" r="${r}" fill="none" stroke="var(--rule)" stroke-width="10"/>
+          <circle cx="70" cy="70" r="${r}" fill="none" stroke="${col}" stroke-width="10" stroke-dasharray="${c}" stroke-dashoffset="${offset}" stroke-linecap="round"/>
+        </svg>
+        <div class="score-ring-inner">
+          <div class="score-big" style="color:${col}">${st.score}%</div>
+          <div class="score-lbl" style="color:${st.passed?'var(--pass)':'var(--fail)'}">${st.passed?'PASSED':'FAILED'}</div>
+        </div>
+      </div>
+      <div class="results-title">${st.passed?'Module Complete':'Keep Studying'}</div>
+      <div class="results-sub">${st.passed?`You passed <em>${esc(mod.title)}</em> with ${st.score}%.`:`You scored ${st.score}%. Review the material and try again.`}</div>
+      <div style="display:flex;gap:var(--space-3);justify-content:center;flex-wrap:wrap;">
+        ${!st.passed?`<button class="btn btn-outline btn-lg" onclick="App.loadMod(${mi})">Review & Retry</button>`:''}
+        ${st.passed&&!isLast?`<button class="btn btn-primary btn-lg" onclick="App.loadMod(${mi+1})">Next Module →</button>`:''}
+        ${st.passed&&isLast?`<button class="btn btn-primary btn-lg" onclick="App.courseComplete()">Get Certificate →</button>`:''}
+      </div>
+    </div>`;
+  },
+
+  checkDone() {
+    const allDone = (curCourse.mods||[]).every((_,i) => quizSt[i]?.done);
+    if (!allDone) return;
+    const allAns = Object.values(quizSt).flatMap(s => s.ans || []);
+    const score = allAns.length ? Math.round(allAns.filter(a=>a.ok).length / allAns.length * 100) : 100;
+    const b = store.brand();
+    const passed = score >= (b.pass || 80);
+    store.addRecord({ cid: curCourse.id, learner: curLearner, score, passed, date: Date.now(), cid2: uid() });
+  },
+
+  courseComplete() {
+    const recs = store.records().filter(r=>r.cid===curCourse.id&&r.learner===curLearner&&r.passed);
+    if(recs.length) App.showCert(curCourse.id, curLearner);
+    else App.exitCourse();
+  },
+
+  // ─── CERTIFICATE ───
+  showCert(cid, learner) {
+    const course = store.courses().find(c=>c.id===cid);
+    const recs = store.records().filter(r=>r.cid===cid&&r.learner===learner&&r.passed);
+    if(!recs.length||!course){ Toast.err('No passing record found.'); return; }
+    const best = recs.sort((a,z)=>z.score-a.score)[0];
+    const b = store.brand();
+    $$('cert-accent').style.background = b.c1||'#2563eb';
+    $$('c-org').textContent = b.name||'TrainFlow';
+    $$('c-name').textContent = learner;
+    $$('c-course').textContent = course.title;
+    $$('c-date').textContent = new Date(best.date).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+    $$('c-score').textContent = best.score+'%';
+    $$('c-id').textContent = 'TF-' + (best.cid2||uid()).toString().slice(0,8).toUpperCase();
+    $$('c-sig-dept').textContent = (b.name||'TrainFlow') + ' Training';
+    $$('cert-overlay').classList.remove('hidden');
+  },
+
+  closeCert() { $$('cert-overlay').classList.add('hidden'); },
+
+  downloadCertPDF() {
+    const sheet = $$('cert-sheet');
+    const controls = document.querySelector('.cert-controls');
+    controls.style.visibility = 'hidden';
+    Toast.info('Generating PDF…');
+    html2canvas(sheet, { scale: 2, useCORS: true, backgroundColor: '#ffffff' }).then(canvas => {
+      controls.style.visibility = '';
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({ orientation: 'landscape', unit: 'px', format: [canvas.width/2, canvas.height/2] });
+      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, canvas.width/2, canvas.height/2);
+      const name = $$('c-name').textContent.replace(/\s+/g,'-');
+      const course = $$('c-course').textContent.replace(/\s+/g,'-');
+      pdf.save(`Certificate-${name}-${course}.pdf`);
+      Toast.ok('PDF downloaded!');
+    }).catch(e=>{ controls.style.visibility=''; Toast.err('PDF generation failed: '+e.message); });
+  },
+
+  // ─── BRANDING ───
+  previewBrand() {
+    const c1 = $$('br-c1').value;
+    const c2 = $$('br-c2').value;
+    document.documentElement.style.setProperty('--brand-1', c1);
+    document.documentElement.style.setProperty('--brand-2', c2);
+    $$('br-c1-hex').value = c1; $$('br-c2-hex').value = c2;
+    const name = $$('br-name').value;
+    ['ldg-brand','l-brand','a-brand'].forEach(id=>{ const el=$$(id);if(el)el.textContent=name||'TrainFlow'; });
+    const pn=$$('br-prev-name'); if(pn) pn.textContent=name||'TrainFlow';
+    const lu=$$('br-logo-url').value;
+    if(lu){ const pl=$$('br-prev-logo'); if(pl){pl.src=lu;pl.style.display='block';} }
+  },
+  syncHex(pid, hid) {
+    const v=$$( hid).value;
+    if(/^#[0-9a-f]{6}$/i.test(v)){ $$(pid).value=v; App.previewBrand(); }
+  },
+  uploadLogo(e) {
+    const f=e.target.files[0]; if(!f) return;
+    const r=new FileReader();
+    r.onload=ev=>{ $$('br-logo-url').value=ev.target.result; App.previewBrand(); };
+    r.readAsDataURL(f);
+  },
+  saveBrand() {
+    const b={ name:$$('br-name').value||'TrainFlow', tagline:$$('br-tag').value, logo:$$('br-logo-url').value, c1:$$('br-c1').value, c2:$$('br-c2').value, pass:parseInt($$('br-pass').value)||80 };
+    store.s(K.brand,b); applyBrand(); Toast.ok('Branding saved.');
+  },
+  resetBrand() { store.s(K.brand,null); applyBrand(); Toast.info('Reset to default.'); },
+
+  // ─── SETTINGS ───
+  changePw() {
+    const p=$$('np1').value, c=$$('np2').value;
+    if(!p){ Toast.err('Enter a new password.'); return; }
+    if(p!==c){ Toast.err('Passwords do not match.'); return; }
+    store.s(K.pw,p); $$('np1').value=''; $$('np2').value=''; Toast.ok('Password updated.');
+  },
+  exportCSV() {
+    const recs=store.records(), courses=store.courses();
+    const hdr='Name,Course,Score,Passed,Date,CertID';
+    const rows=recs.map(r=>{ const c=courses.find(x=>x.id===r.cid); return [`"${r.learner}"`,`"${c?.title||''}"`,`"${r.score}%"`,`"${r.passed?'Yes':'No'}"`,`"${new Date(r.date).toLocaleDateString()}"`,`"${r.cid2||''}"`].join(','); });
+    App.dl('completions.csv','text/csv',[hdr,...rows].join('\n')); Toast.ok('CSV exported.');
+  },
+  exportBackup() {
+    App.dl('trainflow-backup.json','application/json',JSON.stringify({courses:store.courses(),completions:store.records(),brand:store.brand(),date:new Date().toISOString()},null,2));
+    Toast.ok('Backup exported.');
+  },
+  importBackup(e) {
+    const f=e.target.files[0]; if(!f) return;
+    const r=new FileReader();
+    r.onload=ev=>{ try{ const d=JSON.parse(ev.target.result); if(d.courses) store.s(K.courses,d.courses); if(d.completions) store.s(K.completions,d.completions); if(d.brand) store.s(K.brand,d.brand); applyBrand(); App.renderDash(); Toast.ok('Backup restored.'); }catch{Toast.err('Invalid file.'); } };
+    r.readAsText(f); e.target.value='';
+  },
+  clearRecords() { if(!confirm('Clear all completion records?')) return; store.s(K.completions,[]); App.renderComps(); Toast.ok('Records cleared.'); },
+  dl(name,type,content) { const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([content],{type})); a.download=name; a.click(); }
+};
+
+App.init();
+</script>
+</body>
+</html>
