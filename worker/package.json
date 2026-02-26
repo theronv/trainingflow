@@ -1,0 +1,17 @@
+{
+  "name": "trainflow-worker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.14.0",
+    "hono": "^4.7.0"
+  },
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+}

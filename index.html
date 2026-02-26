@@ -1027,17 +1027,80 @@ pre code { display: block; padding: var(--space-4); line-height: 1.7; }
 //  TRAINFLOW — Application Logic
 // ══════════════════════════════════════════════════════════
 
-const K = { courses:'tf2_courses', completions:'tf2_completions', brand:'tf2_brand', pw:'tf2_pw', lname:'tf2_lname' };
+const WORKER_URL = 'https://trainflow-worker.theronv.workers.dev';
 
-const store = {
-  g(k)        { try { return JSON.parse(localStorage.getItem(k)) } catch { return null } },
-  s(k,v)      { localStorage.setItem(k, JSON.stringify(v)) },
-  courses()   { return store.g(K.courses) || [] },
-  records()   { return store.g(K.completions) || [] },
-  brand()     { return store.g(K.brand) || { name:'TrainFlow', tagline:'Training & Certification Platform', logo:'', c1:'#2563eb', c2:'#1d4ed8', pass:80 } },
-  pw()        { return store.g(K.pw) || 'admin123' },
-  addRecord(r){ const a = store.records(); a.push(r); store.s(K.completions, a); }
-};
+// ── Token storage (sessionStorage clears on browser close) ──
+function getToken()   { return sessionStorage.getItem('tf_token'); }
+function setToken(t)  { sessionStorage.setItem('tf_token', t); }
+function clearToken() { sessionStorage.removeItem('tf_token'); }
+
+// ── Cached state ──
+let brandCache   = { name:'TrainFlow', tagline:'Training & Certification Platform', logo:'', c1:'#2563eb', c2:'#1d4ed8', pass:80 };
+let coursesCache = [];
+
+// ── API helper — injects auth header, always returns parsed JSON ──
+async function api(path, opts = {}) {
+  const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
+  const token = getToken();
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(WORKER_URL + path, { ...opts, headers });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: res.statusText }));
+    throw Object.assign(new Error(body.error || res.statusText), { status: res.status });
+  }
+  return res.json();
+}
+
+// ── Normalizers — API field names → internal field names ──
+function normCourse(c) {
+  return {
+    id: c.id, icon: c.icon || '📋', title: c.title, desc: c.description || '',
+    mods: (c.modules || []).map(m => ({
+      id: m.id, title: m.title, content: m.content || '',
+      questions: (m.questions || []).map(q => ({
+        q: q.question, opts: [q.option_a, q.option_b, q.option_c, q.option_d],
+        correct: q.correct_index, exp: q.explanation || '',
+      }))
+    }))
+  };
+}
+function normRecord(r) {
+  return {
+    cid: r.course_id, learner: r.learner_name, score: r.score,
+    passed: Boolean(r.passed),
+    date: (r.completed_at || 0) * 1000,
+    cid2: r.cert_id || '',
+  };
+}
+function normBrand(b) {
+  return {
+    name: b.org_name || 'TrainFlow',
+    tagline: b.tagline || 'Training & Certification Platform',
+    logo: b.logo_url || '',
+    c1:   b.primary_color   || '#2563eb',
+    c2:   b.secondary_color || '#1d4ed8',
+    pass: b.pass_threshold  ?? 80,
+  };
+}
+
+// ── Denormalizer — internal field names → API body ──
+function denormCourseBody(c) {
+  return {
+    title: c.title, icon: c.icon || '📋', description: c.desc || '',
+    modules: (c.mods || []).map(m => ({
+      id: m.id, title: m.title, content: m.content || '',
+      questions: (m.questions || []).map(q => ({
+        question:      q.q || q.question || '',
+        options:       q.opts || q.options || ['','','',''],
+        correct_index: typeof q.correct === 'number' ? q.correct : 0,
+        explanation:   q.exp || q.explanation || '',
+      }))
+    }))
+  };
+}
+
+// ── Learner name lives in localStorage (session only) ──
+const LNAME_KEY = 'tf2_lname';
 
 // ── State ──
 let curLearner = '';
@@ -1069,7 +1132,7 @@ const Toast = {
 
 // ══════════════════ BRANDING ══════════════════
 function applyBrand() {
-  const b = store.brand();
+  const b = brandCache;
   document.documentElement.style.setProperty('--brand-1', b.c1 || '#2563eb');
   document.documentElement.style.setProperty('--brand-2', b.c2 || '#1d4ed8');
   // Text
@@ -1096,37 +1159,13 @@ function $$(id) { return document.getElementById(id); }
 const App = {
 
   // ─── INIT ───
-  init() {
+  async init() {
+    curLearner = localStorage.getItem(LNAME_KEY) || '';
+    try {
+      const b = await api('/api/brand');
+      brandCache = normBrand(b);
+    } catch { /* use defaults */ }
     applyBrand();
-    curLearner = store.g(K.lname) || '';
-    App.seedDemo();
-  },
-
-  seedDemo() {
-    if (store.courses().length) return;
-    store.s(K.courses, [{
-      id: 'demo1', icon: '📋', title: 'Corporate Onboarding Essentials',
-      desc: 'Core policies and procedures for all new team members.',
-      mods: [
-        {
-          id: 'm1', title: 'Company Policies',
-          content: `<h2>Company Policies</h2><p>Understanding our company policies is essential for every team member. These guidelines ensure we maintain a professional, respectful, and compliant workplace for everyone.</p><h3>Code of Conduct</h3><p>All employees are expected to conduct themselves with integrity and professionalism at all times, both in the office and when representing the company externally.</p><h3>Confidentiality</h3><p>Employees must safeguard confidential company information and client data. This obligation continues after employment ends. Never share proprietary information with unauthorised parties.</p><ul><li>Do not share login credentials</li><li>Lock your screen when leaving your desk</li><li>Report suspected breaches immediately</li></ul>`,
-          questions: [
-            { q: 'What is the primary purpose of a company Code of Conduct?', opts: ['To restrict employee freedom', 'To ensure professional and ethical behaviour', 'To outline salary structures', 'To manage holiday requests'], correct: 1, exp: 'A Code of Conduct sets the standard for professional and ethical behaviour expected of all employees.' },
-            { q: 'Confidentiality obligations apply:', opts: ['Only while employed', 'Only to senior staff', 'After employment ends as well', 'Only to client-facing roles'], correct: 2, exp: 'Confidentiality obligations typically extend beyond the period of employment.' }
-          ]
-        },
-        {
-          id: 'm2', title: 'Data Protection',
-          content: `<h2>Data Protection</h2><p>Protecting personal and sensitive data is both a legal requirement and a professional responsibility. Our data protection policy aligns with applicable regulations and best practices.</p><h3>Key Principles</h3><ol><li><strong>Lawfulness:</strong> Data must be processed lawfully and transparently.</li><li><strong>Purpose limitation:</strong> Data collected for one purpose must not be used for another.</li><li><strong>Data minimisation:</strong> Only collect what is necessary.</li><li><strong>Accuracy:</strong> Keep data up to date and correct.</li><li><strong>Storage limitation:</strong> Do not retain data longer than necessary.</li></ol><p>If you receive a data subject access request or suspect a breach, escalate to the Data Protection Officer immediately.</p>`,
-          questions: [
-            { q: 'Which principle states you should only collect data that is strictly necessary?', opts: ['Purpose limitation', 'Data minimisation', 'Storage limitation', 'Accuracy'], correct: 1, exp: 'Data minimisation means collecting only the data that is necessary for the specified purpose.' },
-            { q: 'Who should you contact if you suspect a data breach?', opts: ['Your line manager', 'IT helpdesk', 'The Data Protection Officer', 'HR department'], correct: 2, exp: 'Data breaches must be escalated to the Data Protection Officer immediately.' },
-            { q: 'Data collected for one purpose must not be used for another. This is called:', opts: ['Accuracy', 'Data minimisation', 'Purpose limitation', 'Storage limitation'], correct: 2, exp: 'Purpose limitation means data collected for a specified purpose cannot be repurposed without consent.' }
-          ]
-        }
-      ]
-    }]);
   },
 
   // ─── SCREEN ───
@@ -1140,23 +1179,29 @@ const App = {
   goAdmin()   { App.show('screen-login'); setTimeout(()=>$$('pw-input').focus(),80); },
 
   // ─── LOGIN ───
-  doLogin() {
-    if($$('pw-input').value === store.pw()) {
+  async doLogin() {
+    const password = $$('pw-input').value;
+    try {
+      const { token } = await api('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ password }),
+      });
+      setToken(token);
       $$('pw-input').value = '';
       applyBrand();
       App.show('screen-admin');
       App.aNav('dashboard');
-    } else {
-      Toast.err('Incorrect password.');
+    } catch (e) {
+      Toast.err(e.message || 'Login failed.');
     }
   },
-  adminLogout() { App.show('screen-landing'); },
+  adminLogout() { clearToken(); App.show('screen-landing'); },
 
   // ─── LEARNER ───
   setName() {
     const n = $$('name-input').value.trim();
     if (!n) { Toast.err('Please enter your name.'); return; }
-    curLearner = n; store.s(K.lname, n);
+    curLearner = n; localStorage.setItem(LNAME_KEY, n);
     App.showLearner();
   },
   showLearner() {
@@ -1177,17 +1222,23 @@ const App = {
   },
   showPage(id) { ['lp-name','lp-courses','lp-progress','lp-certs'].forEach(p=>{$$(p).classList.add('hidden');$$(p).classList.remove('active');}); $$(id).classList.remove('hidden'); $$(id).classList.add('active'); },
 
-  renderLCourses() {
-    const courses = store.courses();
-    const recs = store.records().filter(r=>r.learner===curLearner);
-    const b = store.brand();
+  async renderLCourses() {
     const grid = $$('l-courses-grid');
-    if(!courses.length){ grid.innerHTML=`<div class="empty"><div class="empty-icon">📭</div><div class="empty-title">No courses yet</div><div class="empty-hint">Ask your manager to create training courses.</div></div>`; return; }
-    grid.innerHTML = courses.map(c => {
-      const best = recs.filter(r=>r.cid===c.id).sort((a,z)=>z.score-a.score)[0];
-      const passed = best && best.score >= (b.pass||80);
-      const qc = (c.mods||[]).reduce((s,m)=>s+(m.questions||[]).length,0);
-      return `<div class="course-card" onclick="App.startCourse('${c.id}')">
+    try {
+      const [apiCourses, apiRecs] = await Promise.all([
+        api('/api/courses'),
+        api(`/api/completions/learner/${encodeURIComponent(curLearner)}`),
+      ]);
+      const courses = apiCourses.map(normCourse);
+      const recs    = apiRecs.map(normRecord);
+      coursesCache  = courses;
+      const b       = brandCache;
+      if(!courses.length){ grid.innerHTML=`<div class="empty"><div class="empty-icon">📭</div><div class="empty-title">No courses yet</div><div class="empty-hint">Ask your manager to create training courses.</div></div>`; return; }
+      grid.innerHTML = courses.map(c => {
+        const best = recs.filter(r=>r.cid===c.id).sort((a,z)=>z.score-a.score)[0];
+        const passed = best && best.score >= (b.pass||80);
+        const qc = (c.mods||[]).reduce((s,m)=>s+(m.questions||[]).length,0);
+        return `<div class="course-card" onclick="App.startCourse('${c.id}')">
         <div class="course-icon">${esc(c.icon||'📚')}</div>
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
           <div class="course-name">${esc(c.title)}</div>
@@ -1200,22 +1251,31 @@ const App = {
           ${best?`<span class="course-meta-item">Best: ${best.score}%</span>`:''}
         </div>
       </div>`;
-    }).join('');
+      }).join('');
+    } catch (e) {
+      grid.innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-title">Could not load courses</div><div class="empty-hint">${esc(e.message)}</div></div>`;
+    }
   },
 
-  renderLProgress() {
-    const recs = store.records().filter(r=>r.learner===curLearner);
-    const courses = store.courses();
-    const b = store.brand();
+  async renderLProgress() {
     const el = $$('l-progress-content');
-    if(!recs.length){ el.innerHTML=`<div class="empty"><div class="empty-icon">📊</div><div class="empty-title">No activity yet</div><div class="empty-hint">Complete a course to see your progress here.</div></div>`; return; }
-    const byCourse = {};
-    recs.forEach(r=>{ if(!byCourse[r.cid]) byCourse[r.cid]=[]; byCourse[r.cid].push(r); });
-    el.innerHTML = Object.entries(byCourse).map(([cid,rs])=>{
-      const c = courses.find(x=>x.id===cid)||{title:'Unknown',icon:'📚'};
-      const best = rs.sort((a,z)=>z.score-a.score)[0];
-      const passed = best.score>=(b.pass||80);
-      return `<div class="card" style="margin-bottom:var(--space-4);">
+    try {
+      const [apiRecs, apiCourses] = await Promise.all([
+        api(`/api/completions/learner/${encodeURIComponent(curLearner)}`),
+        api('/api/courses'),
+      ]);
+      const recs    = apiRecs.map(normRecord);
+      const courses = apiCourses.map(normCourse);
+      coursesCache  = courses;
+      const b       = brandCache;
+      if(!recs.length){ el.innerHTML=`<div class="empty"><div class="empty-icon">📊</div><div class="empty-title">No activity yet</div><div class="empty-hint">Complete a course to see your progress here.</div></div>`; return; }
+      const byCourse = {};
+      recs.forEach(r=>{ if(!byCourse[r.cid]) byCourse[r.cid]=[]; byCourse[r.cid].push(r); });
+      el.innerHTML = Object.entries(byCourse).map(([cid,rs])=>{
+        const c = courses.find(x=>x.id===cid)||{title:'Unknown',icon:'📚'};
+        const best = rs.sort((a,z)=>z.score-a.score)[0];
+        const passed = best.score>=(b.pass||80);
+        return `<div class="card" style="margin-bottom:var(--space-4);">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-4);">
           <div style="display:flex;align-items:center;gap:var(--space-3);">
             <span style="font-size:22px;">${esc(c.icon||'📚')}</span>
@@ -1229,19 +1289,29 @@ const App = {
           ${passed?`<button class="btn btn-outline btn-sm" onclick="App.showCert('${cid}','${curLearner}')">Certificate</button>`:''}
         </div>
       </div>`;
-    }).join('');
+      }).join('');
+    } catch (e) {
+      el.innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-title">Could not load progress</div><div class="empty-hint">${esc(e.message)}</div></div>`;
+    }
   },
 
-  renderLCerts() {
-    const passed = store.records().filter(r=>r.learner===curLearner&&r.passed);
-    const courses = store.courses();
+  async renderLCerts() {
     const el = $$('l-certs-content');
-    if(!passed.length){ el.innerHTML=`<div class="empty"><div class="empty-icon">🏅</div><div class="empty-title">No certificates yet</div><div class="empty-hint">Pass a course to earn your first certificate.</div></div>`; return; }
-    const best={};
-    passed.forEach(r=>{if(!best[r.cid]||r.score>best[r.cid].score) best[r.cid]=r;});
-    el.innerHTML = Object.values(best).map(r=>{
-      const c = courses.find(x=>x.id===r.cid)||{title:'Unknown',icon:'📚'};
-      return `<div class="card" style="display:flex;align-items:center;gap:var(--space-5);margin-bottom:var(--space-4);">
+    try {
+      const [apiRecs, apiCourses] = await Promise.all([
+        api(`/api/completions/learner/${encodeURIComponent(curLearner)}`),
+        api('/api/courses'),
+      ]);
+      const allRecs = apiRecs.map(normRecord);
+      const courses = apiCourses.map(normCourse);
+      coursesCache  = courses;
+      const passed  = allRecs.filter(r => r.passed);
+      if(!passed.length){ el.innerHTML=`<div class="empty"><div class="empty-icon">🏅</div><div class="empty-title">No certificates yet</div><div class="empty-hint">Pass a course to earn your first certificate.</div></div>`; return; }
+      const best={};
+      passed.forEach(r=>{if(!best[r.cid]||r.score>best[r.cid].score) best[r.cid]=r;});
+      el.innerHTML = Object.values(best).map(r=>{
+        const c = courses.find(x=>x.id===r.cid)||{title:'Unknown',icon:'📚'};
+        return `<div class="card" style="display:flex;align-items:center;gap:var(--space-5);margin-bottom:var(--space-4);">
         <div style="font-size:36px;">🏅</div>
         <div style="flex:1;">
           <div style="font-weight:700;font-size:var(--text-md);">${esc(c.title)}</div>
@@ -1249,7 +1319,10 @@ const App = {
         </div>
         <button class="btn btn-primary btn-sm" onclick="App.showCert('${r.cid}','${curLearner}')">View</button>
       </div>`;
-    }).join('');
+      }).join('');
+    } catch (e) {
+      el.innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-title">Could not load certificates</div><div class="empty-hint">${esc(e.message)}</div></div>`;
+    }
   },
 
   // ─── ADMIN NAV ───
@@ -1264,32 +1337,44 @@ const App = {
     if(p==='completions') App.renderComps();
   },
 
-  renderDash() {
-    const courses = store.courses();
-    const recs = store.records();
-    const passed = recs.filter(r=>r.passed);
-    const learners = [...new Set(recs.map(r=>r.learner))];
-    $$('a-stats').innerHTML = [
-      ['Courses', courses.length],
-      ['Attempts', recs.length],
-      ['Certificates', passed.length],
-      ['Learners', learners.length]
-    ].map(([l,v])=>`<div class="stat-tile"><div class="stat-value">${v}</div><div class="stat-label">${l}</div></div>`).join('');
-    const recent = recs.slice(-6).reverse();
-    $$('a-recent').innerHTML = recent.length ? `
+  async renderDash() {
+    try {
+      const [apiCourses, compData] = await Promise.all([
+        api('/api/courses'),
+        api('/api/completions?limit=500'),
+      ]);
+      const courses  = apiCourses.map(normCourse);
+      const recs     = compData.rows.map(normRecord);
+      coursesCache   = courses;
+      const passed   = recs.filter(r=>r.passed);
+      const learners = [...new Set(recs.map(r=>r.learner))];
+      $$('a-stats').innerHTML = [
+        ['Courses', courses.length],
+        ['Attempts', compData.total],
+        ['Certificates', passed.length],
+        ['Learners', learners.length]
+      ].map(([l,v])=>`<div class="stat-tile"><div class="stat-value">${v}</div><div class="stat-label">${l}</div></div>`).join('');
+      const recent = recs.slice(0,6);
+      $$('a-recent').innerHTML = recent.length ? `
       <div style="font-weight:700;font-size:var(--text-base);margin-bottom:var(--space-4);">Recent Activity</div>
       <div class="table-wrap"><table><thead><tr><th>Name</th><th>Course</th><th>Score</th><th>Date</th></tr></thead><tbody>
         ${recent.map(r=>{const c=courses.find(x=>x.id===r.cid);return`<tr><td>${esc(r.learner)}</td><td>${esc(c?.title||'Unknown')}</td><td><span class="chip ${r.passed?'chip-green':'chip-red'}">${r.score}%</span></td><td>${new Date(r.date).toLocaleDateString()}</td></tr>`;}).join('')}
       </tbody></table></div>` : '<p style="color:var(--ink-4);font-size:var(--text-sm);">No activity yet.</p>';
+    } catch (e) {
+      $$('a-stats').innerHTML = `<div class="empty-hint" style="color:var(--fail);">${esc(e.message)}</div>`;
+    }
   },
 
-  renderACourses() {
-    const courses = store.courses();
+  async renderACourses() {
     const grid = $$('a-courses-grid');
-    if(!courses.length){ grid.innerHTML=`<div class="empty"><div class="empty-icon">📝</div><div class="empty-title">No courses</div><div class="empty-hint">Create your first training course.</div></div>`; return; }
-    grid.innerHTML = courses.map(c=>{
-      const qc=(c.mods||[]).reduce((s,m)=>s+(m.questions||[]).length,0);
-      return `<div class="course-card">
+    try {
+      const apiCourses = await api('/api/courses');
+      const courses    = apiCourses.map(normCourse);
+      coursesCache     = courses;
+      if(!courses.length){ grid.innerHTML=`<div class="empty"><div class="empty-icon">📝</div><div class="empty-title">No courses</div><div class="empty-hint">Create your first training course.</div></div>`; return; }
+      grid.innerHTML = courses.map(c=>{
+        const qc=(c.mods||[]).reduce((s,m)=>s+(m.questions||[]).length,0);
+        return `<div class="course-card">
         <div class="course-icon">${esc(c.icon||'📚')}</div>
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
           <div class="course-name">${esc(c.title)}</div>
@@ -1304,25 +1389,37 @@ const App = {
           <span>${qc} question${qc!==1?'s':''}</span>
         </div>
       </div>`;
-    }).join('');
+      }).join('');
+    } catch (e) {
+      grid.innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-title">Could not load courses</div><div class="empty-hint">${esc(e.message)}</div></div>`;
+    }
   },
 
-  renderComps() {
-    const recs = store.records();
-    const courses = store.courses();
+  async renderComps() {
     const tbody = $$('comp-tbody');
-    if(!recs.length){ tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--ink-4);">No records yet.</td></tr>'; return; }
-    tbody.innerHTML = recs.slice().reverse().map(r=>{
-      const c=courses.find(x=>x.id===r.cid);
-      return `<tr>
+    try {
+      const [compData, apiCourses] = await Promise.all([
+        api('/api/completions?limit=500'),
+        api('/api/courses'),
+      ]);
+      const recs    = compData.rows.map(normRecord);
+      const courses = apiCourses.map(normCourse);
+      coursesCache  = courses;
+      if(!recs.length){ tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--ink-4);">No records yet.</td></tr>'; return; }
+      tbody.innerHTML = recs.map(r=>{
+        const c=courses.find(x=>x.id===r.cid);
+        return `<tr>
         <td>${esc(r.learner)}</td>
         <td>${esc(c?.title||'Unknown')}</td>
         <td><span class="chip ${r.passed?'chip-green':'chip-red'}">${r.score}%</span></td>
         <td><span class="chip ${r.passed?'chip-green':'chip-red'}">${r.passed?'Passed':'Failed'}</span></td>
         <td>${new Date(r.date).toLocaleDateString()}</td>
-        <td>${r.passed?`<button class="btn btn-ghost btn-sm" onclick="App.showCert('${r.cid}','${r.learner}')">Certificate</button>`:'—'}</td>
+        <td>${r.passed?`<button class="btn btn-ghost btn-sm" onclick="App.showCert('${r.cid}','${esc(r.learner)}')">Certificate</button>`:'—'}</td>
       </tr>`;
-    }).join('');
+      }).join('');
+    } catch (e) {
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--fail);">${esc(e.message)}</td></tr>`;
+    }
   },
 
   // ─── COURSE BUILDER ───
@@ -1330,7 +1427,7 @@ const App = {
     cbState.editId = editId || null;
     cbState.mods = [];
     if(editId) {
-      const c = store.courses().find(x=>x.id===editId);
+      const c = coursesCache.find(x=>x.id===editId);
       if(c) {
         $$('cb-title').value = c.title;
         $$('cb-icon').value  = c.icon||'';
@@ -1347,7 +1444,17 @@ const App = {
   },
   closeBuilder() { $$('builder-overlay').classList.add('hidden'); },
   editCourse(id)  { App.openBuilder(id); App.aNav('courses'); },
-  delCourse(id)   { if(!confirm('Delete this course?')) return; store.s(K.courses, store.courses().filter(c=>c.id!==id)); App.renderACourses(); Toast.ok('Course deleted.'); },
+  async delCourse(id) {
+    if(!confirm('Delete this course?')) return;
+    try {
+      await api(`/api/courses/${id}`, { method: 'DELETE' });
+      coursesCache = coursesCache.filter(c => c.id !== id);
+      App.renderACourses();
+      Toast.ok('Course deleted.');
+    } catch (e) {
+      Toast.err(e.message || 'Could not delete course.');
+    }
+  },
 
   addMod() {
     cbState.mods.push({ id: uid(), title: 'New Module', content: '', questions: [] });
@@ -1400,11 +1507,10 @@ const App = {
     setTimeout(()=>{ const c=$$(`qs-${mi}`); if(c&&c.lastElementChild) c.lastElementChild.scrollIntoView({behavior:'smooth',block:'nearest'}); },50);
   },
 
-  saveCourse() {
+  async saveCourse() {
     const title = $$('cb-title').value.trim();
     if(!title){ Toast.err('Please enter a course title.'); return; }
-    const course = {
-      id: cbState.editId || uid(),
+    const courseData = {
       title, icon: $$('cb-icon').value||'📋', desc: $$('cb-desc').value,
       mods: cbState.mods.map(m=>({
         ...m,
@@ -1416,13 +1522,19 @@ const App = {
         }))
       }))
     };
-    const courses = store.courses();
-    const idx = courses.findIndex(c=>c.id===course.id);
-    if(idx>=0) courses[idx]=course; else courses.push(course);
-    store.s(K.courses, courses);
-    App.closeBuilder();
-    App.renderACourses();
-    Toast.ok(cbState.editId?'Course updated.':'Course created.');
+    const body = denormCourseBody(courseData);
+    try {
+      if(cbState.editId) {
+        await api(`/api/courses/${cbState.editId}`, { method: 'PUT', body: JSON.stringify(body) });
+      } else {
+        await api('/api/courses', { method: 'POST', body: JSON.stringify(body) });
+      }
+      App.closeBuilder();
+      App.renderACourses();
+      Toast.ok(cbState.editId?'Course updated.':'Course created.');
+    } catch (e) {
+      Toast.err(e.message || 'Could not save course.');
+    }
   },
 
   // ─── CSV IMPORT ───
@@ -1495,14 +1607,22 @@ const App = {
   },
 
   // ─── COURSE VIEWER ───
-  startCourse(cid) {
-    curCourse = store.courses().find(c=>c.id===cid);
-    if(!curCourse) return;
-    curModIdx = 0; quizSt = {};
-    $$('ch-meta').textContent = curCourse.title;
-    App.show('screen-course');
-    App.renderModNav();
-    App.loadMod(0);
+  async startCourse(cid) {
+    try {
+      let course = coursesCache.find(c => c.id === cid);
+      if (!course) {
+        const raw = await api(`/api/courses/${cid}`);
+        course = normCourse(raw);
+      }
+      curCourse = course;
+      curModIdx = 0; quizSt = {};
+      $$('ch-meta').textContent = curCourse.title;
+      App.show('screen-course');
+      App.renderModNav();
+      App.loadMod(0);
+    } catch (e) {
+      Toast.err('Could not load course: ' + e.message);
+    }
   },
 
   exitCourse() { App.show('screen-learner'); App.lNav('courses'); },
@@ -1618,8 +1738,7 @@ const App = {
     const session = quizSt[mi].session;
     const ans = session.ans;
     const score = Math.round(ans.filter(a=>a.ok).length / ans.length * 100);
-    const b = store.brand();
-    const passed = score >= (b.pass || 80);
+    const passed = score >= (brandCache.pass || 80);
     quizSt[mi] = { done:true, passed, score, ans, session: null };
     App.renderModNav();
     App.showModResults(mi);
@@ -1657,34 +1776,49 @@ const App = {
     const allDone = (curCourse.mods||[]).every((_,i) => quizSt[i]?.done);
     if (!allDone) return;
     const allAns = Object.values(quizSt).flatMap(s => s.ans || []);
-    const score = allAns.length ? Math.round(allAns.filter(a=>a.ok).length / allAns.length * 100) : 100;
-    const b = store.brand();
-    const passed = score >= (b.pass || 80);
-    store.addRecord({ cid: curCourse.id, learner: curLearner, score, passed, date: Date.now(), cid2: uid() });
+    const score  = allAns.length ? Math.round(allAns.filter(a=>a.ok).length / allAns.length * 100) : 100;
+    const passed = score >= (brandCache.pass || 80);
+    api('/api/completions', {
+      method: 'POST',
+      body: JSON.stringify({ course_id: curCourse.id, learner_name: curLearner, score, passed }),
+    }).catch(e => console.error('Failed to record completion:', e));
   },
 
-  courseComplete() {
-    const recs = store.records().filter(r=>r.cid===curCourse.id&&r.learner===curLearner&&r.passed);
-    if(recs.length) App.showCert(curCourse.id, curLearner);
-    else App.exitCourse();
+  async courseComplete() {
+    try {
+      const apiRecs = await api(`/api/completions/learner/${encodeURIComponent(curLearner)}`);
+      const recs = apiRecs.map(normRecord).filter(r => r.cid === curCourse.id && r.passed);
+      if(recs.length) App.showCert(curCourse.id, curLearner);
+      else App.exitCourse();
+    } catch {
+      App.exitCourse();
+    }
   },
 
   // ─── CERTIFICATE ───
-  showCert(cid, learner) {
-    const course = store.courses().find(c=>c.id===cid);
-    const recs = store.records().filter(r=>r.cid===cid&&r.learner===learner&&r.passed);
-    if(!recs.length||!course){ Toast.err('No passing record found.'); return; }
-    const best = recs.sort((a,z)=>z.score-a.score)[0];
-    const b = store.brand();
-    $$('cert-accent').style.background = b.c1||'#2563eb';
-    $$('c-org').textContent = b.name||'TrainFlow';
-    $$('c-name').textContent = learner;
-    $$('c-course').textContent = course.title;
-    $$('c-date').textContent = new Date(best.date).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
-    $$('c-score').textContent = best.score+'%';
-    $$('c-id').textContent = 'TF-' + (best.cid2||uid()).toString().slice(0,8).toUpperCase();
-    $$('c-sig-dept').textContent = (b.name||'TrainFlow') + ' Training';
-    $$('cert-overlay').classList.remove('hidden');
+  async showCert(cid, learner) {
+    try {
+      const cached = coursesCache.find(c => c.id === cid);
+      const [course, apiRecs] = await Promise.all([
+        cached ? Promise.resolve(cached) : api(`/api/courses/${cid}`).then(normCourse),
+        api(`/api/completions/learner/${encodeURIComponent(learner)}`),
+      ]);
+      const recs = apiRecs.map(normRecord).filter(r => r.cid === cid && r.passed);
+      if(!recs.length||!course){ Toast.err('No passing record found.'); return; }
+      const best = recs.sort((a,z)=>z.score-a.score)[0];
+      const b = brandCache;
+      $$('cert-accent').style.background = b.c1||'#2563eb';
+      $$('c-org').textContent = b.name||'TrainFlow';
+      $$('c-name').textContent = learner;
+      $$('c-course').textContent = course.title;
+      $$('c-date').textContent = new Date(best.date).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+      $$('c-score').textContent = best.score+'%';
+      $$('c-id').textContent = best.cid2 || ('TF-' + uid().slice(0,8).toUpperCase());
+      $$('c-sig-dept').textContent = (b.name||'TrainFlow') + ' Training';
+      $$('cert-overlay').classList.remove('hidden');
+    } catch (e) {
+      Toast.err('Could not load certificate: ' + e.message);
+    }
   },
 
   closeCert() { $$('cert-overlay').classList.add('hidden'); },
@@ -1729,36 +1863,118 @@ const App = {
     r.onload=ev=>{ $$('br-logo-url').value=ev.target.result; App.previewBrand(); };
     r.readAsDataURL(f);
   },
-  saveBrand() {
-    const b={ name:$$('br-name').value||'TrainFlow', tagline:$$('br-tag').value, logo:$$('br-logo-url').value, c1:$$('br-c1').value, c2:$$('br-c2').value, pass:parseInt($$('br-pass').value)||80 };
-    store.s(K.brand,b); applyBrand(); Toast.ok('Branding saved.');
+  async saveBrand() {
+    const body = {
+      org_name:        $$('br-name').value || 'TrainFlow',
+      tagline:         $$('br-tag').value  || 'Training & Certification Platform',
+      logo_url:        $$('br-logo-url').value || '',
+      primary_color:   $$('br-c1').value  || '#2563eb',
+      secondary_color: $$('br-c2').value  || '#1d4ed8',
+      pass_threshold:  parseInt($$('br-pass').value) || 80,
+    };
+    try {
+      const updated = await api('/api/brand', { method: 'PUT', body: JSON.stringify(body) });
+      brandCache = normBrand(updated);
+      applyBrand();
+      Toast.ok('Branding saved.');
+    } catch (e) {
+      Toast.err(e.message || 'Could not save branding.');
+    }
   },
-  resetBrand() { store.s(K.brand,null); applyBrand(); Toast.info('Reset to default.'); },
+  async resetBrand() {
+    try {
+      const updated = await api('/api/brand', {
+        method: 'PUT',
+        body: JSON.stringify({ org_name:'TrainFlow', tagline:'Training & Certification Platform', logo_url:'', primary_color:'#2563eb', secondary_color:'#1d4ed8', pass_threshold:80 }),
+      });
+      brandCache = normBrand(updated);
+      applyBrand();
+      Toast.info('Reset to default.');
+    } catch (e) {
+      Toast.err(e.message || 'Could not reset branding.');
+    }
+  },
 
   // ─── SETTINGS ───
-  changePw() {
+  async changePw() {
     const p=$$('np1').value, c=$$('np2').value;
     if(!p){ Toast.err('Enter a new password.'); return; }
     if(p!==c){ Toast.err('Passwords do not match.'); return; }
-    store.s(K.pw,p); $$('np1').value=''; $$('np2').value=''; Toast.ok('Password updated.');
+    try {
+      await api('/api/auth/password', { method: 'PUT', body: JSON.stringify({ password: p }) });
+      $$('np1').value=''; $$('np2').value='';
+      Toast.ok('Password updated.');
+    } catch (e) {
+      Toast.err(e.message || 'Could not update password.');
+    }
   },
-  exportCSV() {
-    const recs=store.records(), courses=store.courses();
-    const hdr='Name,Course,Score,Passed,Date,CertID';
-    const rows=recs.map(r=>{ const c=courses.find(x=>x.id===r.cid); return [`"${r.learner}"`,`"${c?.title||''}"`,`"${r.score}%"`,`"${r.passed?'Yes':'No'}"`,`"${new Date(r.date).toLocaleDateString()}"`,`"${r.cid2||''}"`].join(','); });
-    App.dl('completions.csv','text/csv',[hdr,...rows].join('\n')); Toast.ok('CSV exported.');
+  async exportCSV() {
+    try {
+      const [compData, apiCourses] = await Promise.all([
+        api('/api/completions?limit=500'),
+        api('/api/courses'),
+      ]);
+      const recs    = compData.rows.map(normRecord);
+      const courses = apiCourses.map(normCourse);
+      const hdr='Name,Course,Score,Passed,Date,CertID';
+      const rows=recs.map(r=>{ const c=courses.find(x=>x.id===r.cid); return [`"${r.learner}"`,`"${c?.title||''}"`,`"${r.score}%"`,`"${r.passed?'Yes':'No'}"`,`"${new Date(r.date).toLocaleDateString()}"`,`"${r.cid2||''}"`].join(','); });
+      App.dl('completions.csv','text/csv',[hdr,...rows].join('\n'));
+      Toast.ok('CSV exported.');
+    } catch (e) {
+      Toast.err(e.message || 'Export failed.');
+    }
   },
-  exportBackup() {
-    App.dl('trainflow-backup.json','application/json',JSON.stringify({courses:store.courses(),completions:store.records(),brand:store.brand(),date:new Date().toISOString()},null,2));
-    Toast.ok('Backup exported.');
+  async exportBackup() {
+    try {
+      const [apiCourses, compData, apiBrand] = await Promise.all([
+        api('/api/courses'),
+        api('/api/completions?limit=500'),
+        api('/api/brand'),
+      ]);
+      App.dl('trainflow-backup.json','application/json',JSON.stringify({ version:2, date:new Date().toISOString(), courses:apiCourses, completions:compData.rows, brand:apiBrand },null,2));
+      Toast.ok('Backup exported.');
+    } catch (e) {
+      Toast.err(e.message || 'Export failed.');
+    }
   },
   importBackup(e) {
     const f=e.target.files[0]; if(!f) return;
     const r=new FileReader();
-    r.onload=ev=>{ try{ const d=JSON.parse(ev.target.result); if(d.courses) store.s(K.courses,d.courses); if(d.completions) store.s(K.completions,d.completions); if(d.brand) store.s(K.brand,d.brand); applyBrand(); App.renderDash(); Toast.ok('Backup restored.'); }catch{Toast.err('Invalid file.'); } };
+    r.onload=async ev=>{
+      try {
+        const d=JSON.parse(ev.target.result);
+        const isV2 = d.version === 2;
+        if(d.brand) {
+          const brandBody = isV2
+            ? { org_name:d.brand.org_name, tagline:d.brand.tagline, logo_url:d.brand.logo_url, primary_color:d.brand.primary_color, secondary_color:d.brand.secondary_color, pass_threshold:d.brand.pass_threshold }
+            : { org_name:d.brand.name, tagline:d.brand.tagline, logo_url:d.brand.logo, primary_color:d.brand.c1, secondary_color:d.brand.c2, pass_threshold:d.brand.pass };
+          const updated = await api('/api/brand', { method:'PUT', body:JSON.stringify(brandBody) });
+          brandCache = normBrand(updated); applyBrand();
+        }
+        if(d.courses?.length) {
+          for(const c of d.courses) {
+            const body = isV2
+              ? { title:c.title, icon:c.icon, description:c.description, modules:(c.modules||[]).map(m=>({ title:m.title, content:m.content, questions:(m.questions||[]).map(q=>({ question:q.question, options:[q.option_a,q.option_b,q.option_c,q.option_d], correct_index:q.correct_index, explanation:q.explanation })) })) }
+              : denormCourseBody(c);
+            await api('/api/courses', { method:'POST', body:JSON.stringify(body) });
+          }
+        }
+        App.renderDash();
+        Toast.ok('Backup restored.');
+      } catch(err) { Toast.err('Could not restore backup: ' + err.message); }
+    };
     r.readAsText(f); e.target.value='';
   },
-  clearRecords() { if(!confirm('Clear all completion records?')) return; store.s(K.completions,[]); App.renderComps(); Toast.ok('Records cleared.'); },
+  async clearRecords() {
+    if(!confirm('Clear all completion records?')) return;
+    try {
+      await api('/api/completions', { method: 'DELETE' });
+      App.renderComps();
+      Toast.ok('Records cleared.');
+    } catch (e) {
+      Toast.err(e.message || 'Could not clear records.');
+    }
+  },
   dl(name,type,content) { const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([content],{type})); a.download=name; a.click(); }
 };
 

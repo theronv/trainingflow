@@ -1,0 +1,22 @@
+name            = "trainflow-worker"
+main            = "index.js"
+compatibility_date = "2025-01-01"
+
+# ── Non-secret vars (safe to commit) ─────────────────────────────────────────
+[vars]
+TURSO_URL      = "libsql://trainflow-theronv.aws-us-west-2.turso.io"
+ALLOWED_ORIGIN = "https://theronv.github.io"
+
+# ── Secrets (never commit values — set via CLI) ───────────────────────────────
+# Run each of these once before your first deploy:
+#
+#   wrangler secret put TURSO_TOKEN
+#   wrangler secret put JWT_SECRET          # any long random string, 32+ chars
+#   wrangler secret put ADMIN_PASSWORD_HASH # PBKDF2 hash — see below
+#
+# To generate ADMIN_PASSWORD_HASH, run from the project root:
+#   node scripts/hash-password.mjs <your-password>
+# Copy the printed hash and paste it when prompted by `wrangler secret put`.
+#
+# After a password change via the admin UI the new hash is stored in Turso
+# and takes precedence over this env secret automatically.
