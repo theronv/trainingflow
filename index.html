@@ -710,16 +710,21 @@ pre code { display: block; padding: var(--space-4); line-height: 1.7; }
       <button class="nav-btn active" id="ln-courses"  onclick="App.lNav('courses')"><span class="nav-icon">📚</span>Courses</button>
       <button class="nav-btn"        id="ln-progress" onclick="App.lNav('progress')"><span class="nav-icon">📊</span>Progress</button>
       <button class="nav-btn"        id="ln-certs"    onclick="App.lNav('certs')"><span class="nav-icon">🏅</span>Certificates</button>
+      <button class="nav-btn"        id="ln-account"  onclick="App.lNav('account')"><span class="nav-icon">👤</span>Account</button>
     </nav>
     <div class="main">
       <div class="page active" id="lp-name">
         <div class="name-wrap">
           <div class="name-greeting">Welcome.</div>
-          <p class="name-hint">Please enter your name to begin your training.</p>
+          <p class="name-hint">Sign in to access your training.</p>
+          <div id="l-login-error" style="display:none;color:var(--fail);font-size:var(--text-sm);padding:var(--space-3);background:var(--fail-lt);border-radius:var(--r);margin-bottom:var(--space-3);"></div>
           <div class="field">
-            <input type="text" id="name-input" placeholder="Your full name…" onkeydown="if(event.key==='Enter')App.setName()">
+            <input type="text" id="learner-name-input" placeholder="Your name…" autocomplete="username" onkeydown="if(event.key==='Enter')$$('learner-pw-input').focus()">
           </div>
-          <button class="btn btn-primary btn-xl w-full" onclick="App.setName()">Begin Training</button>
+          <div class="field">
+            <input type="password" id="learner-pw-input" placeholder="Password…" autocomplete="current-password" onkeydown="if(event.key==='Enter')App.doLearnerLogin()">
+          </div>
+          <button class="btn btn-primary btn-xl w-full" onclick="App.doLearnerLogin()">Sign In</button>
         </div>
       </div>
       <div class="page hidden" id="lp-courses">
@@ -744,6 +749,20 @@ pre code { display: block; padding: var(--space-4); line-height: 1.7; }
           <div class="page-title">My Certificates</div>
         </div>
         <div id="l-certs-content"></div>
+      </div>
+      <div class="page hidden" id="lp-account">
+        <div class="page-head">
+          <div class="page-eyebrow">Account</div>
+          <div class="page-title">Change Password</div>
+        </div>
+        <div style="max-width:400px;">
+          <div class="card">
+            <div class="field"><label>Current Password</label><input type="password" id="lcp-cur" placeholder="Current password…"></div>
+            <div class="field"><label>New Password</label><input type="password" id="lcp-new" placeholder="New password (8+ characters)…"></div>
+            <div class="field"><label>Confirm New Password</label><input type="password" id="lcp-confirm" placeholder="Confirm new password…"></div>
+            <button class="btn btn-primary" onclick="App.changeLearnerPw()">Update Password</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -788,6 +807,7 @@ pre code { display: block; padding: var(--space-4); line-height: 1.7; }
     <nav class="sidenav">
       <button class="nav-btn active" id="an-dashboard"   onclick="App.aNav('dashboard')"><span class="nav-icon">▦</span>Dashboard</button>
       <button class="nav-btn"        id="an-courses"     onclick="App.aNav('courses')"><span class="nav-icon">📚</span>Courses</button>
+      <button class="nav-btn"        id="an-learners"    onclick="App.aNav('learners')"><span class="nav-icon">👥</span>Learners</button>
       <button class="nav-btn"        id="an-completions" onclick="App.aNav('completions')"><span class="nav-icon">✓</span>Completions</button>
       <div class="sidenav-section">
         <div class="sidenav-label">Settings</div>
@@ -813,6 +833,19 @@ pre code { display: block; padding: var(--space-4); line-height: 1.7; }
           <button class="btn btn-primary" onclick="App.openBuilder()">+ New Course</button>
         </div>
         <div class="courses-grid" id="a-courses-grid"></div>
+      </div>
+      <div class="page hidden" id="ap-learners">
+        <div class="page-head page-head-row">
+          <div>
+            <div class="page-eyebrow">People</div>
+            <div class="page-title">Learners</div>
+          </div>
+          <button class="btn btn-primary" onclick="App.openAddLearner()">+ Add Learner</button>
+        </div>
+        <div class="table-wrap">
+          <table><thead><tr><th>Name</th><th>Last Login</th><th>Completions</th><th>Actions</th></tr></thead>
+          <tbody id="learners-tbody"></tbody></table>
+        </div>
       </div>
       <div class="page hidden" id="ap-completions">
         <div class="page-head page-head-row">
@@ -907,6 +940,59 @@ pre code { display: block; padding: var(--space-4); line-height: 1.7; }
           </div>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ MODAL: ADD LEARNER ══════════ -->
+<div class="overlay hidden" id="add-learner-overlay">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">Add Learner</div>
+      <div class="modal-sub">The learner will use these credentials to sign in.</div>
+    </div>
+    <div class="modal-body">
+      <div class="field"><label>Name</label><input type="text" id="al-name" placeholder="Full name…" autocomplete="off"></div>
+      <div class="field"><label>Password</label><input type="password" id="al-pw1" placeholder="Password (8+ characters)…"></div>
+      <div class="field"><label>Confirm Password</label><input type="password" id="al-pw2" placeholder="Confirm…"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="App.closeAddLearner()">Cancel</button>
+      <button class="btn btn-primary" onclick="App.submitAddLearner()">Create Account</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ MODAL: RESET LEARNER PASSWORD ══════════ -->
+<div class="overlay hidden" id="reset-pw-overlay">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">Reset Password</div>
+      <div class="modal-sub" id="reset-pw-subtitle"></div>
+    </div>
+    <div class="modal-body">
+      <div class="field"><label>New Password</label><input type="password" id="rp-pw1" placeholder="New password (8+ characters)…"></div>
+      <div class="field"><label>Confirm</label><input type="password" id="rp-pw2" placeholder="Confirm…"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="App.closeResetPw()">Cancel</button>
+      <button class="btn btn-primary" onclick="App.submitResetPw()">Reset Password</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ MODAL: CONFIRM DELETE ══════════ -->
+<div class="overlay hidden" id="confirm-delete-overlay">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">Delete Learner</div>
+    </div>
+    <div class="modal-body">
+      <p id="confirm-delete-msg" style="color:var(--ink-2);"></p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="App.closeConfirmDelete()">Cancel</button>
+      <button class="btn btn-danger" id="confirm-delete-btn">Delete</button>
     </div>
   </div>
 </div>
@@ -1099,11 +1185,26 @@ function denormCourseBody(c) {
   };
 }
 
-// ── Learner name lives in localStorage (session only) ──
-const LNAME_KEY = 'tf2_lname';
+// ── Learner JWT (sessionStorage — clears on browser close) ──
+function getLearnerToken()   { return sessionStorage.getItem('tf_learner_token'); }
+function setLearnerToken(t)  { sessionStorage.setItem('tf_learner_token', t); }
+function clearLearnerToken() { sessionStorage.removeItem('tf_learner_token'); }
+
+// ── learnerApi — like api() but sends the learner JWT ──
+async function learnerApi(path, opts = {}) {
+  const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
+  const token = getLearnerToken();
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(WORKER_URL + path, { ...opts, headers });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: res.statusText }));
+    throw Object.assign(new Error(body.error || res.statusText), { status: res.status });
+  }
+  return res.json();
+}
 
 // ── State ──
-let curLearner = '';
+let curLearner = null;   // { id, name } when signed in
 let curCourse  = null;
 let curModIdx  = 0;
 let quizSt     = {};
@@ -1160,7 +1261,14 @@ const App = {
 
   // ─── INIT ───
   async init() {
-    curLearner = localStorage.getItem(LNAME_KEY) || '';
+    // Restore learner identity from live token if present
+    const t = getLearnerToken();
+    if (t) {
+      try {
+        const me = await learnerApi('/api/learners/me');
+        curLearner = { id: me.id, name: me.name };
+      } catch { clearLearnerToken(); }
+    }
     try {
       const b = await api('/api/brand');
       brandCache = normBrand(b);
@@ -1177,6 +1285,31 @@ const App = {
   // ─── LANDING ───
   goLearner() { App.show('screen-learner'); applyBrand(); if(curLearner) App.showLearner(); else App.showPage('lp-name'); },
   goAdmin()   { App.show('screen-login'); setTimeout(()=>$$('pw-input').focus(),80); },
+
+  // ─── LEARNER LOGIN / LOGOUT ───
+  async doLearnerLogin() {
+    const name = $$('learner-name-input').value.trim();
+    const pw   = $$('learner-pw-input').value;
+    const errEl = $$('l-login-error');
+    errEl.style.display = 'none';
+    if (!name || !pw) { errEl.textContent = 'Please enter your name and password.'; errEl.style.display = ''; return; }
+    try {
+      const res = await fetch(WORKER_URL + '/api/learners/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, password: pw }),
+      });
+      const data = await res.json();
+      if (!res.ok) { errEl.textContent = data.error || 'Sign in failed.'; errEl.style.display = ''; return; }
+      setLearnerToken(data.token);
+      curLearner = { id: data.id, name: data.name };
+      $$('learner-pw-input').value = '';
+      App.showLearner();
+    } catch (e) {
+      errEl.textContent = 'Could not connect. Please try again.'; errEl.style.display = '';
+    }
+  },
+  learnerLogout() { clearLearnerToken(); curLearner = null; App.show('screen-landing'); },
 
   // ─── LOGIN ───
   async doLogin() {
@@ -1198,19 +1331,17 @@ const App = {
   adminLogout() { clearToken(); App.show('screen-landing'); },
 
   // ─── LEARNER ───
-  setName() {
-    const n = $$('name-input').value.trim();
-    if (!n) { Toast.err('Please enter your name.'); return; }
-    curLearner = n; localStorage.setItem(LNAME_KEY, n);
-    App.showLearner();
-  },
   showLearner() {
     const pill = $$('l-user-pill');
-    if(pill) { pill.style.display='flex'; $$('l-name-display').textContent = curLearner; $$('l-avatar').textContent = curLearner[0].toUpperCase(); }
+    if(pill && curLearner) {
+      pill.style.display = 'flex';
+      $$('l-name-display').textContent = curLearner.name;
+      $$('l-avatar').textContent = curLearner.name[0].toUpperCase();
+    }
     App.lNav('courses');
   },
   lNav(p) {
-    ['courses','progress','certs'].forEach(k => {
+    ['courses','progress','certs','account'].forEach(k => {
       $$(`ln-${k}`).classList.toggle('active', k===p);
       $$(`lp-${k}`).classList.toggle('hidden', k!==p);
       $$(`lp-${k}`).classList.toggle('active', k===p);
@@ -1220,14 +1351,14 @@ const App = {
     if(p==='progress') App.renderLProgress();
     if(p==='certs')    App.renderLCerts();
   },
-  showPage(id) { ['lp-name','lp-courses','lp-progress','lp-certs'].forEach(p=>{$$(p).classList.add('hidden');$$(p).classList.remove('active');}); $$(id).classList.remove('hidden'); $$(id).classList.add('active'); },
+  showPage(id) { ['lp-name','lp-courses','lp-progress','lp-certs','lp-account'].forEach(p=>{$$(p).classList.add('hidden');$$(p).classList.remove('active');}); $$(id).classList.remove('hidden'); $$(id).classList.add('active'); },
 
   async renderLCourses() {
     const grid = $$('l-courses-grid');
     try {
       const [apiCourses, apiRecs] = await Promise.all([
         api('/api/courses'),
-        api(`/api/completions/learner/${encodeURIComponent(curLearner)}`),
+        learnerApi('/api/completions/me'),
       ]);
       const courses = apiCourses.map(normCourse);
       const recs    = apiRecs.map(normRecord);
@@ -1261,7 +1392,7 @@ const App = {
     const el = $$('l-progress-content');
     try {
       const [apiRecs, apiCourses] = await Promise.all([
-        api(`/api/completions/learner/${encodeURIComponent(curLearner)}`),
+        learnerApi('/api/completions/me'),
         api('/api/courses'),
       ]);
       const recs    = apiRecs.map(normRecord);
@@ -1286,7 +1417,7 @@ const App = {
         <div style="display:flex;align-items:center;gap:var(--space-4);">
           <div class="progress-track" style="flex:1;height:6px;"><div class="progress-fill" style="width:${best.score}%"></div></div>
           <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;">${best.score}%</div>
-          ${passed?`<button class="btn btn-outline btn-sm" onclick="App.showCert('${cid}','${curLearner}')">Certificate</button>`:''}
+          ${passed?`<button class="btn btn-outline btn-sm" onclick="App.showCert('${cid}','${esc(curLearner?.name||'')}')">Certificate</button>`:''}
         </div>
       </div>`;
       }).join('');
@@ -1299,7 +1430,7 @@ const App = {
     const el = $$('l-certs-content');
     try {
       const [apiRecs, apiCourses] = await Promise.all([
-        api(`/api/completions/learner/${encodeURIComponent(curLearner)}`),
+        learnerApi('/api/completions/me'),
         api('/api/courses'),
       ]);
       const allRecs = apiRecs.map(normRecord);
@@ -1317,7 +1448,7 @@ const App = {
           <div style="font-weight:700;font-size:var(--text-md);">${esc(c.title)}</div>
           <div style="font-size:var(--text-xs);color:var(--ink-4);margin-top:2px;">Score: ${r.score}% · ${new Date(r.date).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</div>
         </div>
-        <button class="btn btn-primary btn-sm" onclick="App.showCert('${r.cid}','${curLearner}')">View</button>
+        <button class="btn btn-primary btn-sm" onclick="App.showCert('${r.cid}','${esc(curLearner?.name||'')}')">View</button>
       </div>`;
       }).join('');
     } catch (e) {
@@ -1327,14 +1458,16 @@ const App = {
 
   // ─── ADMIN NAV ───
   aNav(p) {
-    ['dashboard','courses','completions','branding','settings'].forEach(k=>{
+    ['dashboard','courses','learners','completions','branding','settings'].forEach(k=>{
       $$(`an-${k}`).classList.toggle('active',k===p);
       $$(`ap-${k}`).classList.toggle('hidden',k!==p);
       $$(`ap-${k}`).classList.toggle('active',k===p);
     });
     if(p==='dashboard')   App.renderDash();
     if(p==='courses')     App.renderACourses();
+    if(p==='learners')    App.renderLearners();
     if(p==='completions') App.renderComps();
+    if(p==='branding')    applyBrand();
   },
 
   async renderDash() {
@@ -1420,6 +1553,95 @@ const App = {
     } catch (e) {
       tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--fail);">${esc(e.message)}</td></tr>`;
     }
+  },
+
+  // ─── LEARNER MANAGEMENT (ADMIN) ───
+  async renderLearners() {
+    const tbody = $$('learners-tbody');
+    try {
+      const learners = await api('/api/learners');
+      if(!learners.length){ tbody.innerHTML='<tr><td colspan="4" style="text-align:center;padding:32px;color:var(--ink-4);">No learners yet. Add one to get started.</td></tr>'; return; }
+      tbody.innerHTML = learners.map(l=>{
+        const lastLogin = l.last_login_at ? new Date(l.last_login_at*1000).toLocaleDateString() : '—';
+        return `<tr>
+          <td>${esc(l.name)}</td>
+          <td>${lastLogin}</td>
+          <td>${l.completion_count}</td>
+          <td style="display:flex;gap:4px;">
+            <button class="btn btn-ghost btn-sm" onclick="App.openResetPw('${l.id}','${esc(l.name)}')">Reset Password</button>
+            <button class="btn btn-ghost btn-sm" style="color:var(--fail);" onclick="App.openConfirmDelete('${l.id}','${esc(l.name)}')">Delete</button>
+          </td>
+        </tr>`;
+      }).join('');
+    } catch(e) {
+      tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:32px;color:var(--fail);">${esc(e.message)}</td></tr>`;
+    }
+  },
+
+  // Add Learner modal
+  openAddLearner() { $$('al-name').value=''; $$('al-pw1').value=''; $$('al-pw2').value=''; $$('add-learner-overlay').classList.remove('hidden'); setTimeout(()=>$$('al-name').focus(),80); },
+  closeAddLearner() { $$('add-learner-overlay').classList.add('hidden'); },
+  async submitAddLearner() {
+    const name = $$('al-name').value.trim();
+    const pw1  = $$('al-pw1').value;
+    const pw2  = $$('al-pw2').value;
+    if(!name){ Toast.err('Name is required.'); return; }
+    if(pw1.length < 8){ Toast.err('Password must be at least 8 characters.'); return; }
+    if(pw1 !== pw2){ Toast.err('Passwords do not match.'); return; }
+    try {
+      await api('/api/learners', { method:'POST', body:JSON.stringify({ name, password:pw1 }) });
+      App.closeAddLearner();
+      App.renderLearners();
+      Toast.ok(`Account created for ${name}.`);
+    } catch(e){ Toast.err(e.message || 'Could not create account.'); }
+  },
+
+  // Reset Password modal
+  _resetPwId: null,
+  openResetPw(id, name) { App._resetPwId=id; $$('reset-pw-subtitle').textContent=`Reset password for ${name}`; $$('rp-pw1').value=''; $$('rp-pw2').value=''; $$('reset-pw-overlay').classList.remove('hidden'); setTimeout(()=>$$('rp-pw1').focus(),80); },
+  closeResetPw() { $$('reset-pw-overlay').classList.add('hidden'); App._resetPwId=null; },
+  async submitResetPw() {
+    const pw1 = $$('rp-pw1').value, pw2 = $$('rp-pw2').value;
+    if(pw1.length < 8){ Toast.err('Password must be at least 8 characters.'); return; }
+    if(pw1 !== pw2){ Toast.err('Passwords do not match.'); return; }
+    try {
+      await api(`/api/learners/${App._resetPwId}/password`, { method:'PUT', body:JSON.stringify({ password:pw1 }) });
+      App.closeResetPw();
+      Toast.ok('Password reset.');
+    } catch(e){ Toast.err(e.message || 'Could not reset password.'); }
+  },
+
+  // Confirm Delete modal
+  _deleteId: null,
+  openConfirmDelete(id, name) {
+    App._deleteId = id;
+    $$('confirm-delete-msg').textContent = `Delete ${name}? This will also remove all their completion records.`;
+    $$('confirm-delete-btn').onclick = App.submitDelete;
+    $$('confirm-delete-overlay').classList.remove('hidden');
+  },
+  closeConfirmDelete() { $$('confirm-delete-overlay').classList.add('hidden'); App._deleteId=null; },
+  async submitDelete() {
+    try {
+      await api(`/api/learners/${App._deleteId}`, { method:'DELETE' });
+      App.closeConfirmDelete();
+      App.renderLearners();
+      Toast.ok('Learner deleted.');
+    } catch(e){ Toast.err(e.message || 'Could not delete learner.'); }
+  },
+
+  // Change password (learner self-service)
+  async changeLearnerPw() {
+    const cur  = $$('lcp-cur').value;
+    const nw   = $$('lcp-new').value;
+    const conf = $$('lcp-confirm').value;
+    if(!cur){ Toast.err('Enter your current password.'); return; }
+    if(nw.length < 8){ Toast.err('New password must be at least 8 characters.'); return; }
+    if(nw !== conf){ Toast.err('Passwords do not match.'); return; }
+    try {
+      await learnerApi('/api/learners/me/password', { method:'PUT', body:JSON.stringify({ current_password:cur, new_password:nw }) });
+      $$('lcp-cur').value=''; $$('lcp-new').value=''; $$('lcp-confirm').value='';
+      Toast.ok('Password updated.');
+    } catch(e){ Toast.err(e.message || 'Could not update password.'); }
   },
 
   // ─── COURSE BUILDER ───
@@ -1778,17 +2000,17 @@ const App = {
     const allAns = Object.values(quizSt).flatMap(s => s.ans || []);
     const score  = allAns.length ? Math.round(allAns.filter(a=>a.ok).length / allAns.length * 100) : 100;
     const passed = score >= (brandCache.pass || 80);
-    api('/api/completions', {
+    learnerApi('/api/completions', {
       method: 'POST',
-      body: JSON.stringify({ course_id: curCourse.id, learner_name: curLearner, score, passed }),
+      body: JSON.stringify({ course_id: curCourse.id, score, passed }),
     }).catch(e => console.error('Failed to record completion:', e));
   },
 
   async courseComplete() {
     try {
-      const apiRecs = await api(`/api/completions/learner/${encodeURIComponent(curLearner)}`);
+      const apiRecs = await learnerApi('/api/completions/me');
       const recs = apiRecs.map(normRecord).filter(r => r.cid === curCourse.id && r.passed);
-      if(recs.length) App.showCert(curCourse.id, curLearner);
+      if(recs.length) App.showCert(curCourse.id, curLearner.name);
       else App.exitCourse();
     } catch {
       App.exitCourse();
@@ -1799,9 +2021,13 @@ const App = {
   async showCert(cid, learner) {
     try {
       const cached = coursesCache.find(c => c.id === cid);
+      // Learner context uses /me (learner JWT); admin context uses /learner/:name (admin JWT).
+      const fetchRecs = getLearnerToken()
+        ? learnerApi('/api/completions/me')
+        : api(`/api/completions/learner/${encodeURIComponent(learner)}`);
       const [course, apiRecs] = await Promise.all([
         cached ? Promise.resolve(cached) : api(`/api/courses/${cid}`).then(normCourse),
-        api(`/api/completions/learner/${encodeURIComponent(learner)}`),
+        fetchRecs,
       ]);
       const recs = apiRecs.map(normRecord).filter(r => r.cid === cid && r.passed);
       if(!recs.length||!course){ Toast.err('No passing record found.'); return; }

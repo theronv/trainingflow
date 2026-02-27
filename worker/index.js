@@ -204,9 +204,26 @@ async function adminAuth(c, next) {
     return c.json({ error: 'Unauthorized' }, 401)
   }
   try {
-    const payload = await verify(auth.slice(7), c.env.JWT_SECRET)
+    const payload = await verify(auth.slice(7), c.env.JWT_SECRET, 'HS256')
     if (payload.role !== 'admin') throw new Error('wrong role')
     c.set('admin', payload)
+    await next()
+  } catch {
+    return c.json({ error: 'Unauthorized' }, 401)
+  }
+}
+
+// ── Learner auth middleware ───────────────────────────────────────────────────
+
+async function learnerAuth(c, next) {
+  const auth = c.req.header('Authorization')
+  if (!auth?.startsWith('Bearer ')) {
+    return c.json({ error: 'Unauthorized' }, 401)
+  }
+  try {
+    const payload = await verify(auth.slice(7), c.env.JWT_SECRET, 'HS256')
+    if (payload.role !== 'learner') throw new Error('wrong role')
+    c.set('learner', { id: payload.id, name: payload.name })
     await next()
   } catch {
     return c.json({ error: 'Unauthorized' }, 401)
@@ -318,15 +335,16 @@ app.get('/api/courses/:id', async (c) => {
 })
 
 // ── POST /api/completions ─────────────────────────────────────────────────────
+// Requires learner JWT — learner identity comes from the token, not the body.
 
-app.post('/api/completions', async (c) => {
+app.post('/api/completions', learnerAuth, async (c) => {
   const body = await c.req.json().catch(() => null)
   if (!body) return c.json({ error: 'Invalid JSON' }, 400)
 
-  const { course_id, learner_name, score, passed } = body
+  const { course_id, score, passed } = body
+  const learner = c.get('learner')
 
-  if (!course_id)           return c.json({ error: 'course_id is required' }, 400)
-  if (!learner_name?.trim()) return c.json({ error: 'learner_name is required' }, 400)
+  if (!course_id) return c.json({ error: 'course_id is required' }, 400)
   if (typeof score !== 'number' || score < 0 || score > 100) {
     return c.json({ error: 'score must be a number between 0 and 100' }, 400)
   }
@@ -337,17 +355,31 @@ app.post('/api/completions', async (c) => {
 
   await db.execute({
     sql:  `INSERT INTO completions
-             (id, course_id, learner_name, score, passed, cert_id)
-           VALUES (?, ?, ?, ?, ?, ?)`,
-    args: [id, course_id, learner_name.trim(), Math.round(score), passed ? 1 : 0, cid],
+             (id, course_id, learner_name, learner_id, score, passed, cert_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    args: [id, course_id, learner.name, learner.id, Math.round(score), passed ? 1 : 0, cid],
   })
 
   return c.json({ id, cert_id: cid }, 201)
 })
 
-// ── GET /api/completions/learner/:name ────────────────────────────────────────
+// ── GET /api/completions/me ───────────────────────────────────────────────────
+// Learner sees only their own records.
 
-app.get('/api/completions/learner/:name', async (c) => {
+app.get('/api/completions/me', learnerAuth, async (c) => {
+  const learner = c.get('learner')
+  const db      = getDb(c.env)
+  const res     = await db.execute({
+    sql:  'SELECT * FROM completions WHERE learner_id = ? ORDER BY completed_at DESC',
+    args: [learner.id],
+  })
+  return c.json(toObjs(res).map(r => ({ ...r, passed: Boolean(r.passed) })))
+})
+
+// ── GET /api/completions/learner/:name ────────────────────────────────────────
+// Admin lookup by name.
+
+app.get('/api/completions/learner/:name', adminAuth, async (c) => {
   const name = decodeURIComponent(c.req.param('name'))
   const db   = getDb(c.env)
 
@@ -402,9 +434,86 @@ app.post('/api/auth/login', async (c) => {
   const now   = Math.floor(Date.now() / 1000)
   const token = await sign(
     { role: 'admin', iat: now, exp: now + 8 * 3600 },
-    c.env.JWT_SECRET
+    c.env.JWT_SECRET,
+    'HS256'
   )
   return c.json({ token })
+})
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  LEARNER AUTH ROUTES
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ── POST /api/learners/login ──────────────────────────────────────────────────
+
+app.post('/api/learners/login', async (c) => {
+  const body = await c.req.json().catch(() => null)
+  if (!body?.name?.trim() || !body?.password) {
+    return c.json({ error: 'name and password are required' }, 400)
+  }
+
+  const db  = getDb(c.env)
+  const res = await db.execute({
+    sql:  'SELECT * FROM learners WHERE name = ?',
+    args: [body.name.trim()],
+  })
+  const learner = toObj(res)
+
+  // Use the same delay whether name not found or password wrong — prevents enumeration.
+  if (!learner || !(await pbkdf2Verify(body.password, String(learner.password_hash)))) {
+    await new Promise(r => setTimeout(r, 400))
+    return c.json({ error: 'Invalid name or password' }, 401)
+  }
+
+  await db.execute({
+    sql:  'UPDATE learners SET last_login_at = ? WHERE id = ?',
+    args: [Math.floor(Date.now() / 1000), learner.id],
+  })
+
+  const now   = Math.floor(Date.now() / 1000)
+  const token = await sign(
+    { role: 'learner', id: learner.id, name: learner.name, iat: now, exp: now + 24 * 3600 },
+    c.env.JWT_SECRET,
+    'HS256'
+  )
+  return c.json({ token, id: learner.id, name: learner.name })
+})
+
+// ── GET /api/learners/me ──────────────────────────────────────────────────────
+
+app.get('/api/learners/me', learnerAuth, async (c) => {
+  const learner = c.get('learner')
+  return c.json({ id: learner.id, name: learner.name })
+})
+
+// ── PUT /api/learners/me/password ─────────────────────────────────────────────
+
+app.put('/api/learners/me/password', learnerAuth, async (c) => {
+  const learner = c.get('learner')
+  const body    = await c.req.json().catch(() => null)
+
+  if (!body?.current_password) return c.json({ error: 'current_password is required' }, 400)
+  if (!body?.new_password || body.new_password.length < 8) {
+    return c.json({ error: 'new_password must be at least 8 characters' }, 400)
+  }
+
+  const db  = getDb(c.env)
+  const row = toObj(await db.execute({
+    sql: 'SELECT password_hash FROM learners WHERE id = ?', args: [learner.id],
+  }))
+  if (!row) return c.json({ error: 'Learner not found' }, 404)
+
+  const ok = await pbkdf2Verify(body.current_password, String(row.password_hash))
+  if (!ok) {
+    await new Promise(r => setTimeout(r, 400))
+    return c.json({ error: 'Current password is incorrect' }, 401)
+  }
+
+  await db.execute({
+    sql:  'UPDATE learners SET password_hash = ? WHERE id = ?',
+    args: [await pbkdf2Hash(body.new_password), learner.id],
+  })
+  return c.json({ updated: true })
 })
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -566,6 +675,86 @@ app.put('/api/auth/password', adminAuth, async (c) => {
     args: [hash],
   })
 
+  return c.json({ updated: true })
+})
+
+// ── GET /api/learners ─────────────────────────────────────────────────────────
+
+app.get('/api/learners', adminAuth, async (c) => {
+  const db  = getDb(c.env)
+  const res = await db.execute(`
+    SELECT l.id, l.name, l.last_login_at, l.created_at,
+           COUNT(c.id) AS completion_count
+    FROM   learners l
+    LEFT   JOIN completions c ON c.learner_id = l.id
+    GROUP  BY l.id
+    ORDER  BY l.name
+  `)
+  return c.json(toObjs(res))
+})
+
+// ── POST /api/learners ────────────────────────────────────────────────────────
+
+app.post('/api/learners', adminAuth, async (c) => {
+  const body = await c.req.json().catch(() => null)
+  if (!body?.name?.trim()) return c.json({ error: 'name is required' }, 400)
+  if (!body?.password || body.password.length < 8) {
+    return c.json({ error: 'password must be at least 8 characters' }, 400)
+  }
+
+  const db   = getDb(c.env)
+  const id   = uid()
+  const hash = await pbkdf2Hash(body.password)
+
+  try {
+    await db.execute({
+      sql:  'INSERT INTO learners (id, name, password_hash) VALUES (?, ?, ?)',
+      args: [id, body.name.trim(), hash],
+    })
+  } catch (e) {
+    if (String(e.message).includes('UNIQUE')) {
+      return c.json({ error: 'A learner with that name already exists' }, 409)
+    }
+    throw e
+  }
+
+  return c.json({ id, name: body.name.trim() }, 201)
+})
+
+// ── DELETE /api/learners/:id ──────────────────────────────────────────────────
+
+app.delete('/api/learners/:id', adminAuth, async (c) => {
+  const id       = c.req.param('id')
+  const db       = getDb(c.env)
+  const existing = toObj(await db.execute({
+    sql: 'SELECT id FROM learners WHERE id = ?', args: [id],
+  }))
+  if (!existing) return c.json({ error: 'Learner not found' }, 404)
+
+  // FK ON DELETE CASCADE removes their completions automatically.
+  await db.execute({ sql: 'DELETE FROM learners WHERE id = ?', args: [id] })
+  return c.json({ deleted: id })
+})
+
+// ── PUT /api/learners/:id/password ────────────────────────────────────────────
+
+app.put('/api/learners/:id/password', adminAuth, async (c) => {
+  const id   = c.req.param('id')
+  const body = await c.req.json().catch(() => null)
+  if (!body?.password || body.password.length < 8) {
+    return c.json({ error: 'password must be at least 8 characters' }, 400)
+  }
+
+  const db       = getDb(c.env)
+  const existing = toObj(await db.execute({
+    sql: 'SELECT id FROM learners WHERE id = ?', args: [id],
+  }))
+  if (!existing) return c.json({ error: 'Learner not found' }, 404)
+
+  await db.execute({
+    sql:  'UPDATE learners SET password_hash = ? WHERE id = ?',
+    args: [await pbkdf2Hash(body.password), id],
+  })
   return c.json({ updated: true })
 })
 
