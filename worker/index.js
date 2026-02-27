@@ -758,5 +758,138 @@ app.put('/api/learners/:id/password', adminAuth, async (c) => {
   return c.json({ updated: true })
 })
 
+// ── GET /api/progress/:courseId ───────────────────────────────────────────────
+// Returns saved module_progress rows for this learner + course.
+
+app.get('/api/progress/:courseId', learnerAuth, async (c) => {
+  const learner  = c.get('learner')
+  const courseId = c.req.param('courseId')
+  const db       = getDb(c.env)
+  const res = await db.execute({
+    sql:  'SELECT * FROM module_progress WHERE learner_id = ? AND course_id = ?',
+    args: [learner.id, courseId],
+  })
+  return c.json(toObjs(res).map(r => ({ ...r, passed: Boolean(r.passed) })))
+})
+
+// ── POST /api/progress ────────────────────────────────────────────────────────
+// Upserts a module_progress row for this learner.
+
+app.post('/api/progress', learnerAuth, async (c) => {
+  const body = await c.req.json().catch(() => null)
+  if (!body) return c.json({ error: 'Invalid JSON' }, 400)
+
+  const { module_id, course_id, passed, score } = body
+  const learner = c.get('learner')
+
+  if (!module_id || !course_id) {
+    return c.json({ error: 'module_id and course_id are required' }, 400)
+  }
+
+  const db  = getDb(c.env)
+  const now = Math.floor(Date.now() / 1000)
+
+  await db.execute({
+    sql: `INSERT INTO module_progress
+            (id, learner_id, module_id, course_id, passed, score, completed_at, created_at, updated_at)
+          VALUES (lower(hex(randomblob(16))), ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())
+          ON CONFLICT(learner_id, module_id) DO UPDATE SET
+            passed       = excluded.passed,
+            score        = excluded.score,
+            completed_at = excluded.completed_at,
+            updated_at   = unixepoch()`,
+    args: [learner.id, module_id, course_id, passed ? 1 : 0, Math.round(score), now],
+  })
+
+  return c.json({ ok: true })
+})
+
+// ── GET /api/admin/stats ──────────────────────────────────────────────────────
+// One-call dashboard: summary tiles + learner activity + course activity.
+
+app.get('/api/admin/stats', adminAuth, async (c) => {
+  const db = getDb(c.env)
+
+  const [
+    learnersCountRes,
+    coursesCountRes,
+    compMonthRes,
+    passRateRes,
+    learnersRes,
+    coursesRes,
+    modulesRes,
+  ] = await Promise.all([
+    db.execute('SELECT COUNT(*) AS n FROM learners'),
+    db.execute('SELECT COUNT(*) AS n FROM courses'),
+    db.execute("SELECT COUNT(*) AS n FROM completions WHERE completed_at >= unixepoch('now','start of month')"),
+    db.execute('SELECT COUNT(*) AS total, SUM(passed) AS passed FROM completions'),
+    db.execute(`
+      SELECT l.id, l.name, l.last_login_at,
+             COUNT(DISTINCT mp.course_id)  AS courses_started,
+             COUNT(DISTINCT c.course_id)   AS courses_completed,
+             CAST(AVG(CASE WHEN mp.score > 0 THEN mp.score END) AS INTEGER) AS avg_score
+      FROM   learners l
+      LEFT   JOIN module_progress mp ON mp.learner_id = l.id
+      LEFT   JOIN completions c      ON c.learner_id  = l.id
+      GROUP  BY l.id
+      ORDER  BY l.name
+    `),
+    db.execute(`
+      SELECT co.id, co.title,
+             COUNT(DISTINCT mp.learner_id)  AS enrolled,
+             COUNT(DISTINCT c.learner_id)   AS completed,
+             CAST(AVG(c.score) AS INTEGER)  AS avg_score,
+             CAST(100.0 * SUM(c.passed) / NULLIF(COUNT(c.id), 0) AS INTEGER) AS pass_rate
+      FROM   courses co
+      LEFT   JOIN module_progress mp ON mp.course_id = co.id
+      LEFT   JOIN completions c      ON c.course_id  = co.id
+      GROUP  BY co.id
+      ORDER  BY co.title
+    `),
+    db.execute(`
+      SELECT mp.learner_id, mp.passed, mp.score, mp.completed_at,
+             co.title AS course_title,
+             m.title  AS module_title,
+             m.sort_order
+      FROM   module_progress mp
+      JOIN   courses co ON co.id = mp.course_id
+      JOIN   modules  m ON m.id  = mp.module_id
+      ORDER  BY co.title, m.sort_order
+    `),
+  ])
+
+  const pr       = toObj(passRateRes)
+  const passRate = Number(pr.total) > 0 ? Math.round(100 * Number(pr.passed) / Number(pr.total)) : 0
+
+  // Group module_progress rows by learner_id
+  const mpByLearner = {}
+  for (const row of toObjs(modulesRes)) {
+    const lid = String(row.learner_id);
+    (mpByLearner[lid] ??= []).push({
+      course_title:  row.course_title,
+      module_title:  row.module_title,
+      passed:        Boolean(row.passed),
+      score:         row.score,
+      completed_at:  row.completed_at,
+    })
+  }
+
+  const learners = toObjs(learnersRes).map(l => ({
+    ...l,
+    modules: mpByLearner[String(l.id)] || [],
+  }))
+
+  return c.json({
+    summary: {
+      total_learners:         Number(toObj(learnersCountRes).n),
+      total_courses:          Number(toObj(coursesCountRes).n),
+      completions_this_month: Number(toObj(compMonthRes).n),
+      pass_rate:              passRate,
+    },
+    learners,
+    courses: toObjs(coursesRes).map(r => ({ ...r, pass_rate: r.pass_rate ?? 0 })),
+  })
+})
+
 // ── Export ────────────────────────────────────────────────────────────────────
 export default app

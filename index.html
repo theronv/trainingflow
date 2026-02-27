@@ -823,6 +823,7 @@ pre code { display: block; padding: var(--space-4); line-height: 1.7; }
         </div>
         <div class="stats-row" id="a-stats"></div>
         <div id="a-recent"></div>
+        <div id="a-course-stats"></div>
       </div>
       <div class="page hidden" id="ap-courses">
         <div class="page-head page-head-row">
@@ -1471,31 +1472,84 @@ const App = {
   },
 
   async renderDash() {
+    $$('a-stats').innerHTML = '<p style="color:var(--ink-4);font-size:var(--text-sm);">Loading…</p>';
+    $$('a-recent').innerHTML = ''; $$('a-course-stats').innerHTML = '';
     try {
-      const [apiCourses, compData] = await Promise.all([
-        api('/api/courses'),
-        api('/api/completions?limit=500'),
-      ]);
-      const courses  = apiCourses.map(normCourse);
-      const recs     = compData.rows.map(normRecord);
-      coursesCache   = courses;
-      const passed   = recs.filter(r=>r.passed);
-      const learners = [...new Set(recs.map(r=>r.learner))];
+      const { summary, learners, courses } = await api('/api/admin/stats');
+
+      // ── Stat tiles ──────────────────────────────────────────────────────────
       $$('a-stats').innerHTML = [
-        ['Courses', courses.length],
-        ['Attempts', compData.total],
-        ['Certificates', passed.length],
-        ['Learners', learners.length]
+        ['Total Learners',    summary.total_learners],
+        ['Total Courses',     summary.total_courses],
+        ['Completions (Mo)',  summary.completions_this_month],
+        ['Pass Rate',         summary.pass_rate + '%'],
       ].map(([l,v])=>`<div class="stat-tile"><div class="stat-value">${v}</div><div class="stat-label">${l}</div></div>`).join('');
-      const recent = recs.slice(0,6);
-      $$('a-recent').innerHTML = recent.length ? `
-      <div style="font-weight:700;font-size:var(--text-base);margin-bottom:var(--space-4);">Recent Activity</div>
-      <div class="table-wrap"><table><thead><tr><th>Name</th><th>Course</th><th>Score</th><th>Date</th></tr></thead><tbody>
-        ${recent.map(r=>{const c=courses.find(x=>x.id===r.cid);return`<tr><td>${esc(r.learner)}</td><td>${esc(c?.title||'Unknown')}</td><td><span class="chip ${r.passed?'chip-green':'chip-red'}">${r.score}%</span></td><td>${new Date(r.date).toLocaleDateString()}</td></tr>`;}).join('')}
-      </tbody></table></div>` : '<p style="color:var(--ink-4);font-size:var(--text-sm);">No activity yet.</p>';
+
+      // ── Learner activity table ───────────────────────────────────────────────
+      App._dashLearners = learners;
+      App._openLearners.clear();
+      if (!learners.length) {
+        $$('a-recent').innerHTML = '<p style="color:var(--ink-4);font-size:var(--text-sm);margin-top:var(--space-8);">No learner accounts yet.</p>';
+      } else {
+        $$('a-recent').innerHTML = `
+          <div style="font-weight:700;font-size:var(--text-base);margin:var(--space-8) 0 var(--space-4);">Learner Activity</div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Name</th><th>Last Login</th><th>Started</th><th>Completed</th><th>Avg Score</th></tr></thead>
+            <tbody id="a-learner-tbody">${App._buildLearnerRows()}</tbody>
+          </table></div>`;
+      }
+
+      // ── Course activity table ────────────────────────────────────────────────
+      $$('a-course-stats').innerHTML = !courses.length ? '' : `
+        <div style="font-weight:700;font-size:var(--text-base);margin:var(--space-8) 0 var(--space-4);">Course Activity</div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Course</th><th>Enrolled</th><th>Completed</th><th>Avg Score</th><th>Pass Rate</th></tr></thead>
+          <tbody>${courses.map(c=>`<tr>
+            <td>${esc(c.title)}</td>
+            <td>${c.enrolled}</td>
+            <td>${c.completed}</td>
+            <td>${c.avg_score != null ? c.avg_score+'%' : '—'}</td>
+            <td><span class="chip ${c.pass_rate>=80?'chip-green':'chip-red'}">${c.pass_rate}%</span></td>
+          </tr>`).join('')}</tbody>
+        </table></div>`;
     } catch (e) {
       $$('a-stats').innerHTML = `<div class="empty-hint" style="color:var(--fail);">${esc(e.message)}</div>`;
     }
+  },
+
+  _openLearners: new Set(),
+  _dashLearners: [],
+
+  _buildLearnerRows() {
+    return (App._dashLearners || []).map(l => {
+      const open = App._openLearners.has(l.id);
+      const loginStr = l.last_login_at ? new Date(l.last_login_at*1000).toLocaleDateString() : '—';
+      let html = `<tr style="cursor:pointer;" onclick="App._toggleLearner('${l.id}')">
+        <td><span style="margin-right:6px;color:var(--ink-4);">${open?'▾':'▸'}</span>${esc(l.name)}</td>
+        <td>${loginStr}</td>
+        <td>${l.courses_started}</td>
+        <td>${l.courses_completed}</td>
+        <td>${l.avg_score != null ? l.avg_score+'%' : '—'}</td>
+      </tr>`;
+      if (open && l.modules.length) {
+        html += l.modules.map(m=>`<tr style="background:var(--rule-2);">
+          <td colspan="2" style="padding-left:var(--space-10);font-size:var(--text-sm);color:var(--ink-3);">
+            <span style="color:${m.passed?'var(--pass)':'var(--fail)'};">${m.passed?'✓':'✗'}</span>
+            ${esc(m.course_title)} — ${esc(m.module_title)}
+          </td>
+          <td colspan="2" style="font-size:var(--text-sm);color:var(--ink-3);">${m.score}%</td>
+          <td style="font-size:var(--text-xs);color:var(--ink-4);">${m.completed_at?new Date(m.completed_at*1000).toLocaleDateString():'—'}</td>
+        </tr>`).join('');
+      }
+      return html;
+    }).join('');
+  },
+
+  _toggleLearner(id) {
+    if (App._openLearners.has(id)) App._openLearners.delete(id);
+    else App._openLearners.add(id);
+    const tbody = $$('a-learner-tbody');
+    if (tbody) tbody.innerHTML = App._buildLearnerRows();
   },
 
   async renderACourses() {
@@ -1838,16 +1892,29 @@ const App = {
       }
       curCourse = course;
       curModIdx = 0; quizSt = {};
+      // Restore saved module progress from server
+      if (getLearnerToken()) {
+        try {
+          const progress = await learnerApi(`/api/progress/${cid}`);
+          curCourse.mods.forEach((m, i) => {
+            const p = progress.find(r => r.module_id === m.id);
+            if (p) quizSt[i] = { done: true, passed: p.passed, score: p.score, ans: [], session: null };
+          });
+        } catch(e) { console.warn('Could not load module progress:', e); }
+      }
       $$('ch-meta').textContent = curCourse.title;
       App.show('screen-course');
       App.renderModNav();
-      App.loadMod(0);
+      // Start at first incomplete (not yet passed) module
+      const firstIncomplete = curCourse.mods.findIndex((_,i) => !quizSt[i]?.passed);
+      App.loadMod(firstIncomplete >= 0 ? firstIncomplete : 0);
     } catch (e) {
       Toast.err('Could not load course: ' + e.message);
     }
   },
 
   exitCourse() { App.show('screen-learner'); App.lNav('courses'); },
+  retakeModule(mi) { delete quizSt[mi]; App.loadMod(mi); },
 
   renderModNav() {
     const list = $$('mod-nav-list');
@@ -1867,7 +1934,7 @@ const App = {
 
   updateProgress() {
     const total = (curCourse.mods||[]).length;
-    const done = Object.keys(quizSt).length;
+    const done = Object.values(quizSt).filter(s => s?.passed).length;
     const pct = total ? Math.round(done/total*100) : 0;
     $$('ch-prog').style.width = pct+'%';
     $$('ch-label').textContent = `${done} / ${total} complete`;
@@ -1878,12 +1945,18 @@ const App = {
     App.renderModNav();
     const mod = curCourse.mods[idx];
     const main = $$('mod-main');
-    if(quizSt[idx]?.done) { App.showModResults(idx); return; }
+    const st = quizSt[idx];
+    // Failed: show results screen with retry option
+    if (st?.done && !st?.passed) { App.showModResults(idx); return; }
+    // Passed: show content with a "already complete" banner
+    const banner = st?.passed ? `<div style="background:var(--pass-lt);border:1px solid var(--pass);border-radius:var(--r);padding:var(--space-4) var(--space-5);margin-bottom:var(--space-6);display:flex;align-items:center;gap:var(--space-3);"><span style="color:var(--pass);font-size:20px;line-height:1;">✓</span><div><strong style="color:var(--pass);">Module Complete</strong> — You passed with ${st.score}%. Retake the quiz below to improve your score.</div></div>` : '';
+    const btnLabel = st?.passed ? 'Retake Competency Check' : 'Begin Competency Check →';
     main.innerHTML = `<div class="module-prose">
+      ${banner}
       ${mod.content || `<h2>${esc(mod.title)}</h2><p>Study this module carefully before attempting the competency check.</p>`}
       <div style="border-top:1px solid var(--rule);margin-top:var(--space-10);padding-top:var(--space-8);text-align:center;">
         <p style="color:var(--ink-3);margin-bottom:var(--space-5);">${(mod.questions||[]).length} question${(mod.questions||[]).length!==1?'s':''} in the competency check.</p>
-        <button class="btn btn-primary btn-lg" onclick="App.startQuiz(${idx})">Begin Competency Check →</button>
+        <button class="btn btn-primary btn-lg" onclick="App.startQuiz(${idx})">${btnLabel}</button>
       </div>
     </div>`;
   },
@@ -1893,6 +1966,10 @@ const App = {
     if (!qs.length) {
       quizSt[idx] = { done:true, passed:true, score:100, ans:[], session:null };
       App.renderModNav(); App.checkDone();
+      learnerApi('/api/progress', {
+        method: 'POST',
+        body: JSON.stringify({ module_id: curCourse.mods[idx].id, course_id: curCourse.id, passed: true, score: 100 }),
+      }).catch(e => console.warn('module progress save failed', e));
       App.loadMod(idx + 1 < curCourse.mods.length ? idx + 1 : idx);
       return;
     }
@@ -1965,6 +2042,11 @@ const App = {
     App.renderModNav();
     App.showModResults(mi);
     App.checkDone();
+    // Persist module result to server
+    learnerApi('/api/progress', {
+      method: 'POST',
+      body: JSON.stringify({ module_id: curCourse.mods[mi].id, course_id: curCourse.id, passed, score }),
+    }).catch(e => console.warn('module progress save failed', e));
   },
 
   showModResults(mi) {
@@ -1987,7 +2069,7 @@ const App = {
       <div class="results-title">${st.passed?'Module Complete':'Keep Studying'}</div>
       <div class="results-sub">${st.passed?`You passed <em>${esc(mod.title)}</em> with ${st.score}%.`:`You scored ${st.score}%. Review the material and try again.`}</div>
       <div style="display:flex;gap:var(--space-3);justify-content:center;flex-wrap:wrap;">
-        ${!st.passed?`<button class="btn btn-outline btn-lg" onclick="App.loadMod(${mi})">Review & Retry</button>`:''}
+        ${!st.passed?`<button class="btn btn-outline btn-lg" onclick="App.retakeModule(${mi})">Review & Retry</button>`:''}
         ${st.passed&&!isLast?`<button class="btn btn-primary btn-lg" onclick="App.loadMod(${mi+1})">Next Module →</button>`:''}
         ${st.passed&&isLast?`<button class="btn btn-primary btn-lg" onclick="App.courseComplete()">Get Certificate →</button>`:''}
       </div>
@@ -1995,10 +2077,10 @@ const App = {
   },
 
   checkDone() {
-    const allDone = (curCourse.mods||[]).every((_,i) => quizSt[i]?.done);
-    if (!allDone) return;
-    const allAns = Object.values(quizSt).flatMap(s => s.ans || []);
-    const score  = allAns.length ? Math.round(allAns.filter(a=>a.ok).length / allAns.length * 100) : 100;
+    const allPassed = (curCourse.mods||[]).every((_,i) => quizSt[i]?.passed);
+    if (!allPassed) return;
+    const modScores = (curCourse.mods||[]).map((_,i) => quizSt[i]?.score ?? 0);
+    const score  = modScores.length ? Math.round(modScores.reduce((a,b)=>a+b,0) / modScores.length) : 100;
     const passed = score >= (brandCache.pass || 80);
     learnerApi('/api/completions', {
       method: 'POST',
