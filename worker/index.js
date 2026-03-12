@@ -804,6 +804,71 @@ app.post('/api/progress', learnerAuth, async (c) => {
   return c.json({ ok: true })
 })
 
+// ── POST /api/ai/generate ───────────────────────────────────────────────────
+
+app.post('/api/ai/generate', adminAuth, async (c) => {
+  const body = await c.req.json().catch(() => null)
+  const { type, title, content, qCount, difficulty, focus } = body || {}
+  
+  if (!type || !content) return c.json({ error: 'type and content are required' }, 400)
+  if (!c.env.GEMINI_API_KEY) return c.json({ error: 'GEMINI_API_KEY not configured' }, 500)
+
+  let prompt = ''
+  if (type === 'questions') {
+    const focusInstructions = {
+      general: 'Test comprehension of the key concepts presented.',
+      support: 'Focus on how a support agent would handle real situations described in this content.',
+      process: 'Focus on the correct sequence of steps and workflows.',
+      technical: 'Focus on specific values, limits, and technical requirements.'
+    }
+    const diffInstructions = {
+      foundational: 'Test basic recall and recognition. Clear right/wrong answers.',
+      applied: 'Test if the learner can apply the content. Include scenario-based questions.',
+      analytical: 'Test judgment and edge cases. Include nuanced understanding.'
+    }
+    prompt = `Write ${qCount || 5} multiple-choice quiz questions for a training module.
+MODULE: ${title || 'Untitled'}
+CONTENT: ${content.slice(0, 4000)}
+RULES:
+- ${focusInstructions[focus || 'general']}
+- ${diffInstructions[difficulty || 'applied']}
+- Each question has exactly 4 options.
+- Keep explanations under 20 words.
+- Respond with a JSON array only: [{"question":"","options":["","","",""],"correct_index":0,"explanation":""}]`
+  } else if (type === 'summary') {
+    prompt = `Write a learner-friendly summary of this module.
+MODULE: ${title || 'Untitled'}
+SOURCE CONTENT: ${content.slice(0, 4000)}
+Respond with a JSON object only:
+{
+  "intro": "2-3 sentence plain-English overview.",
+  "bullets": ["Key point 1", "Key point 2", "Key point 3", "Key point 4", "Key point 5"]
+}`
+  } else {
+    return c.json({ error: 'Invalid generation type' }, 400)
+  }
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${c.env.GEMINI_API_KEY}`
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { response_mime_type: 'application/json' },
+    }),
+  })
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ error: response.statusText }))
+    throw new Error(err.error?.message || response.statusText)
+  }
+
+  const data = await response.json()
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text
+  if (!text) throw new Error('No content returned from Gemini')
+  return c.json(JSON.parse(text))
+})
+
 // ── GET /api/admin/stats ──────────────────────────────────────────────────────
 // One-call dashboard: summary tiles + learner activity + course activity.
 
