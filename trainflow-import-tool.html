@@ -1,0 +1,1342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TrainFlow — Content Importer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: #1a1917; --ink-2: #44403c; --ink-3: #78716c; --ink-4: #a8a29e;
+  --rule: #e7e5e4; --rule-2: #f5f4f2; --canvas: #fafaf9; --white: #ffffff;
+  --accent: #2563eb; --accent-lt: #eff4ff; --accent-md: #bfcfff;
+  --pass: #15803d; --pass-lt: #f0fdf4;
+  --fail: #b91c1c; --fail-lt: #fef2f2;
+  --warn: #b45309; --warn-lt: #fffbeb;
+  --brand-1: #2563eb; --brand-2: #1d4ed8;
+  --text-xs: 11px; --text-sm: 13px; --text-base: 15px; --text-md: 17px;
+  --text-lg: 20px; --text-xl: 26px; --text-2xl: 34px;
+  --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:20px;
+  --space-6:24px;--space-8:32px;--space-10:40px;--space-12:48px;--space-16:64px;
+  --r-sm:4px;--r:8px;--r-lg:12px;--r-xl:16px;--r-full:9999px;
+  --shadow-xs:0 1px 2px rgba(0,0,0,0.05);
+  --shadow-sm:0 1px 3px rgba(0,0,0,0.08),0 1px 2px rgba(0,0,0,0.04);
+  --shadow:0 4px 12px rgba(0,0,0,0.06),0 1px 3px rgba(0,0,0,0.04);
+  --shadow-lg:0 12px 40px rgba(0,0,0,0.1),0 2px 6px rgba(0,0,0,0.04);
+  --shadow-xl:0 24px 80px rgba(0,0,0,0.14);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{height:100%;scroll-behavior:smooth}
+body{font-family:'Outfit',sans-serif;font-size:var(--text-base);background:var(--canvas);color:var(--ink);line-height:1.6;min-height:100vh;-webkit-font-smoothing:antialiased}
+button{cursor:pointer;font-family:inherit}
+input,select,textarea{font-family:inherit}
+.hidden{display:none!important}
+::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--rule);border-radius:var(--r-full)}
+
+.topbar{background:var(--white);border-bottom:1px solid var(--rule);height:58px;display:flex;align-items:center;padding:0 var(--space-8);gap:var(--space-6);position:sticky;top:0;z-index:100;box-shadow:var(--shadow-xs)}
+.brand{display:flex;align-items:center;gap:10px;font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:700;letter-spacing:-0.01em;color:var(--ink);white-space:nowrap}
+.brand-sep{width:1px;height:20px;background:var(--rule);margin:0 var(--space-2)}
+.brand-sub{font-family:'Outfit',sans-serif;font-size:var(--text-sm);font-weight:500;color:var(--ink-3);letter-spacing:0}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:var(--space-3)}
+
+.main-wrap{max-width:960px;margin:0 auto;padding:var(--space-10) var(--space-8) var(--space-16)}
+.page-eyebrow{font-size:var(--text-xs);font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--brand-1);margin-bottom:var(--space-2)}
+.page-title{font-family:'Cormorant Garamond',serif;font-size:var(--text-2xl);font-weight:700;letter-spacing:-0.02em;color:var(--ink);line-height:1.15;margin-bottom:var(--space-2)}
+.page-sub{font-size:var(--text-base);color:var(--ink-3);font-weight:400;margin-bottom:var(--space-8)}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2);padding:9px 20px;border-radius:var(--r);border:1.5px solid transparent;font-size:var(--text-sm);font-weight:600;letter-spacing:0.01em;transition:all 0.15s;white-space:nowrap;user-select:none;text-decoration:none;line-height:1}
+.btn-primary{background:var(--brand-1);color:var(--white);border-color:var(--brand-1)}
+.btn-primary:hover{background:var(--brand-2);border-color:var(--brand-2);box-shadow:0 4px 14px rgba(37,99,235,0.3);transform:translateY(-1px)}
+.btn-outline{background:var(--white);color:var(--ink-2);border-color:var(--rule);box-shadow:var(--shadow-xs)}
+.btn-outline:hover{border-color:var(--ink-4);background:var(--canvas)}
+.btn-ghost{background:transparent;color:var(--ink-3);border-color:transparent}
+.btn-ghost:hover{background:var(--rule-2);color:var(--ink)}
+.btn-success{background:var(--pass-lt);color:var(--pass);border-color:#bbf7d0}
+.btn-success:hover{background:var(--pass);color:var(--white)}
+.btn-sm{padding:6px 14px;font-size:var(--text-xs);border-radius:var(--r-sm)}
+.btn-lg{padding:13px 28px;font-size:var(--text-base);border-radius:var(--r-lg)}
+.btn:disabled{opacity:0.45;cursor:not-allowed;transform:none!important;box-shadow:none!important}
+
+label{display:block;font-size:var(--text-xs);font-weight:600;color:var(--ink-3);letter-spacing:0.07em;text-transform:uppercase;margin-bottom:6px}
+.field{margin-bottom:var(--space-5)}
+input[type=text],input[type=number],textarea,select{width:100%;background:var(--white);border:1.5px solid var(--rule);color:var(--ink);border-radius:var(--r);padding:10px 14px;font-size:var(--text-sm);transition:border-color 0.15s,box-shadow 0.15s;box-shadow:var(--shadow-xs);appearance:none}
+input:focus,textarea:focus,select:focus{outline:none;border-color:var(--brand-1);box-shadow:0 0 0 3px rgba(37,99,235,0.12)}
+textarea{resize:vertical;min-height:80px;line-height:1.6}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23a8a29e' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+
+.card{background:var(--white);border:1px solid var(--rule);border-radius:var(--r-lg);padding:var(--space-6);box-shadow:var(--shadow-xs)}
+.card+.card{margin-top:var(--space-4)}
+.divider{height:1px;background:var(--rule);margin:var(--space-6) 0}
+
+.chip{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:var(--r-full);font-size:var(--text-xs);font-weight:600;letter-spacing:0.04em}
+.chip-blue{background:var(--accent-lt);color:var(--accent);border:1px solid var(--accent-md)}
+.chip-green{background:var(--pass-lt);color:var(--pass);border:1px solid #bbf7d0}
+.chip-amber{background:var(--warn-lt);color:var(--warn);border:1px solid #fde68a}
+.chip-gray{background:var(--rule-2);color:var(--ink-3);border:1px solid var(--rule)}
+
+.upload-zone{border:2px dashed var(--rule);border-radius:var(--r-lg);padding:var(--space-12) var(--space-8);text-align:center;cursor:pointer;transition:all 0.15s;background:var(--canvas)}
+.upload-zone:hover,.upload-zone.drag-active{border-color:var(--brand-1);background:var(--accent-lt)}
+.upload-icon{font-size:36px;margin-bottom:var(--space-3);opacity:0.6}
+.upload-text{font-weight:600;color:var(--ink-2);margin-bottom:4px}
+.upload-hint{font-size:var(--text-sm);color:var(--ink-4)}
+
+.progress-track{background:var(--rule);border-radius:var(--r-full);overflow:hidden}
+.progress-fill{height:100%;border-radius:var(--r-full);background:var(--brand-1);transition:width 0.5s cubic-bezier(0.4,0,0.2,1)}
+
+.step-row{display:flex;gap:var(--space-3);margin-bottom:var(--space-8);align-items:center}
+.step{display:flex;align-items:center;gap:var(--space-2);font-size:var(--text-sm);font-weight:500;color:var(--ink-4)}
+.step.active{color:var(--brand-1)}
+.step.done{color:var(--pass)}
+.step-num{width:24px;height:24px;border-radius:var(--r-full);border:1.5px solid currentColor;display:flex;align-items:center;justify-content:center;font-size:var(--text-xs);font-weight:700;flex-shrink:0}
+.step-sep{flex:1;height:1px;background:var(--rule);max-width:40px}
+
+.table-wrap{background:var(--white);border:1px solid var(--rule);border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--shadow-xs)}
+table{width:100%;border-collapse:collapse}
+thead th{background:var(--canvas);padding:10px 16px;text-align:left;font-size:var(--text-xs);font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.06em;border-bottom:1px solid var(--rule)}
+tbody td{padding:12px 16px;border-bottom:1px solid var(--rule-2);font-size:var(--text-sm);color:var(--ink-2)}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:var(--rule-2)}
+
+.mod-card{background:var(--white);border:1px solid var(--rule);border-radius:var(--r-lg);margin-bottom:var(--space-3);overflow:hidden;transition:box-shadow 0.15s}
+.mod-card:hover{box-shadow:var(--shadow)}
+.mod-head{display:flex;align-items:center;gap:var(--space-3);padding:var(--space-4) var(--space-5);background:var(--canvas);cursor:pointer}
+.mod-head:hover{background:var(--rule-2)}
+.mod-body{padding:var(--space-5);border-top:1px solid var(--rule);display:none}
+.mod-body.open{display:block}
+
+.q-item{background:var(--rule-2);border-radius:var(--r);padding:var(--space-3) var(--space-4);margin-bottom:var(--space-2);font-size:var(--text-sm)}
+.q-item-text{color:var(--ink-2);margin-bottom:var(--space-2);font-weight:500}
+.q-opts{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2)}
+.q-opt{font-size:var(--text-xs);color:var(--ink-3);padding:3px 0;display:flex;gap:5px;align-items:flex-start}
+.q-opt.correct{color:var(--pass);font-weight:600}
+.q-opt-ltr{font-weight:700;flex-shrink:0;width:14px}
+
+.status-bar{padding:var(--space-4) var(--space-5);background:var(--accent-lt);border:1px solid var(--accent-md);border-radius:var(--r-lg);margin-bottom:var(--space-4);display:flex;align-items:center;gap:var(--space-3)}
+.status-bar.error{background:var(--fail-lt);border-color:#fecaca}
+.status-bar.success{background:var(--pass-lt);border-color:#bbf7d0}
+.status-bar.warning{background:var(--warn-lt);border-color:#fde68a}
+
+.spinner{width:16px;height:16px;border:2px solid var(--accent-md);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.gen-progress{background:var(--white);border:1px solid var(--rule);border-radius:var(--r-lg);padding:var(--space-5);margin-top:var(--space-4)}
+.gen-row{display:flex;align-items:center;gap:var(--space-3);padding:var(--space-2) 0;font-size:var(--text-sm);color:var(--ink-3)}
+.gen-row.done{color:var(--pass)}
+.gen-row.active{color:var(--brand-1)}
+.gen-row.pending{color:var(--ink-4)}
+.gen-dot{width:8px;height:8px;border-radius:50%;background:currentColor;flex-shrink:0}
+
+#toast-root{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{background:var(--ink);color:var(--white);padding:11px 16px;border-radius:var(--r-lg);font-size:var(--text-sm);font-weight:500;display:flex;align-items:center;gap:8px;box-shadow:var(--shadow-lg);animation:slideUp 0.25s ease;max-width:340px;pointer-events:auto}
+.toast.t-success{background:#14532d}.toast.t-error{background:#7f1d1d}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4)}
+@media(max-width:640px){.two-col{grid-template-columns:1fr}}
+.section{animation:fadeUp 0.25s ease both}
+</style>
+</head>
+<body>
+
+<div id="toast-root"></div>
+
+<div class="topbar">
+  <div class="brand">
+    TrainFlow
+    <div class="brand-sep"></div>
+    <span class="brand-sub">Content Importer</span>
+  </div>
+  <div class="topbar-right">
+    <a href="#" class="btn btn-ghost btn-sm" onclick="showHelp()">How to use</a>
+  </div>
+</div>
+
+<div class="main-wrap">
+
+  <!-- Step indicator -->
+  <div class="step-row" id="steps-row">
+    <div class="step active" id="step-1"><div class="step-num">1</div>Upload</div>
+    <div class="step-sep"></div>
+    <div class="step" id="step-2"><div class="step-num">2</div>Configure</div>
+    <div class="step-sep"></div>
+    <div class="step" id="step-3"><div class="step-num">3</div>Generate</div>
+    <div class="step-sep"></div>
+    <div class="step" id="step-4"><div class="step-num">4</div>Review & Export</div>
+  </div>
+
+  <!-- ── PHASE 1: Upload ── -->
+  <div id="phase-upload" class="section">
+    <div class="page-eyebrow">Step 1</div>
+    <div class="page-title">Build your course modules</div>
+    <div class="page-sub">Add one or more Markdown files. Each file becomes a module in your course. Name them, reorder them, then generate — all questions export as a single CSV.</div>
+
+    <!-- Drop zone -->
+    <div class="upload-zone" id="drop-zone"
+      onclick="document.getElementById('md-file-input').click()"
+      ondragover="event.preventDefault();this.classList.add('drag-active')"
+      ondragleave="this.classList.remove('drag-active')"
+      ondrop="handleDrop(event)">
+      <div class="upload-icon">📂</div>
+      <div class="upload-text">Drop Markdown files here or click to browse</div>
+      <div class="upload-hint">Add multiple .md files — each becomes one module · Drop more files any time to add more</div>
+    </div>
+    <input type="file" id="md-file-input" accept=".md,.markdown,.txt" multiple class="hidden" onchange="handleFileSelect(event)">
+
+    <!-- Module list -->
+    <div id="file-module-list" style="margin-top:var(--space-5)"></div>
+
+    <!-- Continue button — shown once at least one file is loaded -->
+    <div id="upload-actions" class="hidden" style="margin-top:var(--space-5);display:flex;align-items:center;gap:var(--space-3)">
+      <button class="btn btn-primary btn-lg" onclick="proceedFromUpload()">Configure course →</button>
+      <span id="upload-module-count" style="font-size:var(--text-sm);color:var(--ink-3)"></span>
+    </div>
+
+    <!-- Paste fallback -->
+    <div style="margin-top:var(--space-8);padding-top:var(--space-6);border-top:1px solid var(--rule)">
+      <div style="font-size:var(--text-xs);font-weight:700;color:var(--ink-4);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:var(--space-3);">Or paste a single Markdown file</div>
+      <div style="display:flex;gap:var(--space-3);align-items:flex-start">
+        <div style="flex:1">
+          <textarea id="md-paste" placeholder="## Module Title&#10;&#10;Your content here...&#10;&#10;## Another Module&#10;&#10;More content — each ## heading becomes a separate module." style="min-height:120px;font-family:monospace;font-size:13px;"></textarea>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:var(--space-2);padding-top:2px">
+          <input type="text" id="paste-module-name" placeholder="Module name (optional)" style="width:200px;font-size:var(--text-sm)">
+          <button class="btn btn-outline btn-sm" onclick="loadFromPaste()">Add as module →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PHASE 2: Configure ── -->
+  <div id="phase-configure" class="section hidden">
+    <div class="page-eyebrow">Step 2</div>
+    <div class="page-title">Configure your course</div>
+    <div class="page-sub">Review how your Markdown was parsed into modules, then set course details and quiz generation settings.</div>
+
+    <div id="parse-status" class="status-bar">
+      <div class="spinner"></div>
+      <span>Parsing document…</span>
+    </div>
+
+    <div class="two-col">
+      <div class="card">
+        <div style="font-weight:700;font-size:var(--text-md);margin-bottom:var(--space-1);">Course details</div>
+        <div style="font-size:var(--text-sm);color:var(--ink-3);margin-bottom:var(--space-5);">This will appear in TrainFlow.</div>
+        <div class="field"><label>Course Title</label><input type="text" id="course-title" placeholder="e.g. Product Support Certification"></div>
+        <div class="field"><label>Icon (emoji)</label><input type="text" id="course-icon" placeholder="📋" maxlength="4" style="max-width:80px"></div>
+        <div class="field"><label>Description</label><textarea id="course-desc" placeholder="Brief description for learners…" style="min-height:60px"></textarea></div>
+      </div>
+      <div class="card">
+        <div style="font-weight:700;font-size:var(--text-md);margin-bottom:var(--space-1);">Quiz settings</div>
+        <div style="font-size:var(--text-sm);color:var(--ink-3);margin-bottom:var(--space-5);">AI-generated questions per module.</div>
+        <div class="field">
+          <label>Questions per module</label>
+          <select id="q-per-mod">
+            <option value="3">3 questions (quick check)</option>
+            <option value="5" selected>5 questions (standard)</option>
+            <option value="8">8 questions (thorough)</option>
+            <option value="10">10 questions (deep dive)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Difficulty</label>
+          <select id="q-difficulty">
+            <option value="foundational">Foundational — recall and recognition</option>
+            <option value="applied" selected>Applied — understanding and application</option>
+            <option value="analytical">Analytical — edge cases and judgment</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Focus area</label>
+          <select id="q-focus">
+            <option value="general">General comprehension</option>
+            <option value="support">Support scenarios — how to handle common issues</option>
+            <option value="process">Process and procedures — steps and workflows</option>
+            <option value="technical">Technical specs — features, limits, requirements</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:var(--space-4)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3);">
+        <div style="font-weight:700;font-size:var(--text-base);">Parsed modules</div>
+        <span class="chip chip-blue" id="mod-count-chip">0 modules</span>
+      </div>
+      <div id="module-preview"></div>
+    </div>
+
+    <div style="margin-top:var(--space-6);display:flex;gap:var(--space-3);">
+      <button class="btn btn-ghost" onclick="goBackToUpload()">← Back</button>
+      <button class="btn btn-primary btn-lg" id="btn-generate" onclick="startGeneration()">Generate quiz questions →</button>
+    </div>
+  </div>
+
+  <!-- ── PHASE 3: Generate ── -->
+  <div id="phase-generate" class="section hidden">
+    <div class="page-eyebrow">Step 3</div>
+    <div class="page-title">Generating course content</div>
+    <div class="page-sub">Two passes per module: quiz questions first, then a learner summary. About 15–30 seconds per module.</div>
+
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-2);">
+        <div style="font-weight:700;" id="gen-pass-label">Pass 1 of 2 — Quiz questions</div>
+        <span id="gen-progress-label" style="font-size:var(--text-sm);color:var(--ink-3);">0 of 0</span>
+      </div>
+      <div style="font-size:var(--text-xs);color:var(--ink-4);margin-bottom:var(--space-4)" id="gen-pass-sub">Writing multiple-choice questions for each module…</div>
+      <div class="progress-track" style="height:6px;margin-bottom:var(--space-5);">
+        <div class="progress-fill" id="gen-prog-bar" style="width:0%"></div>
+      </div>
+      <div id="gen-module-list"></div>
+    </div>
+
+    <div id="gen-error" class="status-bar error hidden" style="margin-top:var(--space-4)">
+      <span>⚠</span>
+      <div>
+        <div style="font-weight:600;color:var(--fail)">Generation failed</div>
+        <div id="gen-error-msg" style="font-size:var(--text-sm);color:var(--ink-2);margin-top:2px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PHASE 4: Review & Export ── -->
+  <div id="phase-export" class="section hidden">
+    <div class="page-eyebrow">Step 4</div>
+    <div class="page-title">Review & export</div>
+    <div class="page-sub">Download the CSV for TrainFlow and the Study Guide for learners to read before taking each module's quiz.</div>
+
+    <div class="status-bar success" style="margin-bottom:var(--space-6);">
+      <span style="font-size:20px;line-height:1">✓</span>
+      <div>
+        <div style="font-weight:600;color:var(--pass)" id="export-summary">Course ready</div>
+        <div style="font-size:var(--text-sm);color:var(--ink-2);margin-top:2px;">Questions and summaries generated — download both files below</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="goPhase(2)">← Edit</button>
+    </div>
+
+    <!-- Downloads row -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4);margin-bottom:var(--space-4)">
+      <!-- Step 1: CSV -->
+      <div class="card" style="border:1.5px solid var(--brand-1)">
+        <div style="display:flex;align-items:flex-start;gap:var(--space-3);margin-bottom:var(--space-4)">
+          <div style="width:32px;height:32px;border-radius:var(--r-full);background:var(--brand-1);color:white;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px">1</div>
+          <div>
+            <div style="font-weight:700">Questions CSV</div>
+            <div style="font-size:var(--text-sm);color:var(--ink-3);margin-top:2px;line-height:1.5">Import into TrainFlow via <strong>Courses → New Course → ↑ Import CSV</strong></div>
+          </div>
+        </div>
+        <button class="btn btn-primary" style="width:100%" onclick="exportCSV()">↓ Download CSV</button>
+      </div>
+
+      <!-- Step 2: Study Guide -->
+      <div class="card" style="border:1.5px solid #059669">
+        <div style="display:flex;align-items:flex-start;gap:var(--space-3);margin-bottom:var(--space-4)">
+          <div style="width:32px;height:32px;border-radius:var(--r-full);background:#059669;color:white;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px">2</div>
+          <div>
+            <div style="font-weight:700">Study Guide HTML</div>
+            <div style="font-size:var(--text-sm);color:var(--ink-3);margin-top:2px;line-height:1.5">Share with learners, or paste each module's content into TrainFlow's module editor</div>
+          </div>
+        </div>
+        <button class="btn btn-success" style="width:100%;background:#059669;color:white;border-color:#059669" onclick="exportStudyGuide()">↓ Download Study Guide</button>
+      </div>
+    </div>
+
+    <!-- Step 3: Course details to copy -->
+    <div class="card" style="margin-bottom:var(--space-6)">
+      <div style="display:flex;align-items:flex-start;gap:var(--space-4);margin-bottom:var(--space-5)">
+        <div style="width:32px;height:32px;border-radius:var(--r-full);background:var(--rule);color:var(--ink-2);font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">3</div>
+        <div>
+          <div style="font-weight:700">Fill in course details in TrainFlow</div>
+          <div style="font-size:var(--text-sm);color:var(--ink-3);margin-top:2px">After CSV import, the Title and Description fields will be blank. Copy these in.</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4)">
+        <div>
+          <div style="font-size:var(--text-xs);font-weight:700;color:var(--ink-4);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:var(--space-2)">Title</div>
+          <div style="display:flex;align-items:center;gap:var(--space-2)">
+            <div id="copy-title-val" style="flex:1;background:var(--rule-2);border:1px solid var(--rule);border-radius:var(--r);padding:8px 12px;font-size:var(--text-sm);font-weight:500;color:var(--ink)"></div>
+            <button class="btn btn-outline btn-sm" onclick="copyField('copy-title-val','btn-copy-title')" id="btn-copy-title">Copy</button>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:var(--text-xs);font-weight:700;color:var(--ink-4);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:var(--space-2)">Icon</div>
+          <div style="display:flex;align-items:center;gap:var(--space-2)">
+            <div id="copy-icon-val" style="flex:1;background:var(--rule-2);border:1px solid var(--rule);border-radius:var(--r);padding:8px 12px;font-size:var(--text-sm);font-weight:500;color:var(--ink)"></div>
+            <button class="btn btn-outline btn-sm" onclick="copyField('copy-icon-val','btn-copy-icon')" id="btn-copy-icon">Copy</button>
+          </div>
+        </div>
+        <div style="grid-column:1/-1">
+          <div style="font-size:var(--text-xs);font-weight:700;color:var(--ink-4);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:var(--space-2)">Description</div>
+          <div style="display:flex;align-items:flex-start;gap:var(--space-2)">
+            <div id="copy-desc-val" style="flex:1;background:var(--rule-2);border:1px solid var(--rule);border-radius:var(--r);padding:8px 12px;font-size:var(--text-sm);color:var(--ink);line-height:1.5;min-height:48px"></div>
+            <button class="btn btn-outline btn-sm" onclick="copyField('copy-desc-val','btn-copy-desc')" id="btn-copy-desc">Copy</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="review-modules"></div>
+  </div>
+
+</div>
+
+<!-- Help modal -->
+<div id="help-modal" class="hidden" style="position:fixed;inset:0;z-index:400;background:rgba(26,25,23,0.5);display:flex;align-items:center;justify-content:center;padding:var(--space-5);backdrop-filter:blur(3px)">
+  <div style="background:var(--white);border-radius:var(--r-xl);width:100%;max-width:560px;max-height:85vh;overflow-y:auto;box-shadow:var(--shadow-xl)">
+    <div style="padding:var(--space-6) var(--space-8) var(--space-5);border-bottom:1px solid var(--rule);display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:var(--text-xl);font-weight:700">How to use the Importer</div>
+        <div style="font-size:var(--text-sm);color:var(--ink-3);margin-top:4px">Markdown formatting guide</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="hideHelp()">✕</button>
+    </div>
+    <div style="padding:var(--space-6) var(--space-8);">
+      <div style="font-weight:700;margin-bottom:var(--space-3);">Two ways to build a course</div>
+      <p style="font-size:var(--text-sm);color:var(--ink-2);margin-bottom:var(--space-2);line-height:1.8;"><strong>Multiple files:</strong> Drop several .md files — each becomes one named module. Reorder them freely before generating.</p>
+      <p style="font-size:var(--text-sm);color:var(--ink-2);margin-bottom:var(--space-4);line-height:1.8;"><strong>Single file:</strong> Use <code>##</code> headings — each section becomes a module automatically.</p>
+      <div style="font-weight:700;margin-bottom:var(--space-3);">Recommended structure</div>
+      <pre style="background:var(--rule-2);border-radius:var(--r);padding:var(--space-4);font-size:12px;line-height:1.8;overflow-x:auto;color:var(--ink-2)">## Product Overview
+
+Brief intro paragraph here. Cover the main purpose
+and key value propositions.
+
+### Key Features
+- Feature 1: description
+- Feature 2: description
+
+## Pricing & Plans
+
+Explain the pricing structure...
+
+| Plan | Price | Limits |
+|------|-------|--------|
+| Free | $0    | 10 users |
+
+## Common Support Issues
+
+Document the most frequent tickets...</pre>
+      <div style="margin-top:var(--space-5);font-weight:700;margin-bottom:var(--space-3);">Tips for better questions</div>
+      <ul style="font-size:var(--text-sm);color:var(--ink-2);padding-left:var(--space-5);line-height:2;">
+        <li>Include specific numbers, limits, and thresholds in your docs</li>
+        <li>Document procedures as numbered steps</li>
+        <li>Include FAQ-style content — AI turns these into great questions</li>
+        <li>Tables with specs generate strong technical questions</li>
+        <li>Aim for 300–800 words per module section</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+const CLAUDE_API = 'https://api.anthropic.com/v1/messages';
+
+// fileModules: array of { id, name, content(HTML), source }
+// parsedModules: flattened array sent to generation (same shape as before)
+let fileModules = [];   // one entry per uploaded file (or pasted block)
+let parsedModules = []; // flattened for generation
+let generatedCourse = null;
+let isGenerating = false;
+
+function showHelp() { document.getElementById('help-modal').classList.remove('hidden'); }
+function hideHelp() { document.getElementById('help-modal').classList.add('hidden'); }
+
+function toast(msg, type='info') {
+  const el = document.createElement('div');
+  el.className = `toast t-${type}`;
+  el.textContent = msg;
+  document.getElementById('toast-root').appendChild(el);
+  setTimeout(() => { el.style.transition='opacity 0.3s'; el.style.opacity='0'; setTimeout(()=>el.remove(),300); }, 3500);
+}
+
+function goPhase(n) {
+  [1,2,3,4].forEach(i => {
+    document.getElementById(`phase-${['upload','configure','generate','export'][i-1]}`).classList.toggle('hidden', i !== n);
+    const s = document.getElementById(`step-${i}`);
+    s.classList.remove('active','done');
+    if (i < n) s.classList.add('done');
+    else if (i === n) s.classList.add('active');
+  });
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── File handling ─────────────────────────────────────────────────────────────
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.remove('drag-active');
+  const files = Array.from(e.dataTransfer.files).filter(f => /\.(md|markdown|txt)$/i.test(f.name));
+  if (!files.length) { toast('Drop .md files only.', 'error'); return; }
+  files.forEach(f => readAndAddFile(f));
+}
+function handleFileSelect(e) {
+  Array.from(e.target.files).forEach(f => readAndAddFile(f));
+  e.target.value = ''; // allow re-selecting same file
+}
+function readAndAddFile(file) {
+  const reader = new FileReader();
+  reader.onload = ev => addFileModule(ev.target.result, file.name.replace(/\.[^.]+$/, ''));
+  reader.readAsText(file);
+}
+
+function addFileModule(rawMd, defaultName) {
+  // A single .md file can itself contain ## headings — parse those into sub-modules
+  const subModules = parseMdToModules(rawMd, defaultName);
+  const id = Date.now() + Math.random();
+  fileModules.push({ id, name: cleanTitle(defaultName), subModules, source: defaultName });
+  renderFileModuleList();
+}
+
+function loadFromPaste() {
+  const md = document.getElementById('md-paste').value.trim();
+  if (!md) { toast('Paste some Markdown first.', 'error'); return; }
+  const name = document.getElementById('paste-module-name').value.trim() || 'Pasted Content';
+  addFileModule(md, name);
+  document.getElementById('md-paste').value = '';
+  document.getElementById('paste-module-name').value = '';
+  toast(`Added "${name}"`, 'success');
+}
+
+function removeFileModule(id) {
+  fileModules = fileModules.filter(m => m.id !== id);
+  renderFileModuleList();
+}
+
+function moveFileModule(id, dir) {
+  const idx = fileModules.findIndex(m => m.id === id);
+  if (idx === -1) return;
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= fileModules.length) return;
+  [fileModules[idx], fileModules[newIdx]] = [fileModules[newIdx], fileModules[idx]];
+  renderFileModuleList();
+}
+
+function renderFileModuleList() {
+  const el = document.getElementById('file-module-list');
+  const actEl = document.getElementById('upload-actions');
+  const countEl = document.getElementById('upload-module-count');
+
+  if (!fileModules.length) {
+    el.innerHTML = '';
+    actEl.classList.add('hidden');
+    return;
+  }
+
+  const totalMods = fileModules.reduce((s, f) => s + f.subModules.length, 0);
+  countEl.textContent = `${fileModules.length} file${fileModules.length !== 1 ? 's' : ''} · ${totalMods} module${totalMods !== 1 ? 's' : ''} total`;
+  actEl.classList.remove('hidden');
+
+  el.innerHTML = fileModules.map((fm, fi) => `
+    <div style="background:var(--white);border:1px solid var(--rule);border-radius:var(--r-lg);margin-bottom:var(--space-3);overflow:hidden;box-shadow:var(--shadow-xs)">
+      <div style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3) var(--space-4);background:var(--canvas);border-bottom:1px solid var(--rule)">
+        <span style="font-size:18px;cursor:grab;color:var(--ink-4)" title="Drag to reorder">⠿</span>
+        <div style="flex:1;min-width:0">
+          <input type="text" value="${esc(fm.name)}" 
+            onchange="fileModules[${fi}].name = this.value; updateSubModuleNames(${fi})"
+            style="font-weight:600;font-size:var(--text-sm);border:1.5px solid transparent;background:transparent;padding:4px 8px;border-radius:var(--r-sm);width:100%;max-width:360px"
+            onfocus="this.style.borderColor='var(--brand-1)';this.style.background='var(--white)'"
+            onblur="this.style.borderColor='transparent';this.style.background='transparent'">
+          <div style="font-size:var(--text-xs);color:var(--ink-4);margin-top:2px;padding-left:8px">
+            ${fm.subModules.length} section${fm.subModules.length !== 1 ? 's' : ''} · ${fm.subModules.reduce((s,m) => s + wordCount(m.content), 0)} words
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          <button class="btn btn-ghost btn-sm" onclick="moveFileModule(${fm.id},${-1})" ${fi===0?'disabled':''} title="Move up">↑</button>
+          <button class="btn btn-ghost btn-sm" onclick="moveFileModule(${fm.id},${1})" ${fi===fileModules.length-1?'disabled':''} title="Move down">↓</button>
+          <button class="btn btn-ghost btn-sm" style="color:var(--fail)" onclick="removeFileModule(${fm.id})" title="Remove">✕</button>
+        </div>
+      </div>
+      ${fm.subModules.length > 1 ? `
+      <div style="padding:var(--space-3) var(--space-4)">
+        <div style="font-size:var(--text-xs);font-weight:700;color:var(--ink-4);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:var(--space-2)">Sections in this file</div>
+        ${fm.subModules.map((sm, si) => `
+          <div style="display:flex;align-items:center;gap:var(--space-2);padding:5px 0;border-bottom:1px solid var(--rule-2)">
+            <span style="font-size:var(--text-xs);color:var(--ink-4);width:20px;text-align:right;flex-shrink:0">${si+1}</span>
+            <input type="text" value="${esc(sm.title)}"
+              onchange="fileModules[${fi}].subModules[${si}].title = this.value"
+              style="flex:1;font-size:var(--text-sm);border:1.5px solid transparent;background:transparent;padding:3px 8px;border-radius:var(--r-sm)"
+              onfocus="this.style.borderColor='var(--brand-1)';this.style.background='var(--white)'"
+              onblur="this.style.borderColor='transparent';this.style.background='transparent'">
+            <span style="font-size:var(--text-xs);color:var(--ink-4);flex-shrink:0">${wordCount(sm.content)}w</span>
+          </div>`).join('')}
+      </div>` : ''}
+    </div>`).join('');
+}
+
+function updateSubModuleNames(fi) {
+  // If file has only one sub-module, keep its title in sync with the file name
+  const fm = fileModules[fi];
+  if (fm && fm.subModules.length === 1) {
+    fm.subModules[0].title = fm.name;
+  }
+}
+
+function proceedFromUpload() {
+  if (!fileModules.length) { toast('Add at least one file first.', 'error'); return; }
+  // Flatten all sub-modules across all files into parsedModules
+  parsedModules = [];
+  fileModules.forEach(fm => {
+    fm.subModules.forEach(sm => parsedModules.push({ title: sm.title, content: sm.content }));
+  });
+  if (!parsedModules.length) { toast('No content found in uploaded files.', 'error'); return; }
+  populateConfigurePhase();
+  goPhase(2);
+}
+
+// ── Markdown parsing ──────────────────────────────────────────────────────────
+
+// Convert snake_case, kebab-case, or ALLCAPS headings to Title Case
+function cleanTitle(s) {
+  if (/^[\w-]+$/.test(s) && (s.includes('_') || s.includes('-') || s === s.toLowerCase() || s === s.toUpperCase())) {
+    s = s.replace(/[-_]/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+  return s.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+}
+
+// Parse a single .md string into an array of {title, content} modules
+function parseMdToModules(raw, defaultTitle) {
+  const lines = raw.split('\n');
+  const modules = [];
+  let cur = null;
+  let docTitle = defaultTitle;
+
+  for (const line of lines) {
+    const h1 = line.match(/^#\s+(.+)/);
+    const h2 = line.match(/^##\s+(.+)/);
+    if (h1 && !cur) {
+      docTitle = h1[1].trim();
+    } else if (h2) {
+      if (cur) modules.push(cur);
+      cur = { title: cleanTitle(h2[1].trim()), rawLines: [] };
+    } else if (cur) {
+      cur.rawLines.push(line);
+    }
+  }
+  if (cur) modules.push(cur);
+
+  // Fallback: treat whole file as one module
+  if (!modules.length) {
+    modules.push({ title: cleanTitle(defaultTitle), rawLines: lines });
+  }
+
+  return modules.map(m => ({
+    title: m.title,
+    content: mdToHtml(m.rawLines.join('\n'))
+  }));
+}
+
+function populateConfigurePhase() {
+  // Suggest a course title from the first file's name
+  if (!document.getElementById('course-title').value) {
+    const firstName = fileModules[0]?.name || 'My Course';
+    document.getElementById('course-title').value = firstName;
+    document.getElementById('course-icon').value = '📋';
+  }
+  document.getElementById('mod-count-chip').textContent =
+    `${parsedModules.length} module${parsedModules.length !== 1 ? 's' : ''}`;
+
+  document.getElementById('parse-status').className = 'status-bar success';
+  document.getElementById('parse-status').innerHTML =
+    `<span style="font-size:20px;line-height:1;color:var(--pass)">✓</span>
+     <span style="color:var(--pass);font-weight:600">${parsedModules.length} module${parsedModules.length !== 1 ? 's' : ''} ready · ${fileModules.length} file${fileModules.length !== 1 ? 's' : ''}</span>`;
+
+  renderModulePreview();
+}
+
+function mdToHtml(md) {
+  if (!md.trim()) return '';
+  let html = md
+    .replace(/\r\n/g, '\n')
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^#### (.+)$/gm, '<h4 style="font-size:14px;font-weight:700;margin:12px 0 6px;">$1</h4>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`(.+?)`/g, '<code>$1</code>')
+    .replace(/^\| (.+) \|$/gm, (line) => {
+      if (line.includes('---')) return '';
+      const cells = line.split('|').slice(1,-1).map(c => `<td style="padding:6px 12px;border-bottom:1px solid var(--rule)">${c.trim()}</td>`).join('');
+      return `<tr>${cells}</tr>`;
+    });
+
+  html = html.replace(/((<tr>.*<\/tr>\n?)+)/gs, (match) =>
+    `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;border:1px solid var(--rule);border-radius:6px;overflow:hidden;margin:12px 0">${match}</table></div>`
+  );
+
+  const blocks = html.split(/\n\n+/);
+  html = blocks.map(block => {
+    block = block.trim();
+    if (!block) return '';
+    if (block.startsWith('<h') || block.startsWith('<div') || block.startsWith('<table')) return block;
+    const listLines = block.split('\n');
+    const allBullet = listLines.every(l => l.match(/^[-*•] /) || !l.trim());
+    const allNum = listLines.every(l => l.match(/^\d+\. /) || !l.trim());
+    if (allBullet && listLines.some(l => l.trim())) {
+      return '<ul>' + listLines.filter(l=>l.trim()).map(l => `<li>${l.replace(/^[-*•] /, '')}</li>`).join('') + '</ul>';
+    }
+    if (allNum && listLines.some(l => l.trim())) {
+      return '<ol>' + listLines.filter(l=>l.trim()).map(l => `<li>${l.replace(/^\d+\. /, '')}</li>`).join('') + '</ol>';
+    }
+    const cleaned = block.split('\n').join(' ');
+    return `<p>${cleaned}</p>`;
+  }).join('\n');
+
+  return html;
+}
+
+function renderModulePreview() {
+  const el = document.getElementById('module-preview');
+  el.innerHTML = parsedModules.map((m, i) => `
+    <div class="mod-card">
+      <div class="mod-head" onclick="toggleModPreview(${i})">
+        <span style="font-size:var(--text-xs);font-weight:700;color:var(--ink-4);letter-spacing:0.08em">MODULE ${i+1}</span>
+        <span style="flex:1;font-weight:600;font-size:var(--text-sm)">${esc(m.title)}</span>
+        <span style="font-size:var(--text-xs);color:var(--ink-4)">${wordCount(m.content)} words</span>
+        <span style="color:var(--ink-4);font-size:12px;margin-left:var(--space-2)">▾</span>
+      </div>
+      <div class="mod-body" id="mprev-${i}" style="max-height:200px;overflow-y:auto;font-size:var(--text-sm);color:var(--ink-2);line-height:1.7">
+        ${m.content || '<p style="color:var(--ink-4)"><em>No content in this section.</em></p>'}
+      </div>
+    </div>`
+  ).join('');
+}
+
+function toggleModPreview(i) {
+  const el = document.getElementById(`mprev-${i}`);
+  el.classList.toggle('open');
+}
+
+function wordCount(html) {
+  return (html || '').replace(/<[^>]*>/g, ' ').split(/\s+/).filter(Boolean).length;
+}
+
+function goBackToUpload() {
+  goPhase(1);
+}
+
+async function startGeneration() {
+  // Re-sync parsedModules from fileModules so any edits in configure phase are captured
+  if (fileModules.length) {
+    parsedModules = [];
+    fileModules.forEach(fm => fm.subModules.forEach(sm => parsedModules.push({ title: sm.title, content: sm.content })));
+  }
+  if (!parsedModules.length) { toast('No modules to generate questions for.', 'error'); return; }
+  if (isGenerating) return;
+
+  const title = document.getElementById('course-title').value.trim();
+  if (!title) { toast('Please enter a course title first.', 'error'); document.getElementById('course-title').focus(); return; }
+
+  isGenerating = true;
+  goPhase(3);
+
+  const qCount = parseInt(document.getElementById('q-per-mod').value);
+  const difficulty = document.getElementById('q-difficulty').value;
+  const focus = document.getElementById('q-focus').value;
+  const total = parsedModules.length;
+
+  const listEl = document.getElementById('gen-module-list');
+
+  // Build rows — each module gets a questions status and a summary status
+  listEl.innerHTML = parsedModules.map((m, i) => `
+    <div class="gen-row pending" id="genrow-${i}" style="align-items:flex-start;flex-direction:column;gap:4px;padding:8px 0">
+      <div style="display:flex;align-items:center;gap:var(--space-3);width:100%">
+        <div class="gen-dot" id="gendot-${i}"></div>
+        <span style="font-weight:500">${esc(m.title)}</span>
+      </div>
+      <div style="display:flex;gap:var(--space-4);padding-left:20px">
+        <span style="font-size:var(--text-xs)" id="genrow-q-${i}">Questions: waiting</span>
+        <span style="font-size:var(--text-xs);color:var(--ink-4)" id="genrow-s-${i}">Summary: waiting</span>
+      </div>
+    </div>`).join('');
+
+  const generatedModules = [];
+  let failed = false;
+
+  // ── PASS 1: Questions ────────────────────────────────────────────────────
+  document.getElementById('gen-pass-label').textContent = 'Pass 1 of 2 — Quiz questions';
+  document.getElementById('gen-pass-sub').textContent = 'Writing multiple-choice questions for each module…';
+
+  for (let i = 0; i < parsedModules.length; i++) {
+    const mod = parsedModules[i];
+    const rowEl = document.getElementById(`genrow-${i}`);
+    const dotEl = document.getElementById(`gendot-${i}`);
+    const qStatus = document.getElementById(`genrow-q-${i}`);
+
+    rowEl.classList.remove('pending'); rowEl.classList.add('active');
+    dotEl.style.background = 'var(--brand-1)';
+    qStatus.innerHTML = '<span style="color:var(--brand-1)">Generating…</span>';
+
+    document.getElementById('gen-progress-label').textContent = `${i + 1} of ${total}`;
+    document.getElementById('gen-prog-bar').style.width = `${(i / total) * 50}%`;
+
+    try {
+      const questions = await generateQuestions(mod, qCount, difficulty, focus);
+      generatedModules.push({ ...mod, questions, summary: null });
+      qStatus.innerHTML = `<span style="color:var(--pass)">✓ ${questions.length} questions</span>`;
+    } catch (err) {
+      failed = true;
+      dotEl.style.background = 'var(--fail)';
+      qStatus.innerHTML = `<span style="color:var(--fail)">✗ Failed: ${err.message.slice(0,60)}</span>`;
+      document.getElementById('gen-error').classList.remove('hidden');
+      document.getElementById('gen-error-msg').textContent = err.message;
+      break;
+    }
+  }
+
+  if (failed) { isGenerating = false; return; }
+
+  // ── PASS 2: Summaries ────────────────────────────────────────────────────
+  document.getElementById('gen-pass-label').textContent = 'Pass 2 of 2 — Learner summaries';
+  document.getElementById('gen-pass-sub').textContent = 'Writing study guide summaries and key takeaways…';
+  document.getElementById('gen-progress-label').textContent = `0 of ${total}`;
+
+  for (let i = 0; i < generatedModules.length; i++) {
+    const mod = generatedModules[i];
+    const dotEl = document.getElementById(`gendot-${i}`);
+    const sStatus = document.getElementById(`genrow-s-${i}`);
+
+    sStatus.innerHTML = '<span style="color:var(--brand-1)">Summarising…</span>';
+    document.getElementById('gen-progress-label').textContent = `${i + 1} of ${total}`;
+    document.getElementById('gen-prog-bar').style.width = `${50 + (i / total) * 50}%`;
+
+    try {
+      const summary = await generateSummary(mod);
+      generatedModules[i].summary = summary;
+      sStatus.innerHTML = `<span style="color:var(--pass)">✓ Summary ready</span>`;
+      dotEl.style.background = 'var(--pass)';
+    } catch (err) {
+      // Non-fatal — course still works without summary
+      generatedModules[i].summary = { intro: '', bullets: [] };
+      sStatus.innerHTML = `<span style="color:var(--warn)">⚠ Skipped</span>`;
+      dotEl.style.background = 'var(--pass)';
+    }
+  }
+
+  document.getElementById('gen-prog-bar').style.width = '100%';
+  document.getElementById('gen-progress-label').textContent = `${total} of ${total}`;
+
+  const totalQ = generatedModules.reduce((s, m) => s + m.questions.length, 0);
+  generatedCourse = {
+    title: document.getElementById('course-title').value.trim(),
+    icon: document.getElementById('course-icon').value || '📋',
+    description: document.getElementById('course-desc').value.trim(),
+    modules: generatedModules
+  };
+
+  document.getElementById('export-summary').textContent =
+    `${generatedModules.length} modules · ${totalQ} questions · study guide ready`;
+
+  renderReview();
+  isGenerating = false;
+  goPhase(4);
+}
+
+// Walks JSON char-by-char and escapes unescaped quotes/newlines inside string values
+function repairJsonStrings(str) {
+  let out = '';
+  let inString = false;
+  let escaped = false;
+
+  for (let i = 0; i < str.length; i++) {
+    const ch = str[i];
+
+    if (escaped) {
+      out += ch;
+      escaped = false;
+      continue;
+    }
+
+    if (ch === '\\') {
+      escaped = true;
+      out += ch;
+      continue;
+    }
+
+    if (ch === '"') {
+      if (!inString) {
+        inString = true;
+        out += ch;
+      } else {
+        // Check if this quote ends the string: skip whitespace+newlines, then check for structural chars
+        let j = i + 1;
+        while (j < str.length && (str[j] === ' ' || str[j] === '\t' || str[j] === '\n' || str[j] === '\r')) j++;
+        const next = str[j];
+        if (next === ':' || next === ',' || next === '}' || next === ']' || next === undefined || j >= str.length) {
+          inString = false;
+          out += ch;
+        } else {
+          // Rogue quote inside string — escape it
+          out += '\\"';
+        }
+      }
+      continue;
+    }
+
+    if (inString) {
+      if (ch === '\n' || ch === '\r') {
+        out += '\\n';
+        continue;
+      }
+      if (ch === '\t') {
+        out += '\\t';
+        continue;
+      }
+    }
+
+    out += ch;
+  }
+
+  return out;
+}
+
+async function generateQuestions(mod, qCount, difficulty, focus) {
+  const focusInstructions = {
+    general: 'Test comprehension of the key concepts presented.',
+    support: 'Focus on how a support agent would handle real situations described in this content. Questions should reflect scenarios a support rep would actually encounter.',
+    process: 'Focus on the correct sequence of steps, when to perform each action, and the consequences of doing things in the wrong order.',
+    technical: 'Focus on specific values, limits, thresholds, feature names, and technical requirements mentioned in the content.'
+  };
+
+  const diffInstructions = {
+    foundational: 'Questions should test basic recall and recognition. Clear right/wrong answers. Suitable for someone reading this material for the first time.',
+    applied: 'Questions should test whether the learner understands the content well enough to apply it. Include some scenario-based questions.',
+    analytical: 'Questions should test judgment, edge cases, and nuanced understanding. Include tricky situations where the wrong answer seems plausible.'
+  };
+
+  const contentText = mod.content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 3000);
+
+  const prompt = `Write ${qCount} multiple-choice quiz questions for a support team training module.
+
+MODULE: ${mod.title}
+CONTENT: ${contentText}
+
+RULES:
+- ${focusInstructions[focus]}
+- ${diffInstructions[difficulty]}
+- Each question has exactly 4 options
+- Keep explanations under 20 words
+- Use plain ASCII only — no apostrophes (use "its" not "it's"), no smart quotes, no em dashes
+- Do not include any quotation marks inside option or question text
+
+Respond with a JSON array only. No markdown, no wrapper object, no explanation. Start with [ and end with ].
+
+[
+  {
+    "question": "Question text?",
+    "options": ["Option A", "Option B", "Option C", "Option D"],
+    "correct_index": 0,
+    "explanation": "Why this is correct."
+  }
+]`;
+
+  const response = await fetch(CLAUDE_API, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 3000,
+      messages: [{ role: 'user', content: prompt }]
+    })
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error?.message || `API error ${response.status}`);
+  }
+
+  const data = await response.json();
+  const raw = data.content?.find(b => b.type === 'text')?.text || '';
+
+  // Strip markdown fences
+  let text = raw.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+
+  // Extract the JSON array — find first [ to last ]
+  const start = text.indexOf('[');
+  const end = text.lastIndexOf(']');
+  if (start === -1 || end === -1 || end <= start) {
+    throw new Error(`Could not find JSON array in response. Got: ${text.slice(0, 120)}`);
+  }
+  text = text.slice(start, end + 1);
+
+  // Fix curly/smart quotes and dashes
+  text = text
+    .replace(/[\u2018\u2019\u02BC]/g, "\\'")
+    .replace(/[\u201C\u201D]/g, '\\"')
+    .replace(/[\u2013\u2014]/g, '-')
+    .replace(/[\u2026]/g, '...');
+
+  let questions;
+  // Always repair first — catches unescaped quotes/newlines before parse
+  const repairedText = repairJsonStrings(text);
+  try {
+    questions = JSON.parse(repairedText);
+  } catch (e) {
+    // Fallback: extract individual {…} question objects and rejoin
+    const objMatches = repairedText.match(/\{[^{}]+\}/g);
+    if (objMatches && objMatches.length) {
+      try {
+        questions = JSON.parse('[' + objMatches.join(',') + ']');
+      } catch {
+        // Last resort: truncate after last complete object
+        const lastBrace = repairedText.lastIndexOf('}');
+        if (lastBrace > 0) {
+          try {
+            questions = JSON.parse(repairedText.slice(0, lastBrace + 1) + ']');
+          } catch {
+            throw new Error(`Parse failed. Try fewer questions per module. (${e.message})`);
+          }
+        } else {
+          throw new Error(`Parse failed: ${e.message}`);
+        }
+      }
+    } else {
+      throw new Error(`No question objects found in response. (${e.message})`);
+    }
+  }
+
+  if (!Array.isArray(questions) || !questions.length) {
+    throw new Error('No questions found in response');
+  }
+
+  // Normalise each question — handle both array and object formats
+  return questions.map(q => ({
+    question: String(q.question || q.q || ''),
+    options: Array.isArray(q.options) ? q.options.map(String) : [
+      String(q.option_a || q.optionA || q.A || ''),
+      String(q.option_b || q.optionB || q.B || ''),
+      String(q.option_c || q.optionC || q.C || ''),
+      String(q.option_d || q.optionD || q.D || ''),
+    ],
+    correct_index: typeof q.correct_index === 'number' ? q.correct_index : 0,
+    explanation: String(q.explanation || '')
+  })).filter(q => q.question);
+}
+
+function renderReview() {
+  if (!generatedCourse) return;
+
+  document.getElementById('copy-title-val').textContent = generatedCourse.title || '';
+  document.getElementById('copy-icon-val').textContent = generatedCourse.icon || '📋';
+  document.getElementById('copy-desc-val').textContent = generatedCourse.description || '';
+
+  const el = document.getElementById('review-modules');
+  el.innerHTML = `
+    <div style="font-weight:700;font-size:var(--text-md);margin-bottom:var(--space-4);margin-top:var(--space-2)">Review modules</div>
+    ` + generatedCourse.modules.map((m, mi) => `
+    <div class="mod-card">
+      <div class="mod-head" onclick="toggleReview(${mi})">
+        <span style="font-size:var(--text-xs);font-weight:700;color:var(--ink-4);letter-spacing:0.08em">MODULE ${mi+1}</span>
+        <span style="flex:1;font-weight:600;font-size:var(--text-sm)">${esc(m.title)}</span>
+        <span class="chip chip-blue" style="font-size:10px">${m.questions.length} questions</span>
+        ${m.summary ? '<span class="chip chip-green" style="font-size:10px;margin-left:4px">summary</span>' : ''}
+        <span style="color:var(--ink-4);font-size:12px;margin-left:var(--space-2)">▾</span>
+      </div>
+      <div class="mod-body" id="review-body-${mi}">
+
+        ${m.summary && (m.summary.intro || m.summary.bullets?.length) ? `
+        <div style="background:var(--pass-lt);border:1px solid #bbf7d0;border-radius:var(--r);padding:var(--space-4);margin-bottom:var(--space-5)">
+          <div style="font-size:var(--text-xs);font-weight:700;color:var(--pass);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:var(--space-2)">📖 Study Guide — what learners read first</div>
+          ${m.summary.intro ? `<p style="font-size:var(--text-sm);color:var(--ink-2);line-height:1.7;margin-bottom:var(--space-3)">${esc(m.summary.intro)}</p>` : ''}
+          ${m.summary.bullets?.length ? `
+          <ul style="padding-left:var(--space-5)">
+            ${m.summary.bullets.map(b => `<li style="font-size:var(--text-sm);color:var(--ink-2);line-height:1.8">${esc(b)}</li>`).join('')}
+          </ul>` : ''}
+        </div>` : ''}
+
+        <div style="font-size:var(--text-xs);font-weight:700;color:var(--ink-4);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:var(--space-3)">Quiz questions</div>
+        ${m.questions.map((q, qi) => `
+          <div class="q-item">
+            <div class="q-item-text">${qi+1}. ${esc(q.question)}</div>
+            <div class="q-opts">
+              ${(q.options || []).map((opt, oi) => `
+                <div class="q-opt ${oi === q.correct_index ? 'correct' : ''}">
+                  <span class="q-opt-ltr">${['A','B','C','D'][oi]}</span>
+                  <span>${esc(opt)}</span>
+                </div>`).join('')}
+            </div>
+            ${q.explanation ? `<div style="font-size:var(--text-xs);color:var(--ink-3);margin-top:var(--space-2);padding-top:var(--space-2);border-top:1px solid var(--rule)">💡 ${esc(q.explanation)}</div>` : ''}
+          </div>`).join('')}
+      </div>
+    </div>`).join('');
+}
+
+function exportStudyGuide() {
+  if (!generatedCourse) return;
+  const c = generatedCourse;
+
+  const moduleHtml = c.modules.map((m, i) => {
+    const summaryHtml = m.summary && (m.summary.intro || m.summary.bullets?.length) ? `
+      <div class="summary-box">
+        <div class="summary-label">Key Takeaways</div>
+        ${m.summary.intro ? `<p class="summary-intro">${m.summary.intro}</p>` : ''}
+        ${m.summary.bullets?.length ? `<ul class="summary-bullets">${m.summary.bullets.map(b => `<li>${b}</li>`).join('')}</ul>` : ''}
+      </div>` : '';
+
+    const contentHtml = m.content || '';
+
+    return `
+    <section class="module" id="module-${i+1}">
+      <div class="module-eyebrow">Module ${i+1}</div>
+      <h2 class="module-title">${m.title}</h2>
+      ${summaryHtml}
+      <div class="module-content">${contentHtml}</div>
+    </section>`;
+  }).join('\n');
+
+  const tocHtml = c.modules.map((m, i) =>
+    `<li><a href="#module-${i+1}"><span class="toc-num">${i+1}</span>${m.title}</a></li>`
+  ).join('');
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${c.title} — Study Guide</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 16px; line-height: 1.7; color: #1a1917;
+    background: #fafaf9; -webkit-font-smoothing: antialiased;
+  }
+  .cover {
+    background: #1e3a8a; color: white;
+    padding: 64px 48px 56px; max-width: 860px; margin: 0 auto;
+  }
+  .cover-label { font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase;
+    opacity: 0.6; margin-bottom: 16px; }
+  .cover-icon { font-size: 48px; margin-bottom: 16px; }
+  .cover-title { font-size: 36px; font-weight: 700; line-height: 1.15;
+    letter-spacing: -0.02em; margin-bottom: 12px; }
+  .cover-desc { font-size: 16px; opacity: 0.75; max-width: 560px; line-height: 1.6; }
+  .cover-meta { margin-top: 32px; font-size: 13px; opacity: 0.5; }
+
+  .wrap { max-width: 760px; margin: 0 auto; padding: 0 32px 80px; }
+
+  .toc { padding: 40px 0 32px; border-bottom: 1px solid #e7e5e4; margin-bottom: 48px; }
+  .toc h2 { font-size: 13px; font-weight: 700; letter-spacing: 0.1em;
+    text-transform: uppercase; color: #78716c; margin-bottom: 16px; }
+  .toc ol { padding-left: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
+  .toc a { text-decoration: none; color: #1a1917; font-size: 15px;
+    display: flex; align-items: center; gap: 12px; padding: 6px 0;
+    border-bottom: 1px solid transparent; transition: color 0.15s; }
+  .toc a:hover { color: #2563eb; }
+  .toc-num { width: 24px; height: 24px; background: #e7e5e4; border-radius: 50%;
+    font-size: 11px; font-weight: 700; display: inline-flex; align-items: center;
+    justify-content: center; color: #78716c; flex-shrink: 0; }
+
+  .module { margin-bottom: 64px; padding-bottom: 64px; border-bottom: 1px solid #e7e5e4; }
+  .module:last-child { border-bottom: none; }
+  .module-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.12em;
+    text-transform: uppercase; color: #2563eb; margin-bottom: 6px; }
+  .module-title { font-size: 28px; font-weight: 700; letter-spacing: -0.01em;
+    color: #1a1917; margin-bottom: 24px; line-height: 1.2; }
+
+  .summary-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px;
+    padding: 20px 24px; margin-bottom: 32px; }
+  .summary-label { font-size: 11px; font-weight: 700; letter-spacing: 0.12em;
+    text-transform: uppercase; color: #15803d; margin-bottom: 10px; }
+  .summary-intro { font-size: 15px; color: #1a1917; line-height: 1.7;
+    margin-bottom: 14px; font-weight: 500; }
+  .summary-bullets { padding-left: 20px; }
+  .summary-bullets li { font-size: 14px; color: #44403c; line-height: 1.8; }
+
+  .module-content { font-size: 15px; color: #44403c; }
+  .module-content p { margin-bottom: 16px; }
+  .module-content h3 { font-size: 17px; font-weight: 700; color: #1a1917;
+    margin: 24px 0 10px; }
+  .module-content h4 { font-size: 15px; font-weight: 700; color: #1a1917;
+    margin: 20px 0 8px; }
+  .module-content ul, .module-content ol { padding-left: 24px; margin-bottom: 16px; }
+  .module-content li { margin-bottom: 6px; line-height: 1.7; }
+  .module-content strong { color: #1a1917; font-weight: 600; }
+  .module-content code { background: #f5f4f2; border: 1px solid #e7e5e4;
+    border-radius: 4px; padding: 1px 6px; font-family: monospace; font-size: 13px; }
+  .module-content table { width: 100%; border-collapse: collapse;
+    margin: 16px 0; font-size: 14px; }
+  .module-content td { padding: 8px 12px; border: 1px solid #e7e5e4; }
+  .module-content tr:first-child td { background: #f5f4f2; font-weight: 600; }
+
+  @media print {
+    body { background: white; }
+    .cover { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .summary-box { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .module { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="cover-label">Study Guide</div>
+  <div class="cover-icon">${c.icon || '📋'}</div>
+  <div class="cover-title">${c.title}</div>
+  ${c.description ? `<div class="cover-desc">${c.description}</div>` : ''}
+  <div class="cover-meta">${c.modules.length} modules · Generated ${new Date().toLocaleDateString('en-US', {year:'numeric',month:'long',day:'numeric'})}</div>
+</div>
+
+<div class="wrap">
+  <nav class="toc">
+    <h2>Contents</h2>
+    <ol>${tocHtml}</ol>
+  </nav>
+
+  ${moduleHtml}
+</div>
+
+</body>
+</html>`;
+
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${c.title.replace(/\s+/g,'-').toLowerCase()}-study-guide.html`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+  toast('Study guide downloaded — open in any browser or print to PDF.', 'success');
+}
+
+function toggleReview(i) {
+  document.getElementById(`review-body-${i}`).classList.toggle('open');
+}
+
+function copyField(elId, btnId) {
+  const text = document.getElementById(elId).textContent;
+  navigator.clipboard.writeText(text).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;top:-9999px;opacity:0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  });
+  const btn = document.getElementById(btnId);
+  const orig = btn.textContent;
+  btn.textContent = '✓ Copied';
+  btn.style.color = 'var(--pass)';
+  setTimeout(() => { btn.textContent = orig; btn.style.color = ''; }, 2000);
+}
+
+function csvEscape(val) {
+  const s = String(val || '').replace(/"/g, '""');
+  return /[,"\n\r]/.test(s) ? `"${s}"` : s;
+}
+
+function exportCSV() {
+  if (!generatedCourse) return;
+  const header = 'module,question,optionA,optionB,optionC,optionD,correct,explanation';
+  const letters = ['A','B','C','D'];
+  const rows = [];
+  generatedCourse.modules.forEach(m => {
+    m.questions.forEach(q => {
+      rows.push([
+        csvEscape(m.title),
+        csvEscape(q.question),
+        csvEscape(q.options[0] || ''),
+        csvEscape(q.options[1] || ''),
+        csvEscape(q.options[2] || ''),
+        csvEscape(q.options[3] || ''),
+        letters[q.correct_index] || 'A',
+        csvEscape(q.explanation || '')
+      ].join(','));
+    });
+  });
+  const csv = [header, ...rows].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${generatedCourse.title.replace(/\s+/g,'-').toLowerCase()}-questions.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+  toast('CSV downloaded — import it in TrainFlow via Courses → New Course → Import CSV.', 'success');
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+async function generateSummary(mod) {
+  const contentText = mod.content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 4000);
+
+  const prompt = `You are writing study guide content for a training course. A learner will read this BEFORE answering quiz questions on the module.
+
+MODULE: ${mod.title}
+SOURCE CONTENT: ${contentText}
+
+Write a learner-friendly summary of this module. Return a JSON object only — no markdown, no explanation.
+
+{
+  "intro": "2-3 sentence plain-English overview of what this module covers and why it matters. No jargon.",
+  "bullets": [
+    "Key point 1 — specific, actionable, written as a fact the learner should know",
+    "Key point 2",
+    "Key point 3",
+    "Key point 4",
+    "Key point 5"
+  ]
+}
+
+Rules:
+- intro: 2-3 sentences max, plain English, no bullet points
+- bullets: exactly 5 items, each 10-20 words, each starts with the key concept name
+- Use plain ASCII only — no apostrophes (write "its" not "it's"), no smart quotes, no em dashes
+- Do not include any quotation marks inside the text values`;
+
+  const response = await fetch(CLAUDE_API, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 800,
+      messages: [{ role: 'user', content: prompt }]
+    })
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error?.message || `API error ${response.status}`);
+  }
+
+  const data = await response.json();
+  let text = (data.content?.find(b => b.type === 'text')?.text || '')
+    .replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+
+  // Extract the JSON object
+  const start = text.indexOf('{');
+  const end = text.lastIndexOf('}');
+  if (start === -1 || end === -1) throw new Error('No JSON object in summary response');
+  text = text.slice(start, end + 1);
+
+  text = text
+    .replace(/[\u2018\u2019\u02BC]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/[\u2013\u2014]/g, '-');
+
+  const repaired = repairJsonStrings(text);
+  let result;
+  try {
+    result = JSON.parse(repaired);
+  } catch {
+    // Fallback: extract fields with regex
+    const introMatch = repaired.match(/"intro"\s*:\s*"([^"]+)"/);
+    const bulletsMatch = [...repaired.matchAll(/"([^"]{15,120})"/g)].map(m => m[1]).slice(1, 6);
+    result = {
+      intro: introMatch ? introMatch[1] : '',
+      bullets: bulletsMatch
+    };
+  }
+
+  return {
+    intro: String(result.intro || ''),
+    bullets: Array.isArray(result.bullets) ? result.bullets.map(String) : []
+  };
+}
+</script>
+</body>
+</html>
