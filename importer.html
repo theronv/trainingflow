@@ -10,7 +10,7 @@
 :root {
   --ink: #1a1917; --ink-2: #44403c; --ink-3: #78716c; --ink-4: #a8a29e;
   --rule: #e7e5e4; --rule-2: #f5f4f2; --canvas: #fafaf9; --white: #ffffff;
-  --accent: #2563eb; --accent-lt: #eff4ff; --accent-md: #bfcfff;
+  --accent-lt: #eff4ff; --accent-md: #bfcfff;
   --pass: #15803d; --pass-lt: #f0fdf4;
   --fail: #b91c1c; --fail-lt: #fef2f2;
   --warn: #b45309; --warn-lt: #fffbeb;
@@ -32,6 +32,10 @@ body{font-family:'Outfit',sans-serif;font-size:var(--text-base);background:var(-
 button{cursor:pointer;font-family:inherit}
 input,select,textarea{font-family:inherit}
 .hidden{display:none!important}
+/* Quality Fix 2 — dedicated show classes replace fragile inline display:flex + .hidden pattern */
+.upload-actions-visible{display:flex;align-items:center;gap:var(--space-3)}
+.modal-visible{display:flex;align-items:center;justify-content:center}
+.api-key-status-visible{display:flex;align-items:center;gap:6px}
 ::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--rule);border-radius:var(--r-full)}
 
 .topbar{background:var(--white);border-bottom:1px solid var(--rule);height:58px;display:flex;align-items:center;padding:0 var(--space-8);gap:var(--space-6);position:sticky;top:0;z-index:100;box-shadow:var(--shadow-xs)}
@@ -70,7 +74,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .divider{height:1px;background:var(--rule);margin:var(--space-6) 0}
 
 .chip{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:var(--r-full);font-size:var(--text-xs);font-weight:600;letter-spacing:0.04em}
-.chip-blue{background:var(--accent-lt);color:var(--accent);border:1px solid var(--accent-md)}
+.chip-blue{background:var(--accent-lt);color:var(--brand-1);border:1px solid var(--accent-md)}
 .chip-green{background:var(--pass-lt);color:var(--pass);border:1px solid #bbf7d0}
 .chip-amber{background:var(--warn-lt);color:var(--warn);border:1px solid #fde68a}
 .chip-gray{background:var(--rule-2);color:var(--ink-3);border:1px solid var(--rule)}
@@ -117,7 +121,7 @@ tbody tr:hover td{background:var(--rule-2)}
 .status-bar.success{background:var(--pass-lt);border-color:#bbf7d0}
 .status-bar.warning{background:var(--warn-lt);border-color:#fde68a}
 
-.spinner{width:16px;height:16px;border:2px solid var(--accent-md);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite;flex-shrink:0}
+.spinner{width:16px;height:16px;border:2px solid var(--accent-md);border-top-color:var(--brand-1);border-radius:50%;animation:spin 0.7s linear infinite;flex-shrink:0}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 .gen-progress{background:var(--white);border:1px solid var(--rule);border-radius:var(--r-lg);padding:var(--space-5);margin-top:var(--space-4)}
@@ -133,6 +137,20 @@ tbody tr:hover td{background:var(--rule-2)}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 @keyframes slideUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+/* Polish 2 — API key shake animation */
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-5px)}40%{transform:translateX(5px)}60%{transform:translateX(-3px)}80%{transform:translateX(3px)}}
+.shake{animation:shake 0.35s ease}
+/* Polish 2 — API key status fade-in */
+.api-key-status-visible{transition:opacity 0.25s}
+/* Polish 3 — generation dot states */
+@keyframes dotPulse{0%,100%{opacity:1}50%{opacity:0.3}}
+.gen-dot-pending{background:var(--ink-4)!important;animation:dotPulse 1.5s ease-in-out infinite}
+.gen-dot-active{background:transparent!important;border:2px solid var(--brand-1);border-top-color:transparent;animation:spin 0.7s linear infinite;box-sizing:border-box}
+.gen-dot-done{background:var(--pass)!important;animation:none}
+.gen-dot-partial{background:var(--warn)!important;animation:none}
+.gen-dot-fail{background:var(--fail)!important;animation:none}
+/* Polish 1 — Phase 3 error card stronger visual */
+.status-bar.error{background:var(--fail-lt);border-color:#fecaca;border-left:4px solid var(--fail)}
 
 .two-col{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4)}
 @media(max-width:640px){.two-col{grid-template-columns:1fr}}
@@ -150,6 +168,7 @@ tbody tr:hover td{background:var(--rule-2)}
     <span class="brand-sub">Content Importer</span>
   </div>
   <div class="topbar-right">
+    <button id="btn-start-over" class="btn btn-ghost btn-sm hidden" onclick="startOver()">↺ Start Over</button>
     <a href="#" class="btn btn-ghost btn-sm" onclick="showHelp()">How to use</a>
   </div>
 </div>
@@ -173,6 +192,46 @@ tbody tr:hover td{background:var(--rule-2)}
     <div class="page-title">Build your course modules</div>
     <div class="page-sub">Add one or more Markdown files. Each file becomes a module in your course. Name them, reorder them, then generate — all questions export as a single CSV.</div>
 
+    <!-- API Key -->
+    <div class="card" style="margin-bottom:var(--space-6);border-bottom:2px solid var(--rule-2)" id="api-key-section">
+      <div style="font-weight:700;font-size:var(--text-base);margin-bottom:var(--space-1);display:flex;align-items:center;gap:6px">🔒 Anthropic API Key</div>
+      <div style="font-size:var(--text-sm);color:var(--ink-3);margin-bottom:var(--space-4)">Required to generate quiz questions. Stored in your browser session only — never sent anywhere except Anthropic's API.</div>
+      <div style="display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap">
+        <input type="password" id="api-key-input" placeholder="sk-ant-..."
+          style="flex:1;min-width:240px;max-width:420px"
+          oninput="handleApiKeyInput(this.value)"
+          autocomplete="off" spellcheck="false">
+        <div id="api-key-status" class="hidden" style="font-size:var(--text-sm);font-weight:600;color:var(--pass)">
+          <span>✓</span><span>Key saved</span>
+        </div>
+      </div>
+      <div id="api-key-invalid-msg" class="hidden" style="font-size:var(--text-xs);color:var(--fail);margin-top:6px;font-weight:600">Key must start with sk-ant-</div>
+      <div style="font-size:var(--text-xs);color:var(--ink-4);margin-top:var(--space-2)">
+        Get a key at <strong>console.anthropic.com</strong> → API Keys
+      </div>
+    </div>
+
+    <!-- Empty state hint — visible before any files are loaded -->
+    <div id="upload-hint" style="margin-bottom:var(--space-5)">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-4)">
+        <div style="background:var(--white);border:1px solid var(--rule);border-radius:var(--r-lg);padding:var(--space-5);text-align:center">
+          <div style="font-size:28px;margin-bottom:var(--space-2)">📂</div>
+          <div style="font-weight:700;font-size:var(--text-sm);margin-bottom:4px">1. Upload files</div>
+          <div style="font-size:var(--text-xs);color:var(--ink-3);line-height:1.6">Drop one or more .md files — each becomes a course module</div>
+        </div>
+        <div style="background:var(--white);border:1px solid var(--rule);border-radius:var(--r-lg);padding:var(--space-5);text-align:center">
+          <div style="font-size:28px;margin-bottom:var(--space-2)">⚙️</div>
+          <div style="font-weight:700;font-size:var(--text-sm);margin-bottom:4px">2. Configure & generate</div>
+          <div style="font-size:var(--text-xs);color:var(--ink-3);line-height:1.6">Set quiz difficulty and let AI write questions and summaries</div>
+        </div>
+        <div style="background:var(--white);border:1px solid var(--rule);border-radius:var(--r-lg);padding:var(--space-5);text-align:center">
+          <div style="font-size:28px;margin-bottom:var(--space-2)">⬇️</div>
+          <div style="font-weight:700;font-size:var(--text-sm);margin-bottom:4px">3. Export</div>
+          <div style="font-size:var(--text-xs);color:var(--ink-3);line-height:1.6">Download a CSV for TrainFlow and an HTML study guide for learners</div>
+        </div>
+      </div>
+    </div>
+
     <!-- Drop zone -->
     <div class="upload-zone" id="drop-zone"
       onclick="document.getElementById('md-file-input').click()"
@@ -189,7 +248,7 @@ tbody tr:hover td{background:var(--rule-2)}
     <div id="file-module-list" style="margin-top:var(--space-5)"></div>
 
     <!-- Continue button — shown once at least one file is loaded -->
-    <div id="upload-actions" class="hidden" style="margin-top:var(--space-5);display:flex;align-items:center;gap:var(--space-3)">
+    <div id="upload-actions" class="hidden" style="margin-top:var(--space-5)">
       <button class="btn btn-primary btn-lg" onclick="proceedFromUpload()">Configure course →</button>
       <span id="upload-module-count" style="font-size:var(--text-sm);color:var(--ink-3)"></span>
     </div>
@@ -266,6 +325,26 @@ tbody tr:hover td{background:var(--rule-2)}
         <span class="chip chip-blue" id="mod-count-chip">0 modules</span>
       </div>
       <div id="module-preview"></div>
+
+      <!-- Truncation banner (Bug 2) -->
+      <div id="truncation-banner" class="status-bar warning hidden" style="margin-top:var(--space-3)">
+        <span>⚠</span>
+        <div id="truncation-banner-msg" style="font-size:var(--text-sm);color:var(--ink-2)"></div>
+      </div>
+
+      <!-- Empty module warning (Bug 1) -->
+      <div id="empty-mod-warning" class="status-bar warning hidden" style="margin-top:var(--space-3)">
+        <span style="font-size:20px;line-height:1">⚠</span>
+        <div style="flex:1">
+          <div style="font-weight:600;color:var(--warn)">Some modules have no content</div>
+          <div id="empty-mod-names" style="font-size:var(--text-sm);color:var(--ink-2);margin-top:2px"></div>
+          <div style="font-size:var(--text-xs);color:var(--ink-3);margin-top:var(--space-1)">Questions will be hallucinated. Go back to add content, or generate anyway.</div>
+          <div style="display:flex;gap:var(--space-2);margin-top:var(--space-3)">
+            <button class="btn btn-outline btn-sm" onclick="document.getElementById('empty-mod-warning').classList.add('hidden')">← Fix modules</button>
+            <button class="btn btn-primary btn-sm" onclick="startGeneration(true)">Generate anyway</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div style="margin-top:var(--space-6);display:flex;gap:var(--space-3);">
@@ -285,7 +364,10 @@ tbody tr:hover td{background:var(--rule-2)}
         <div style="font-weight:700;" id="gen-pass-label">Pass 1 of 2 — Quiz questions</div>
         <span id="gen-progress-label" style="font-size:var(--text-sm);color:var(--ink-3);">0 of 0</span>
       </div>
-      <div style="font-size:var(--text-xs);color:var(--ink-4);margin-bottom:var(--space-4)" id="gen-pass-sub">Writing multiple-choice questions for each module…</div>
+      <div style="display:flex;align-items:center;gap:var(--space-4);margin-bottom:var(--space-4)">
+        <div style="font-size:var(--text-xs);color:var(--ink-4);flex:1" id="gen-pass-sub">Writing multiple-choice questions for each module…</div>
+        <span id="gen-elapsed" style="font-size:var(--text-xs);color:var(--ink-4);font-variant-numeric:tabular-nums;white-space:nowrap"></span>
+      </div>
       <div class="progress-track" style="height:6px;margin-bottom:var(--space-5);">
         <div class="progress-fill" id="gen-prog-bar" style="width:0%"></div>
       </div>
@@ -294,9 +376,13 @@ tbody tr:hover td{background:var(--rule-2)}
 
     <div id="gen-error" class="status-bar error hidden" style="margin-top:var(--space-4)">
       <span>⚠</span>
-      <div>
+      <div style="flex:1">
         <div style="font-weight:600;color:var(--fail)">Generation failed</div>
         <div id="gen-error-msg" style="font-size:var(--text-sm);color:var(--ink-2);margin-top:2px;"></div>
+        <div style="display:flex;gap:var(--space-2);margin-top:var(--space-3)">
+          <button class="btn btn-outline btn-sm" id="gen-error-back" onclick="genErrorBack()">← Back to Configure</button>
+          <button class="btn btn-primary btn-sm" onclick="startGeneration()">Try Again</button>
+        </div>
       </div>
     </div>
   </div>
@@ -313,7 +399,10 @@ tbody tr:hover td{background:var(--rule-2)}
         <div style="font-weight:600;color:var(--pass)" id="export-summary">Course ready</div>
         <div style="font-size:var(--text-sm);color:var(--ink-2);margin-top:2px;">Questions and summaries generated — download both files below</div>
       </div>
-      <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="goPhase(2)">← Edit</button>
+      <div style="margin-left:auto;display:flex;gap:var(--space-2)">
+        <button class="btn btn-ghost btn-sm" onclick="goPhase(1)">← Back to Files</button>
+        <button class="btn btn-ghost btn-sm" onclick="goPhase(2)">← Edit Settings</button>
+      </div>
     </div>
 
     <!-- Downloads row -->
@@ -383,7 +472,7 @@ tbody tr:hover td{background:var(--rule-2)}
 </div>
 
 <!-- Help modal -->
-<div id="help-modal" class="hidden" style="position:fixed;inset:0;z-index:400;background:rgba(26,25,23,0.5);display:flex;align-items:center;justify-content:center;padding:var(--space-5);backdrop-filter:blur(3px)">
+<div id="help-modal" class="hidden" style="position:fixed;inset:0;z-index:400;background:rgba(26,25,23,0.5);padding:var(--space-5);backdrop-filter:blur(3px)">
   <div style="background:var(--white);border-radius:var(--r-xl);width:100%;max-width:560px;max-height:85vh;overflow-y:auto;box-shadow:var(--shadow-xl)">
     <div style="padding:var(--space-6) var(--space-8) var(--space-5);border-bottom:1px solid var(--rule);display:flex;justify-content:space-between;align-items:center">
       <div>
@@ -393,6 +482,16 @@ tbody tr:hover td{background:var(--rule-2)}
       <button class="btn btn-ghost btn-sm" onclick="hideHelp()">✕</button>
     </div>
     <div style="padding:var(--space-6) var(--space-8);">
+      <div style="font-weight:700;margin-bottom:var(--space-3);">API key setup</div>
+      <p style="font-size:var(--text-sm);color:var(--ink-2);margin-bottom:var(--space-2);line-height:1.8;">You need an Anthropic API key to generate quiz questions and summaries.</p>
+      <ol style="font-size:var(--text-sm);color:var(--ink-2);padding-left:var(--space-5);line-height:2;margin-bottom:var(--space-4);">
+        <li>Go to <strong>console.anthropic.com</strong> and sign in</li>
+        <li>Navigate to <strong>API Keys</strong> and create a new key</li>
+        <li>Paste it into the <strong>Anthropic API Key</strong> field at the top of this page</li>
+      </ol>
+      <div style="background:var(--accent-lt);border:1px solid var(--accent-md);border-radius:var(--r);padding:var(--space-3) var(--space-4);font-size:var(--text-sm);color:var(--ink-2);margin-bottom:var(--space-5);">
+        🔒 Your key is stored only in your browser session (sessionStorage) and is sent directly to Anthropic's API. It is never stored on any server or shared with anyone. It will be cleared when you close your browser tab.
+      </div>
       <div style="font-weight:700;margin-bottom:var(--space-3);">Two ways to build a course</div>
       <p style="font-size:var(--text-sm);color:var(--ink-2);margin-bottom:var(--space-2);line-height:1.8;"><strong>Multiple files:</strong> Drop several .md files — each becomes one named module. Reorder them freely before generating.</p>
       <p style="font-size:var(--text-sm);color:var(--ink-2);margin-bottom:var(--space-4);line-height:1.8;"><strong>Single file:</strong> Use <code>##</code> headings — each section becomes a module automatically.</p>
@@ -431,6 +530,9 @@ Document the most frequent tickets...</pre>
 
 <script>
 const CLAUDE_API = 'https://api.anthropic.com/v1/messages';
+const MODEL = 'claude-sonnet-4-20250514';
+const CHAR_LIMIT_QUESTIONS = 3000;
+const CHAR_LIMIT_SUMMARY = 4000;
 
 // fileModules: array of { id, name, content(HTML), source }
 // parsedModules: flattened array sent to generation (same shape as before)
@@ -438,9 +540,53 @@ let fileModules = [];   // one entry per uploaded file (or pasted block)
 let parsedModules = []; // flattened for generation
 let generatedCourse = null;
 let isGenerating = false;
+let reviewExpanded = false;
 
-function showHelp() { document.getElementById('help-modal').classList.remove('hidden'); }
-function hideHelp() { document.getElementById('help-modal').classList.add('hidden'); }
+function showHelp() {
+  const m = document.getElementById('help-modal');
+  m.classList.remove('hidden');
+  m.classList.add('modal-visible');
+}
+function hideHelp() {
+  const m = document.getElementById('help-modal');
+  m.classList.add('hidden');
+  m.classList.remove('modal-visible');
+}
+
+function showApiKeyStatus() {
+  const el = document.getElementById('api-key-status');
+  el.classList.remove('hidden');
+  el.classList.add('api-key-status-visible');
+}
+function hideApiKeyStatus() {
+  const el = document.getElementById('api-key-status');
+  el.classList.add('hidden');
+  el.classList.remove('api-key-status-visible');
+}
+
+function startOver() {
+  if (!confirm('Start over? This will clear all uploaded files and generated content. Your API key will be kept.')) return;
+  fileModules = [];
+  parsedModules = [];
+  generatedCourse = null;
+  isGenerating = false;
+  document.getElementById('md-paste').value = '';
+  document.getElementById('paste-module-name').value = '';
+  document.getElementById('course-title').value = '';
+  document.getElementById('course-icon').value = '';
+  document.getElementById('course-desc').value = '';
+  renderFileModuleList();
+  goPhase(1);
+}
+
+function toggleExpandAll() {
+  reviewExpanded = !reviewExpanded;
+  document.querySelectorAll('[id^="review-body-"]').forEach(el => {
+    el.classList.toggle('open', reviewExpanded);
+  });
+  const btn = document.getElementById('btn-expand-all');
+  if (btn) btn.textContent = reviewExpanded ? 'Collapse all' : 'Expand all';
+}
 
 function toast(msg, type='info') {
   const el = document.createElement('div');
@@ -454,10 +600,17 @@ function goPhase(n) {
   [1,2,3,4].forEach(i => {
     document.getElementById(`phase-${['upload','configure','generate','export'][i-1]}`).classList.toggle('hidden', i !== n);
     const s = document.getElementById(`step-${i}`);
+    const numEl = s.querySelector('.step-num');
     s.classList.remove('active','done');
-    if (i < n) s.classList.add('done');
-    else if (i === n) s.classList.add('active');
+    if (i < n) { s.classList.add('done'); numEl.textContent = '✓'; }
+    else if (i === n) { s.classList.add('active'); numEl.textContent = i; }
+    else { numEl.textContent = i; }
   });
+  // Show Start Over button in phases 2-4
+  const soBtn = document.getElementById('btn-start-over');
+  if (soBtn) soBtn.classList.toggle('hidden', n === 1);
+  // Reset Expand All state when entering Phase 4
+  if (n === 4) { reviewExpanded = false; const eab = document.getElementById('btn-expand-all'); if (eab) eab.textContent = 'Expand all'; }
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -517,15 +670,20 @@ function renderFileModuleList() {
   const actEl = document.getElementById('upload-actions');
   const countEl = document.getElementById('upload-module-count');
 
+  const hintEl = document.getElementById('upload-hint');
   if (!fileModules.length) {
     el.innerHTML = '';
     actEl.classList.add('hidden');
+    actEl.classList.remove('upload-actions-visible');
+    if (hintEl) hintEl.classList.remove('hidden');
     return;
   }
+  if (hintEl) hintEl.classList.add('hidden');
 
   const totalMods = fileModules.reduce((s, f) => s + f.subModules.length, 0);
   countEl.textContent = `${fileModules.length} file${fileModules.length !== 1 ? 's' : ''} · ${totalMods} module${totalMods !== 1 ? 's' : ''} total`;
   actEl.classList.remove('hidden');
+  actEl.classList.add('upload-actions-visible');
 
   el.innerHTML = fileModules.map((fm, fi) => `
     <div style="background:var(--white);border:1px solid var(--rule);border-radius:var(--r-lg);margin-bottom:var(--space-3);overflow:hidden;box-shadow:var(--shadow-xs)">
@@ -642,6 +800,17 @@ function populateConfigurePhase() {
      <span style="color:var(--pass);font-weight:600">${parsedModules.length} module${parsedModules.length !== 1 ? 's' : ''} ready · ${fileModules.length} file${fileModules.length !== 1 ? 's' : ''}</span>`;
 
   renderModulePreview();
+
+  // Truncation global banner (Bug 2)
+  const truncatedMods = parsedModules.filter(m => rawTextLength(m.content) > CHAR_LIMIT_QUESTIONS);
+  const truncBanner = document.getElementById('truncation-banner');
+  if (truncatedMods.length) {
+    document.getElementById('truncation-banner-msg').textContent =
+      `⚠ ${truncatedMods.length} module${truncatedMods.length !== 1 ? 's' : ''} will be truncated to ~3,000 chars — questions will cover the first section only. Consider splitting long modules.`;
+    truncBanner.classList.remove('hidden');
+  } else {
+    truncBanner.classList.add('hidden');
+  }
 }
 
 function mdToHtml(md) {
@@ -653,6 +822,10 @@ function mdToHtml(md) {
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
     .replace(/`(.+?)`/g, '<code>$1</code>')
+    // Quality Fix 4: horizontal rules — lines that are --- or more dashes
+    .replace(/^-{3,}\s*$/gm, '<hr style="border:none;border-top:1px solid var(--rule);margin:16px 0">')
+    // Quality Fix 4: blockquotes — lines starting with >
+    .replace(/^> ?(.+)$/gm, '<blockquote style="border-left:3px solid var(--brand-1);margin:0;padding:4px 12px;color:var(--ink-3);font-style:italic">$1</blockquote>')
     .replace(/^\| (.+) \|$/gm, (line) => {
       if (line.includes('---')) return '';
       const cells = line.split('|').slice(1,-1).map(c => `<td style="padding:6px 12px;border-bottom:1px solid var(--rule)">${c.trim()}</td>`).join('');
@@ -667,12 +840,19 @@ function mdToHtml(md) {
   html = blocks.map(block => {
     block = block.trim();
     if (!block) return '';
-    if (block.startsWith('<h') || block.startsWith('<div') || block.startsWith('<table')) return block;
+    if (block.startsWith('<h') || block.startsWith('<div') || block.startsWith('<table') ||
+        block.startsWith('<hr') || block.startsWith('<blockquote')) return block;
     const listLines = block.split('\n');
-    const allBullet = listLines.every(l => l.match(/^[-*•] /) || !l.trim());
-    const allNum = listLines.every(l => l.match(/^\d+\. /) || !l.trim());
+    const allBullet = listLines.every(l => l.match(/^ {0,4}[-*•] /) || !l.trim());
+    const allNum   = listLines.every(l => l.match(/^ {0,4}\d+\. /) || !l.trim());
     if (allBullet && listLines.some(l => l.trim())) {
-      return '<ul>' + listLines.filter(l=>l.trim()).map(l => `<li>${l.replace(/^[-*•] /, '')}</li>`).join('') + '</ul>';
+      // Quality Fix 4: nested lists — lines with 2+ leading spaces become a nested <ul>
+      const items = listLines.filter(l => l.trim()).map(l => {
+        const nested = l.match(/^( {2,4}|\t)([-*•] )/);
+        if (nested) return `<ul class="nested" style="padding-left:20px;margin:2px 0">${'<li style="font-size:0.95em">' + l.replace(/^(\s+)[-*•] /, '') + '</li>'}</ul>`;
+        return `<li>${l.replace(/^[-*•] /, '')}</li>`;
+      });
+      return '<ul>' + items.join('') + '</ul>';
     }
     if (allNum && listLines.some(l => l.trim())) {
       return '<ol>' + listLines.filter(l=>l.trim()).map(l => `<li>${l.replace(/^\d+\. /, '')}</li>`).join('') + '</ol>';
@@ -692,6 +872,7 @@ function renderModulePreview() {
         <span style="font-size:var(--text-xs);font-weight:700;color:var(--ink-4);letter-spacing:0.08em">MODULE ${i+1}</span>
         <span style="flex:1;font-weight:600;font-size:var(--text-sm)">${esc(m.title)}</span>
         <span style="font-size:var(--text-xs);color:var(--ink-4)">${wordCount(m.content)} words</span>
+        ${rawTextLength(m.content) > CHAR_LIMIT_QUESTIONS ? '<span class="chip chip-amber" style="font-size:10px;margin-left:4px" title="Content exceeds 3,000 chars — only the first section will be used for questions">⚠ long</span>' : ''}
         <span style="color:var(--ink-4);font-size:12px;margin-left:var(--space-2)">▾</span>
       </div>
       <div class="mod-body" id="mprev-${i}" style="max-height:200px;overflow-y:auto;font-size:var(--text-sm);color:var(--ink-2);line-height:1.7">
@@ -710,11 +891,33 @@ function wordCount(html) {
   return (html || '').replace(/<[^>]*>/g, ' ').split(/\s+/).filter(Boolean).length;
 }
 
+function rawTextLength(html) {
+  return (html || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().length;
+}
+
+let genErrorIs401 = false;
+
+// Polish 3 — set a dot's visual state class (clears inline background)
+function setDotState(el, state) {
+  el.classList.remove('gen-dot-pending','gen-dot-active','gen-dot-done','gen-dot-partial','gen-dot-fail');
+  el.style.background = '';
+  if (state) el.classList.add(`gen-dot-${state}`);
+}
+
+function genErrorBack() {
+  isGenerating = false;
+  if (genErrorIs401) {
+    goPhase(1);
+  } else {
+    goPhase(2);
+  }
+}
+
 function goBackToUpload() {
   goPhase(1);
 }
 
-async function startGeneration() {
+async function startGeneration(skipEmpty = false) {
   // Re-sync parsedModules from fileModules so any edits in configure phase are captured
   if (fileModules.length) {
     parsedModules = [];
@@ -723,112 +926,182 @@ async function startGeneration() {
   if (!parsedModules.length) { toast('No modules to generate questions for.', 'error'); return; }
   if (isGenerating) return;
 
+  // Reset error state from any previous attempt (Bug 7)
+  document.getElementById('gen-error').classList.add('hidden');
+  genErrorIs401 = false;
+  document.getElementById('gen-error-back').textContent = '← Back to Configure';
+
+  // Check for empty modules (Bug 1)
+  document.getElementById('empty-mod-warning').classList.add('hidden');
+  const emptyMods = parsedModules.filter(m => wordCount(m.content) === 0);
+  if (emptyMods.length && !skipEmpty) {
+    document.getElementById('empty-mod-names').textContent =
+      `⚠ These modules have no content — questions will be hallucinated: ${emptyMods.map(m => `"${m.title}"`).join(', ')}`;
+    document.getElementById('empty-mod-warning').classList.remove('hidden');
+    return;
+  }
+
   const title = document.getElementById('course-title').value.trim();
   if (!title) { toast('Please enter a course title first.', 'error'); document.getElementById('course-title').focus(); return; }
+
+  const apiKey = sessionStorage.getItem('trainflow_api_key');
+  if (!apiKey || !apiKey.startsWith('sk-ant-') || apiKey.length <= 20) {
+    toast('API key required. Please enter your Anthropic API key above.', 'error');
+    goPhase(1);
+    return;
+  }
 
   isGenerating = true;
   goPhase(3);
 
-  const qCount = parseInt(document.getElementById('q-per-mod').value);
-  const difficulty = document.getElementById('q-difficulty').value;
-  const focus = document.getElementById('q-focus').value;
-  const total = parsedModules.length;
-
-  const listEl = document.getElementById('gen-module-list');
-
-  // Build rows — each module gets a questions status and a summary status
-  listEl.innerHTML = parsedModules.map((m, i) => `
-    <div class="gen-row pending" id="genrow-${i}" style="align-items:flex-start;flex-direction:column;gap:4px;padding:8px 0">
-      <div style="display:flex;align-items:center;gap:var(--space-3);width:100%">
-        <div class="gen-dot" id="gendot-${i}"></div>
-        <span style="font-weight:500">${esc(m.title)}</span>
-      </div>
-      <div style="display:flex;gap:var(--space-4);padding-left:20px">
-        <span style="font-size:var(--text-xs)" id="genrow-q-${i}">Questions: waiting</span>
-        <span style="font-size:var(--text-xs);color:var(--ink-4)" id="genrow-s-${i}">Summary: waiting</span>
-      </div>
-    </div>`).join('');
-
-  const generatedModules = [];
-  let failed = false;
-
-  // ── PASS 1: Questions ────────────────────────────────────────────────────
-  document.getElementById('gen-pass-label').textContent = 'Pass 1 of 2 — Quiz questions';
-  document.getElementById('gen-pass-sub').textContent = 'Writing multiple-choice questions for each module…';
-
-  for (let i = 0; i < parsedModules.length; i++) {
-    const mod = parsedModules[i];
-    const rowEl = document.getElementById(`genrow-${i}`);
-    const dotEl = document.getElementById(`gendot-${i}`);
-    const qStatus = document.getElementById(`genrow-q-${i}`);
-
-    rowEl.classList.remove('pending'); rowEl.classList.add('active');
-    dotEl.style.background = 'var(--brand-1)';
-    qStatus.innerHTML = '<span style="color:var(--brand-1)">Generating…</span>';
-
-    document.getElementById('gen-progress-label').textContent = `${i + 1} of ${total}`;
-    document.getElementById('gen-prog-bar').style.width = `${(i / total) * 50}%`;
-
-    try {
-      const questions = await generateQuestions(mod, qCount, difficulty, focus);
-      generatedModules.push({ ...mod, questions, summary: null });
-      qStatus.innerHTML = `<span style="color:var(--pass)">✓ ${questions.length} questions</span>`;
-    } catch (err) {
-      failed = true;
-      dotEl.style.background = 'var(--fail)';
-      qStatus.innerHTML = `<span style="color:var(--fail)">✗ Failed: ${err.message.slice(0,60)}</span>`;
-      document.getElementById('gen-error').classList.remove('hidden');
-      document.getElementById('gen-error-msg').textContent = err.message;
-      break;
+  // Elapsed timer
+  const genStartTime = Date.now();
+  const elapsedEl = document.getElementById('gen-elapsed');
+  const elapsedTimer = setInterval(() => {
+    if (elapsedEl) {
+      const s = Math.floor((Date.now() - genStartTime) / 1000);
+      const m = Math.floor(s / 60);
+      elapsedEl.textContent = m > 0 ? `${m}m ${s % 60}s elapsed` : `${s}s elapsed`;
     }
-  }
+  }, 1000);
 
-  if (failed) { isGenerating = false; return; }
+  try {
+    const qCount = parseInt(document.getElementById('q-per-mod').value);
+    const difficulty = document.getElementById('q-difficulty').value;
+    const focus = document.getElementById('q-focus').value;
+    const total = parsedModules.length;
 
-  // ── PASS 2: Summaries ────────────────────────────────────────────────────
-  document.getElementById('gen-pass-label').textContent = 'Pass 2 of 2 — Learner summaries';
-  document.getElementById('gen-pass-sub').textContent = 'Writing study guide summaries and key takeaways…';
-  document.getElementById('gen-progress-label').textContent = `0 of ${total}`;
+    // Pre-compute truncation flags for Phase 3 warnings (Bug 2)
+    const truncFlags = parsedModules.map(m => rawTextLength(m.content) > CHAR_LIMIT_QUESTIONS);
 
-  for (let i = 0; i < generatedModules.length; i++) {
-    const mod = generatedModules[i];
-    const dotEl = document.getElementById(`gendot-${i}`);
-    const sStatus = document.getElementById(`genrow-s-${i}`);
+    const listEl = document.getElementById('gen-module-list');
 
-    sStatus.innerHTML = '<span style="color:var(--brand-1)">Summarising…</span>';
-    document.getElementById('gen-progress-label').textContent = `${i + 1} of ${total}`;
-    document.getElementById('gen-prog-bar').style.width = `${50 + (i / total) * 50}%`;
+    // Build rows — each module gets a questions status and a summary status
+    listEl.innerHTML = parsedModules.map((m, i) => `
+      <div class="gen-row pending" id="genrow-${i}" style="align-items:flex-start;flex-direction:column;gap:4px;padding:8px 0">
+        <div style="display:flex;align-items:center;gap:var(--space-3);width:100%">
+          <div class="gen-dot gen-dot-pending" id="gendot-${i}"></div>
+          <span style="font-weight:500">${esc(m.title)}</span>
+          ${truncFlags[i] ? '<span class="chip chip-amber" style="font-size:10px;margin-left:4px">⚠ long content</span>' : ''}
+        </div>
+        <div style="display:flex;gap:var(--space-4);padding-left:20px">
+          <span style="font-size:var(--text-xs)" id="genrow-q-${i}">Questions: waiting</span>
+          <span style="font-size:var(--text-xs);color:var(--ink-4)" id="genrow-s-${i}">Summary: waiting</span>
+        </div>
+      </div>`).join('') +
+      `<div style="display:flex;align-items:center;gap:var(--space-5);margin-top:var(--space-4);padding-top:var(--space-3);border-top:1px solid var(--rule-2);font-size:var(--text-xs);color:var(--ink-4)">
+        <span style="display:flex;align-items:center;gap:5px"><span class="gen-dot" style="background:var(--ink-4);flex-shrink:0"></span>pending</span>
+        <span style="display:flex;align-items:center;gap:5px"><span class="gen-dot" style="background:var(--brand-1);flex-shrink:0"></span>generating</span>
+        <span style="display:flex;align-items:center;gap:5px"><span class="gen-dot" style="background:var(--pass);flex-shrink:0"></span>complete</span>
+        <span style="display:flex;align-items:center;gap:5px"><span class="gen-dot" style="background:var(--warn);flex-shrink:0"></span>partial</span>
+        <span style="display:flex;align-items:center;gap:5px"><span class="gen-dot" style="background:var(--fail);flex-shrink:0"></span>failed</span>
+      </div>`;
 
-    try {
-      const summary = await generateSummary(mod);
-      generatedModules[i].summary = summary;
-      sStatus.innerHTML = `<span style="color:var(--pass)">✓ Summary ready</span>`;
-      dotEl.style.background = 'var(--pass)';
-    } catch (err) {
-      // Non-fatal — course still works without summary
-      generatedModules[i].summary = { intro: '', bullets: [] };
-      sStatus.innerHTML = `<span style="color:var(--warn)">⚠ Skipped</span>`;
-      dotEl.style.background = 'var(--pass)';
+    const generatedModules = [];
+    let failed = false;
+
+    // ── PASS 1: Questions ────────────────────────────────────────────────────
+    document.getElementById('gen-pass-label').textContent = 'Pass 1 of 2 — Quiz questions';
+    document.getElementById('gen-pass-sub').textContent = 'Writing multiple-choice questions for each module…';
+
+    for (let i = 0; i < parsedModules.length; i++) {
+      const mod = parsedModules[i];
+      const rowEl = document.getElementById(`genrow-${i}`);
+      const dotEl = document.getElementById(`gendot-${i}`);
+      const qStatus = document.getElementById(`genrow-q-${i}`);
+
+      rowEl.classList.remove('pending'); rowEl.classList.add('active');
+      setDotState(dotEl, 'active');
+      qStatus.innerHTML = '<span style="color:var(--brand-1)">Generating…</span>';
+
+      document.getElementById('gen-progress-label').textContent = `${i + 1} of ${total}`;
+      document.getElementById('gen-prog-bar').style.width = `${(i / total) * 50}%`;
+
+      try {
+        const questions = await generateQuestions(mod, qCount, difficulty, focus);
+        generatedModules.push({ ...mod, questions, summary: null });
+        qStatus.innerHTML = `<span style="color:var(--pass)">✓ ${questions.length} questions</span>`;
+        // dot updated after summary pass; leave active for now
+      } catch (err) {
+        failed = true;
+        setDotState(dotEl, 'fail');
+        qStatus.innerHTML = `<span style="color:var(--fail)">✗ Failed: ${err.message.slice(0,80)}</span>`;
+        // Bug 7: surface 401 specifically
+        if (err.status === 401) {
+          genErrorIs401 = true;
+          sessionStorage.removeItem('trainflow_api_key');
+          hideApiKeyStatus();
+          document.getElementById('gen-error-back').textContent = '← Fix API Key (Phase 1)';
+        }
+        document.getElementById('gen-error').classList.remove('hidden');
+        document.getElementById('gen-error-msg').textContent = err.message;
+        break;
+      }
     }
+
+    if (failed) { return; }
+
+    // ── PASS 2: Summaries ────────────────────────────────────────────────────
+    document.getElementById('gen-pass-label').textContent = 'Pass 2 of 2 — Learner summaries';
+    document.getElementById('gen-pass-sub').textContent = 'Writing study guide summaries and key takeaways…';
+    document.getElementById('gen-progress-label').textContent = `0 of ${total}`;
+
+    for (let i = 0; i < generatedModules.length; i++) {
+      const mod = generatedModules[i];
+      const dotEl = document.getElementById(`gendot-${i}`);
+      const sStatus = document.getElementById(`genrow-s-${i}`);
+
+      sStatus.innerHTML = '<span style="color:var(--brand-1)">Summarising…</span>';
+      document.getElementById('gen-progress-label').textContent = `${i + 1} of ${total}`;
+      document.getElementById('gen-prog-bar').style.width = `${50 + (i / total) * 50}%`;
+
+      try {
+        const summary = await generateSummary(mod);
+        generatedModules[i].summary = summary;
+        sStatus.innerHTML = `<span style="color:var(--pass)">✓ Summary ready</span>`;
+        setDotState(dotEl, 'done');
+      } catch (err) {
+        // Bug 6: mark failed summaries with orange dot and failed flag
+        generatedModules[i].summary = { intro: '', bullets: [], failed: true };
+        if (err.status === 401) {
+          // Bug 7: 401 during summary is fatal — key is definitely invalid
+          setDotState(dotEl, 'fail');
+          sStatus.innerHTML = `<span style="color:var(--fail)">✗ API key rejected</span>`;
+          genErrorIs401 = true;
+          sessionStorage.removeItem('trainflow_api_key');
+          hideApiKeyStatus();
+          document.getElementById('gen-error-back').textContent = '← Fix API Key (Phase 1)';
+          document.getElementById('gen-error').classList.remove('hidden');
+          document.getElementById('gen-error-msg').textContent = err.message;
+          return;
+        }
+        // Non-fatal: orange dot = partial (questions ok, summary failed)
+        sStatus.innerHTML = `<span style="color:var(--warn)">⚠ Summary failed</span>`;
+        setDotState(dotEl, 'partial');
+      }
+    }
+
+    document.getElementById('gen-prog-bar').style.width = '100%';
+    document.getElementById('gen-progress-label').textContent = `${total} of ${total}`;
+
+    const totalQ = generatedModules.reduce((s, m) => s + m.questions.length, 0);
+    generatedCourse = {
+      title: document.getElementById('course-title').value.trim(),
+      icon: document.getElementById('course-icon').value || '📋',
+      description: document.getElementById('course-desc').value.trim(),
+      modules: generatedModules
+    };
+
+    document.getElementById('export-summary').textContent =
+      `${generatedModules.length} modules · ${totalQ} questions · study guide ready`;
+
+    renderReview();
+    goPhase(4);
+  } finally {
+    isGenerating = false;
+    clearInterval(elapsedTimer);
+    if (elapsedEl) elapsedEl.textContent = '';
   }
-
-  document.getElementById('gen-prog-bar').style.width = '100%';
-  document.getElementById('gen-progress-label').textContent = `${total} of ${total}`;
-
-  const totalQ = generatedModules.reduce((s, m) => s + m.questions.length, 0);
-  generatedCourse = {
-    title: document.getElementById('course-title').value.trim(),
-    icon: document.getElementById('course-icon').value || '📋',
-    description: document.getElementById('course-desc').value.trim(),
-    modules: generatedModules
-  };
-
-  document.getElementById('export-summary').textContent =
-    `${generatedModules.length} modules · ${totalQ} questions · study guide ready`;
-
-  renderReview();
-  isGenerating = false;
-  goPhase(4);
 }
 
 // Walks JSON char-by-char and escapes unescaped quotes/newlines inside string values
@@ -903,7 +1176,7 @@ async function generateQuestions(mod, qCount, difficulty, focus) {
     analytical: 'Questions should test judgment, edge cases, and nuanced understanding. Include tricky situations where the wrong answer seems plausible.'
   };
 
-  const contentText = mod.content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 3000);
+  const contentText = mod.content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, CHAR_LIMIT_QUESTIONS);
 
   const prompt = `Write ${qCount} multiple-choice quiz questions for a support team training module.
 
@@ -931,17 +1204,27 @@ Respond with a JSON array only. No markdown, no wrapper object, no explanation. 
 
   const response = await fetch(CLAUDE_API, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': sessionStorage.getItem('trainflow_api_key') || '',
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 3000,
+      model: MODEL,
+      max_tokens: CHAR_LIMIT_QUESTIONS,
       messages: [{ role: 'user', content: prompt }]
     })
   });
 
   if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(err.error?.message || `API error ${response.status}`);
+    const errBody = await response.json().catch(() => ({}));
+    const msg = response.status === 401
+      ? 'API key rejected (401). Check your key in Phase 1 and try again.'
+      : (errBody.error?.message || `API error ${response.status}`);
+    const error = new Error(msg);
+    error.status = response.status;
+    throw error;
   }
 
   const data = await response.json();
@@ -960,7 +1243,7 @@ Respond with a JSON array only. No markdown, no wrapper object, no explanation. 
 
   // Fix curly/smart quotes and dashes
   text = text
-    .replace(/[\u2018\u2019\u02BC]/g, "\\'")
+    .replace(/[\u2018\u2019\u02BC]/g, "'")
     .replace(/[\u201C\u201D]/g, '\\"')
     .replace(/[\u2013\u2014]/g, '-')
     .replace(/[\u2026]/g, '...');
@@ -999,17 +1282,25 @@ Respond with a JSON array only. No markdown, no wrapper object, no explanation. 
   }
 
   // Normalise each question — handle both array and object formats
-  return questions.map(q => ({
-    question: String(q.question || q.q || ''),
-    options: Array.isArray(q.options) ? q.options.map(String) : [
-      String(q.option_a || q.optionA || q.A || ''),
-      String(q.option_b || q.optionB || q.B || ''),
-      String(q.option_c || q.optionC || q.C || ''),
-      String(q.option_d || q.optionD || q.D || ''),
-    ],
-    correct_index: typeof q.correct_index === 'number' ? q.correct_index : 0,
-    explanation: String(q.explanation || '')
-  })).filter(q => q.question);
+  return questions.map(q => {
+    const rawIdx = typeof q.correct_index === 'number' ? q.correct_index : 0;
+    const clampedIdx = Math.max(0, Math.min(3, rawIdx));
+    if (rawIdx !== clampedIdx) {
+      console.warn(`Warning: correct_index ${rawIdx} out of bounds for question: "${String(q.question || q.q || '').slice(0, 60)}"`);
+    }
+    return {
+      question: String(q.question || q.q || ''),
+      options: Array.isArray(q.options) ? q.options.map(String) : [
+        String(q.option_a || q.optionA || q.A || ''),
+        String(q.option_b || q.optionB || q.B || ''),
+        String(q.option_c || q.optionC || q.C || ''),
+        String(q.option_d || q.optionD || q.D || ''),
+      ],
+      correct_index: clampedIdx,
+      _oob: rawIdx !== clampedIdx,
+      explanation: String(q.explanation || '')
+    };
+  }).filter(q => q.question);
 }
 
 function renderReview() {
@@ -1021,14 +1312,21 @@ function renderReview() {
 
   const el = document.getElementById('review-modules');
   el.innerHTML = `
-    <div style="font-weight:700;font-size:var(--text-md);margin-bottom:var(--space-4);margin-top:var(--space-2)">Review modules</div>
-    ` + generatedCourse.modules.map((m, mi) => `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-4);margin-top:var(--space-2)">
+      <div style="font-weight:700;font-size:var(--text-md)">Review modules</div>
+      <button id="btn-expand-all" class="btn btn-ghost btn-sm" onclick="toggleExpandAll()">Expand all</button>
+    </div>
+    ` + generatedCourse.modules.map((m, mi) => {
+    const wasTruncated = rawTextLength(m.content) > CHAR_LIMIT_QUESTIONS;
+    const hasSummary = m.summary?.intro || m.summary?.bullets?.length > 0;
+    return `
     <div class="mod-card">
       <div class="mod-head" onclick="toggleReview(${mi})">
         <span style="font-size:var(--text-xs);font-weight:700;color:var(--ink-4);letter-spacing:0.08em">MODULE ${mi+1}</span>
         <span style="flex:1;font-weight:600;font-size:var(--text-sm)">${esc(m.title)}</span>
         <span class="chip chip-blue" style="font-size:10px">${m.questions.length} questions</span>
-        ${m.summary ? '<span class="chip chip-green" style="font-size:10px;margin-left:4px">summary</span>' : ''}
+        ${hasSummary ? '<span class="chip chip-green" style="font-size:10px;margin-left:4px">summary</span>' : m.summary?.failed ? '<span class="chip chip-gray" style="font-size:10px;margin-left:4px">no summary</span>' : '<span class="chip chip-gray" style="font-size:10px;margin-left:4px">no summary</span>'}
+        ${wasTruncated ? '<span class="chip chip-amber" style="font-size:10px;margin-left:4px" title="Content was truncated — questions cover only the first ~3,000 chars">⚠ truncated</span>' : ''}
         <span style="color:var(--ink-4);font-size:12px;margin-left:var(--space-2)">▾</span>
       </div>
       <div class="mod-body" id="review-body-${mi}">
@@ -1057,7 +1355,8 @@ function renderReview() {
             ${q.explanation ? `<div style="font-size:var(--text-xs);color:var(--ink-3);margin-top:var(--space-2);padding-top:var(--space-2);border-top:1px solid var(--rule)">💡 ${esc(q.explanation)}</div>` : ''}
           </div>`).join('')}
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 function exportStudyGuide() {
@@ -1065,11 +1364,12 @@ function exportStudyGuide() {
   const c = generatedCourse;
 
   const moduleHtml = c.modules.map((m, i) => {
+    // Quality Fix 3: escape user-controlled strings; m.content is intentional HTML from mdToHtml()
     const summaryHtml = m.summary && (m.summary.intro || m.summary.bullets?.length) ? `
       <div class="summary-box">
         <div class="summary-label">Key Takeaways</div>
-        ${m.summary.intro ? `<p class="summary-intro">${m.summary.intro}</p>` : ''}
-        ${m.summary.bullets?.length ? `<ul class="summary-bullets">${m.summary.bullets.map(b => `<li>${b}</li>`).join('')}</ul>` : ''}
+        ${m.summary.intro ? `<p class="summary-intro">${esc(m.summary.intro)}</p>` : ''}
+        ${m.summary.bullets?.length ? `<ul class="summary-bullets">${m.summary.bullets.map(b => `<li>${esc(b)}</li>`).join('')}</ul>` : ''}
       </div>` : '';
 
     const contentHtml = m.content || '';
@@ -1077,14 +1377,14 @@ function exportStudyGuide() {
     return `
     <section class="module" id="module-${i+1}">
       <div class="module-eyebrow">Module ${i+1}</div>
-      <h2 class="module-title">${m.title}</h2>
+      <h2 class="module-title">${esc(m.title)}</h2>
       ${summaryHtml}
       <div class="module-content">${contentHtml}</div>
     </section>`;
   }).join('\n');
 
   const tocHtml = c.modules.map((m, i) =>
-    `<li><a href="#module-${i+1}"><span class="toc-num">${i+1}</span>${m.title}</a></li>`
+    `<li><a href="#module-${i+1}"><span class="toc-num">${i+1}</span>${esc(m.title)}</a></li>`
   ).join('');
 
   const html = `<!DOCTYPE html>
@@ -1092,7 +1392,7 @@ function exportStudyGuide() {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${c.title} — Study Guide</title>
+<title>${esc(c.title)} — Study Guide</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -1171,8 +1471,8 @@ function exportStudyGuide() {
 <div class="cover">
   <div class="cover-label">Study Guide</div>
   <div class="cover-icon">${c.icon || '📋'}</div>
-  <div class="cover-title">${c.title}</div>
-  ${c.description ? `<div class="cover-desc">${c.description}</div>` : ''}
+  <div class="cover-title">${esc(c.title)}</div>
+  ${c.description ? `<div class="cover-desc">${esc(c.description)}</div>` : ''}
   <div class="cover-meta">${c.modules.length} modules · Generated ${new Date().toLocaleDateString('en-US', {year:'numeric',month:'long',day:'numeric'})}</div>
 </div>
 
@@ -1236,11 +1536,11 @@ function exportCSV() {
       rows.push([
         csvEscape(m.title),
         csvEscape(q.question),
-        csvEscape(q.options[0] || ''),
-        csvEscape(q.options[1] || ''),
-        csvEscape(q.options[2] || ''),
-        csvEscape(q.options[3] || ''),
-        letters[q.correct_index] || 'A',
+        q.options[0] !== undefined ? csvEscape(q.options[0]) : '—',
+        q.options[1] !== undefined ? csvEscape(q.options[1]) : '—',
+        q.options[2] !== undefined ? csvEscape(q.options[2]) : '—',
+        q.options[3] !== undefined ? csvEscape(q.options[3]) : '—',
+        q._oob ? 'REVIEW' : (letters[q.correct_index] || 'REVIEW'),
         csvEscape(q.explanation || '')
       ].join(','));
     });
@@ -1261,8 +1561,42 @@ function esc(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// ── API key management ────────────────────────────────────────────────────────
+
+function handleApiKeyInput(val) {
+  const valid = val.startsWith('sk-ant-') && val.length > 20;
+  const invalidMsg = document.getElementById('api-key-invalid-msg');
+  if (valid) {
+    sessionStorage.setItem('trainflow_api_key', val);
+    showApiKeyStatus();
+    if (invalidMsg) invalidMsg.classList.add('hidden');
+  } else {
+    sessionStorage.removeItem('trainflow_api_key');
+    hideApiKeyStatus();
+    // Show shake + red helper only when user has typed something non-empty that looks wrong
+    if (val.length > 3 && !val.startsWith('sk-ant-')) {
+      const inp = document.getElementById('api-key-input');
+      if (invalidMsg) invalidMsg.classList.remove('hidden');
+      inp.classList.remove('shake');
+      void inp.offsetWidth; // reflow to restart animation
+      inp.classList.add('shake');
+      setTimeout(() => inp.classList.remove('shake'), 400);
+    } else {
+      if (invalidMsg) invalidMsg.classList.add('hidden');
+    }
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const stored = sessionStorage.getItem('trainflow_api_key');
+  if (stored) {
+    document.getElementById('api-key-input').value = stored;
+    showApiKeyStatus();
+  }
+});
+
 async function generateSummary(mod) {
-  const contentText = mod.content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 4000);
+  const contentText = mod.content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, CHAR_LIMIT_SUMMARY);
 
   const prompt = `You are writing study guide content for a training course. A learner will read this BEFORE answering quiz questions on the module.
 
@@ -1290,17 +1624,27 @@ Rules:
 
   const response = await fetch(CLAUDE_API, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': sessionStorage.getItem('trainflow_api_key') || '',
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
+      model: MODEL,
       max_tokens: 800,
       messages: [{ role: 'user', content: prompt }]
     })
   });
 
   if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(err.error?.message || `API error ${response.status}`);
+    const errBody = await response.json().catch(() => ({}));
+    const msg = response.status === 401
+      ? 'API key rejected (401). Check your key in Phase 1 and try again.'
+      : (errBody.error?.message || `API error ${response.status}`);
+    const error = new Error(msg);
+    error.status = response.status;
+    throw error;
   }
 
   const data = await response.json();

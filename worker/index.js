@@ -20,6 +20,12 @@ import { cors }           from 'hono/cors'
 import { sign, verify }   from 'hono/jwt'
 import { createClient }   from '@libsql/client/web'
 
+const CONSTANTS = {
+  PBKDF2_ITERATIONS: 100000,
+  ADMIN_JWT_EXP_SEC: 8 * 3600,
+  LEARNER_JWT_EXP_SEC: 24 * 3600,
+};
+
 // ══════════════════════════════════════════════════════════════════════════════
 //  UTILITIES
 // ══════════════════════════════════════════════════════════════════════════════
@@ -77,7 +83,7 @@ async function pbkdf2Hash(password) {
     'raw', ENC.encode(password), 'PBKDF2', false, ['deriveBits']
   )
   const bits = await crypto.subtle.deriveBits(
-    { name: 'PBKDF2', hash: 'SHA-256', salt, iterations: 100_000 },
+    { name: 'PBKDF2', hash: 'SHA-256', salt, iterations: CONSTANTS.PBKDF2_ITERATIONS },
     key, 256
   )
   return `pbkdf2v1:${_b64(salt)}:${_b64(new Uint8Array(bits))}`
@@ -93,7 +99,7 @@ async function pbkdf2Verify(password, stored) {
     'raw', ENC.encode(password), 'PBKDF2', false, ['deriveBits']
   )
   const bits = await crypto.subtle.deriveBits(
-    { name: 'PBKDF2', hash: 'SHA-256', salt, iterations: 100_000 },
+    { name: 'PBKDF2', hash: 'SHA-256', salt, iterations: CONSTANTS.PBKDF2_ITERATIONS },
     key, 256
   )
   const computed = _b64(new Uint8Array(bits))
@@ -190,7 +196,6 @@ app.use('/api/*', async (c, next) =>
 // All unhandled throws end up here.  Always returns JSON — never a raw 500 page.
 
 app.onError((err, c) => {
-  console.error('[trainflow]', err)
   return c.json({ error: 'Internal server error' }, 500)
 })
 
@@ -433,7 +438,7 @@ app.post('/api/auth/login', async (c) => {
 
   const now   = Math.floor(Date.now() / 1000)
   const token = await sign(
-    { role: 'admin', iat: now, exp: now + 8 * 3600 },
+    { role: 'admin', iat: now, exp: now + CONSTANTS.ADMIN_JWT_EXP_SEC },
     c.env.JWT_SECRET,
     'HS256'
   )
@@ -472,7 +477,7 @@ app.post('/api/learners/login', async (c) => {
 
   const now   = Math.floor(Date.now() / 1000)
   const token = await sign(
-    { role: 'learner', id: learner.id, name: learner.name, iat: now, exp: now + 24 * 3600 },
+    { role: 'learner', id: learner.id, name: learner.name, iat: now, exp: now + CONSTANTS.LEARNER_JWT_EXP_SEC },
     c.env.JWT_SECRET,
     'HS256'
   )
@@ -676,6 +681,54 @@ app.put('/api/auth/password', adminAuth, async (c) => {
   })
 
   return c.json({ updated: true })
+})
+
+// ── GET /api/assignments ──────────────────────────────────────────────────────
+
+app.get('/api/assignments', adminAuth, async (c) => {
+  const db = getDb(c.env)
+  const res = await db.execute('SELECT * FROM assignments')
+  return c.json(toObjs(res))
+})
+
+// ── POST /api/assignments ─────────────────────────────────────────────────────
+
+app.post('/api/assignments', adminAuth, async (c) => {
+  const body = await c.req.json().catch(() => null)
+  if (!body || !body.course_id || !body.learner_id) return c.json({ error: 'Missing course_id or learner_id' }, 400)
+  
+  const db = getDb(c.env)
+  await db.execute({
+    sql: 'INSERT OR IGNORE INTO assignments (course_id, learner_id) VALUES (?, ?)',
+    args: [body.course_id, body.learner_id],
+  })
+  return c.json({ ok: true })
+})
+
+// ── DELETE /api/assignments ───────────────────────────────────────────────────
+
+app.delete('/api/assignments', adminAuth, async (c) => {
+  const body = await c.req.json().catch(() => null)
+  if (!body || !body.course_id || !body.learner_id) return c.json({ error: 'Missing course_id or learner_id' }, 400)
+
+  const db = getDb(c.env)
+  await db.execute({
+    sql: 'DELETE FROM assignments WHERE course_id = ? AND learner_id = ?',
+    args: [body.course_id, body.learner_id],
+  })
+  return c.json({ ok: true })
+})
+
+// ── GET /api/learners/me/assignments ──────────────────────────────────────────
+
+app.get('/api/learners/me/assignments', learnerAuth, async (c) => {
+  const learner = c.get('learner')
+  const db = getDb(c.env)
+  const res = await db.execute({
+    sql: 'SELECT course_id FROM assignments WHERE learner_id = ?',
+    args: [learner.id],
+  })
+  return c.json(toObjs(res).map(r => r.course_id))
 })
 
 // ── GET /api/learners ─────────────────────────────────────────────────────────

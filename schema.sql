@@ -113,6 +113,17 @@ BEGIN
 END;
 
 
+-- ─── ASSIGNMENTS ─────────────────────────────────────────
+-- Assigns a course to a specific learner.
+
+CREATE TABLE IF NOT EXISTS assignments (
+  course_id  TEXT NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+  learner_id TEXT NOT NULL REFERENCES learners(id) ON DELETE CASCADE,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+  PRIMARY KEY (course_id, learner_id)
+);
+
+
 -- ─── BRAND ───────────────────────────────────────────────
 -- Single-row config table (id always = 'default').
 -- Seeded on first deploy; updated via admin branding page.
