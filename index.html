@@ -178,6 +178,9 @@
       <div id="assign-subtitle" class="modal-sub"></div>
     </div>
     <div class="modal-body">
+      <div class="field" style="margin-bottom:var(--space-4);">
+        <input type="text" id="assign-search" placeholder="Search learners..." oninput="App.filterAssignList(this.value)" style="margin-bottom:0;">
+      </div>
       <div id="assign-list" style="max-height:400px;overflow-y:auto;"></div>
     </div>
     <div class="modal-foot">
@@ -396,6 +399,11 @@
         <div class="table-wrap">
           <table><thead><tr><th>Learner</th><th>Course</th><th>Score</th><th>Status</th><th>Date</th><th>Cert ID</th></tr></thead>
           <tbody id="comp-tbody"></tbody></table>
+        </div>
+        <div id="comp-pagination" class="hidden" style="display:flex;align-items:center;justify-content:center;gap:var(--space-4);margin-top:var(--space-6);">
+          <button class="btn btn-outline btn-sm" id="comp-prev" onclick="App.compPage(-1)">← Previous</button>
+          <span id="comp-page-info" style="font-size:var(--text-sm);font-weight:600;color:var(--ink-3);">Page 1</span>
+          <button class="btn btn-outline btn-sm" id="comp-next" onclick="App.compPage(1)">Next →</button>
         </div>
       </div>
       <div class="page hidden" id="ap-branding">

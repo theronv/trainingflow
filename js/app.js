@@ -179,6 +179,8 @@ let curModIdx  = 0;
 let quizSt     = {};
 let cbState    = { editId: null, mods: [] };
 let csvParsed  = null;
+let compOffset = 0;
+const COMP_LIMIT = 50;
 
 // ══════════════════ UTILITIES ══════════════════
 function esc(s) {
@@ -827,45 +829,59 @@ const App = {
   },
 
   _assignCourseId: null,
+  _assignLearners: [],
+  _assignState: [],
   async openAssign(id, title) {
     App._assignCourseId = id;
     $$('assign-subtitle').textContent = `Assign ${title} to learners`;
     $$('assign-overlay').classList.remove('hidden');
     $$('assign-list').innerHTML = '<div style="padding:var(--space-4);text-align:center;color:var(--ink-4);">Loading...</div>';
+    $$('assign-search').value = '';
     try {
       const [learners, assigns] = await Promise.all([
         api('/api/learners'),
         api('/api/assignments')
       ]);
-      const courseAssigns = assigns.filter(a => a.course_id === id);
-      if (!learners.length) {
-        $$('assign-list').innerHTML = '<div style="padding:var(--space-4);text-align:center;color:var(--ink-4);">No learners found.</div>';
-        return;
-      }
-      $$('assign-list').innerHTML = learners.map(l => {
-        const assign = courseAssigns.find(a => a.learner_id === l.id);
-        const isAssigned = !!assign;
-        const dueVal = assign?.due_at ? assign.due_at.split(' ')[0] : '';
-        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:var(--space-3) 0;border-bottom:1px solid var(--rule);">
-          <div style="flex:1;">
-            <div style="font-weight:600;color:var(--ink);">${esc(l.name)}</div>
-            ${isAssigned ? `<div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
-              <span style="font-size:10px;color:var(--ink-4);text-transform:uppercase;font-weight:700;">Deadline:</span>
-              <input type="date" id="due-${l.id}" value="${dueVal}" style="width:auto;padding:4px 8px;font-size:12px;border-radius:var(--r-sm);border:1px solid var(--rule);" onchange="App.toggleAssign(event, '${l.id}', true)">
-            </div>` : ''}
-          </div>
-          <button class="btn btn-sm ${isAssigned ? 'btn-ghost' : 'btn-outline'}" onclick="App.toggleAssign(event, '${l.id}', ${isAssigned})">
-            ${isAssigned ? 'Unassign' : 'Assign'}
-          </button>
-        </div>`;
-      }).join('');
+      App._assignLearners = learners;
+      App._assignState = assigns.filter(a => a.course_id === id);
+      App.filterAssignList('');
     } catch (e) {
       $$('assign-list').innerHTML = `<div style="color:var(--fail);padding:var(--space-4);">${esc(e.message)}</div>`;
     }
   },
+  filterAssignList(q) {
+    const list = $$('assign-list');
+    const query = q.toLowerCase().trim();
+    const filtered = App._assignLearners.filter(l => l.name.toLowerCase().includes(query));
+    
+    if (!filtered.length) {
+      list.innerHTML = '<div style="padding:var(--space-4);text-align:center;color:var(--ink-4);">No matching learners.</div>';
+      return;
+    }
+
+    list.innerHTML = filtered.map(l => {
+      const assign = App._assignState.find(a => a.learner_id === l.id);
+      const isAssigned = !!assign;
+      const dueVal = assign?.due_at ? assign.due_at.split(' ')[0] : '';
+      return `<div style="display:flex;align-items:center;justify-content:space-between;padding:var(--space-3) 0;border-bottom:1px solid var(--rule);">
+        <div style="flex:1;">
+          <div style="font-weight:600;color:var(--ink);">${esc(l.name)}</div>
+          ${isAssigned ? `<div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+            <span style="font-size:10px;color:var(--ink-4);text-transform:uppercase;font-weight:700;">Deadline:</span>
+            <input type="date" id="due-${l.id}" value="${dueVal}" style="width:auto;padding:4px 8px;font-size:12px;border-radius:var(--r-sm);border:1px solid var(--rule);" onchange="App.toggleAssign(event, '${l.id}', true)">
+          </div>` : ''}
+        </div>
+        <button class="btn btn-sm ${isAssigned ? 'btn-ghost' : 'btn-outline'}" onclick="App.toggleAssign(event, '${l.id}', ${isAssigned})">
+          ${isAssigned ? 'Unassign' : 'Assign'}
+        </button>
+      </div>`;
+    }).join('');
+  },
   closeAssign() {
     $$('assign-overlay').classList.add('hidden');
     App._assignCourseId = null;
+    App._assignLearners = [];
+    App._assignState = [];
   },
   async toggleAssign(ev, learnerId, currentlyAssigned) {
     if(ev) ev.stopPropagation();
@@ -879,8 +895,15 @@ const App = {
         const due_at = dueEl ? dueEl.value : null;
         await api('/api/assignments', { method: 'POST', body: JSON.stringify({ course_id: App._assignCourseId, learner_id: learnerId, due_at }) });
       }
-      const course = coursesCache.find(c => c.id === App._assignCourseId);
-      App.openAssign(App._assignCourseId, course ? course.title : 'Course');
+      
+      // Update local state and re-filter
+      const [learners, assigns] = await Promise.all([
+        api('/api/learners'),
+        api('/api/assignments')
+      ]);
+      App._assignLearners = learners;
+      App._assignState = assigns.filter(a => a.course_id === App._assignCourseId);
+      App.filterAssignList($$('assign-search').value);
     } catch (e) {
       const msg = e.detail ? `Error: ${e.detail}` : 'Could not update assignment: ' + e.message;
       Toast.err(msg);
@@ -922,17 +945,20 @@ const App = {
   async renderComps(courseId = '') {
     const tbody = $$('comp-tbody');
     try {
-      const path = courseId ? `/api/admin/completions?course_id=${courseId}` : '/api/admin/completions';
-      const [recsRaw, apiCourses] = await Promise.all([
+      const filter = $$('comp-filter');
+      const cid = courseId || filter.value;
+      const path = `/api/completions?limit=${COMP_LIMIT}&offset=${compOffset}${cid ? `&course_id=${cid}` : ''}`;
+      
+      const [apiRes, apiCourses] = await Promise.all([
         api(path),
         api('/api/courses'),
       ]);
-      const recs    = recsRaw; // Already normalized by worker endpoint
+      
+      const recs    = apiRes.rows;
       const courses = apiCourses.map(normCourse);
       coursesCache  = courses;
       
       // Populate filter if empty
-      const filter = $$('comp-filter');
       if (filter.options.length <= 1) {
         courses.forEach(c => {
           const opt = document.createElement('option');
@@ -941,21 +967,28 @@ const App = {
         });
       }
 
-      if(!recs.length){ 
+      if(!recs.length && compOffset === 0){ 
         tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--ink-4);">No records yet.</td></tr>'; 
         $$('comp-pass-rate').textContent = '';
+        $$('comp-pagination').classList.add('hidden');
         return; 
       }
 
+      // Update pagination UI
+      $$('comp-pagination').classList.remove('hidden');
+      $$('comp-prev').disabled = compOffset === 0;
+      $$('comp-next').disabled = (compOffset + COMP_LIMIT) >= apiRes.total;
+      $$('comp-page-info').textContent = `Page ${Math.floor(compOffset / COMP_LIMIT) + 1} of ${Math.ceil(apiRes.total / COMP_LIMIT) || 1}`;
+
       const total = recs.length;
       const passed = recs.filter(r => r.passed).length;
-      const rate = Math.round((passed / total) * 100);
-      $$('comp-pass-rate').textContent = `Avg Pass Rate: ${rate}%`;
+      const rate = total > 0 ? Math.round((passed / total) * 100) : 0;
+      $$('comp-pass-rate').textContent = `Page Pass Rate: ${rate}%`;
 
       tbody.innerHTML = recs.map(r=>{
         return `<tr>
-        <td>${esc(r.user_name)}</td>
-        <td>${esc(r.course_title)}</td>
+        <td>${esc(r.learner_name)}</td>
+        <td>${esc(r.course_title || 'Unknown')}</td>
         <td><span class="chip ${r.passed?'chip-green':'chip-red'}">${r.score}%</span></td>
         <td><span class="chip ${r.passed?'chip-green':'chip-red'}">${r.passed?'Passed':'Failed'}</span></td>
         <td>${new Date(r.completed_at * 1000).toLocaleDateString()}</td>
@@ -965,6 +998,10 @@ const App = {
     } catch (e) {
       tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--fail);">${esc(e.message)}</td></tr>`;
     }
+  },
+  compPage(dir) {
+    compOffset = Math.max(0, compOffset + (dir * COMP_LIMIT));
+    App.renderComps();
   },
 
   // ─── LEARNER MANAGEMENT (ADMIN) ───
