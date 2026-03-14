@@ -1,18 +1,5 @@
 /**
  * TrainFlow — Cloudflare Worker
- *
- * Architecture:
- *   Browser  →  this Worker (holds secrets)  →  Turso (libSQL)
- *
- * The TURSO_TOKEN, JWT_SECRET, and ADMIN_PASSWORD_HASH secrets never
- * leave this Worker. The browser only ever talks to /api/* endpoints.
- *
- * Environment bindings (set via `wrangler secret put` or wrangler.toml [vars]):
- *   TURSO_URL            – libsql:// database URL            (var, not secret)
- *   ALLOWED_ORIGIN       – CORS origin, e.g. GitHub Pages URL (var, not secret)
- *   TURSO_TOKEN          – Turso auth token                  (secret)
- *   JWT_SECRET           – Signing key for admin JWTs        (secret)
- *   ADMIN_PASSWORD_HASH  – Fallback PBKDF2 hash for initial login (secret)
  */
 
 import { Hono }           from 'hono'
@@ -30,27 +17,17 @@ const CONSTANTS = {
 //  UTILITIES
 // ══════════════════════════════════════════════════════════════════════════════
 
-/** Compact 12-char random ID safe for DB primary keys. */
 function uid() {
   return crypto.randomUUID().replace(/-/g, '').slice(0, 12)
 }
 
-/** Certificate display ID — "TF-" + 8 uppercase hex chars. */
 function certId() {
   return 'TF-' + crypto.randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase()
 }
 
-// ── Turso client ──────────────────────────────────────────────────────────────
-
 function getDb(env) {
   return createClient({ url: env.TURSO_URL, authToken: env.TURSO_TOKEN })
 }
-
-// ── Row → plain object ────────────────────────────────────────────────────────
-//
-// libsql Row objects expose named columns as NON-enumerable properties, so
-// Object.entries(row) yields only numeric indices.  We always go through
-// ResultSet.columns for reliable key→value conversion.
 
 function toObjs(res) {
   const { columns, rows } = res
@@ -61,31 +38,14 @@ function toObj(res) {
   return toObjs(res)[0] ?? null
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-//  PBKDF2 PASSWORD HELPERS
-//
-//  Hash format:  "pbkdf2v1:<base64-salt-16B>:<base64-hash-32B>"
-//  Algorithm:    PBKDF2-SHA-256, 100 000 iterations, 256-bit output
-//  All crypto:   Web Crypto API — zero extra dependencies, no CPU cap risk.
-//
-//  The ADMIN_PASSWORD_HASH env secret uses the same format.
-//  Generate it with:  node scripts/hash-password.mjs <password>
-// ══════════════════════════════════════════════════════════════════════════════
-
 const ENC = new TextEncoder()
-
 function _b64(bytes)  { return btoa(String.fromCharCode(...bytes)) }
 function _unb64(str)  { return Uint8Array.from(atob(str), c => c.charCodeAt(0)) }
 
 async function pbkdf2Hash(password) {
   const salt = crypto.getRandomValues(new Uint8Array(16))
-  const key  = await crypto.subtle.importKey(
-    'raw', ENC.encode(password), 'PBKDF2', false, ['deriveBits']
-  )
-  const bits = await crypto.subtle.deriveBits(
-    { name: 'PBKDF2', hash: 'SHA-256', salt, iterations: CONSTANTS.PBKDF2_ITERATIONS },
-    key, 256
-  )
+  const key  = await crypto.subtle.importKey('raw', ENC.encode(password), 'PBKDF2', false, ['deriveBits'])
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations: CONSTANTS.PBKDF2_ITERATIONS }, key, 256)
   return `pbkdf2v1:${_b64(salt)}:${_b64(new Uint8Array(bits))}`
 }
 
@@ -93,23 +53,11 @@ async function pbkdf2Verify(password, stored) {
   if (typeof stored !== 'string') return false
   const parts = stored.split(':')
   if (parts.length !== 3 || parts[0] !== 'pbkdf2v1') return false
-
   const salt = _unb64(parts[1])
-  const key  = await crypto.subtle.importKey(
-    'raw', ENC.encode(password), 'PBKDF2', false, ['deriveBits']
-  )
-  const bits = await crypto.subtle.deriveBits(
-    { name: 'PBKDF2', hash: 'SHA-256', salt, iterations: CONSTANTS.PBKDF2_ITERATIONS },
-    key, 256
-  )
+  const key  = await crypto.subtle.importKey('raw', ENC.encode(password), 'PBKDF2', false, ['deriveBits'])
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations: CONSTANTS.PBKDF2_ITERATIONS }, key, 256)
   const computed = _b64(new Uint8Array(bits))
-
-  // Timing-safe comparison: HMAC-sign both strings with a fixed key,
-  // then compare the signatures byte-by-byte.
-  const hmacKey = await crypto.subtle.importKey(
-    'raw', ENC.encode('trainflow-cmp'),
-    { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
-  )
+  const hmacKey = await crypto.subtle.importKey('raw', ENC.encode('trainflow-cmp'), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
   const [sigA, sigB] = await Promise.all([
     crypto.subtle.sign('HMAC', hmacKey, ENC.encode(computed)),
     crypto.subtle.sign('HMAC', hmacKey, ENC.encode(parts[2])),
@@ -118,55 +66,23 @@ async function pbkdf2Verify(password, stored) {
   return a.length === b.length && a.every((x, i) => x === b[i])
 }
 
-/**
- * Return the active password hash.
- * DB row takes precedence over the env fallback so that a password change
- * via the admin UI immediately supersedes the deploy-time secret.
- */
 async function getStoredHash(db, env) {
-  const res = await db.execute({
-    sql:  'SELECT password_hash FROM admin WHERE id = ?',
-    args: ['default'],
-  })
+  const res = await db.execute({ sql: 'SELECT password_hash FROM admin WHERE id = ?', args: ['default'] })
   if (res.rows.length) return String(res.rows[0][0])
   return env.ADMIN_PASSWORD_HASH ?? null
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-//  COURSE BUILDER HELPER
-//
-//  Returns an array of InStatement objects that insert a set of modules and
-//  their questions for a given courseId.  Used by both POST and PUT /api/courses
-//  so the logic lives in one place.
-// ══════════════════════════════════════════════════════════════════════════════
-
 function buildModuleStmts(courseId, modules) {
   const stmts = []
   for (let mi = 0; mi < modules.length; mi++) {
-    const mod   = modules[mi]
-    const modId = mod.id || uid()
-    stmts.push({
-      sql:  'INSERT INTO modules (id, course_id, title, content, sort_order) VALUES (?, ?, ?, ?, ?)',
-      args: [modId, courseId, mod.title || 'Module', mod.content || '', mi],
-    })
+    const mod = modules[mi], modId = mod.id || uid()
+    stmts.push({ sql: 'INSERT INTO modules (id, course_id, title, content, sort_order) VALUES (?, ?, ?, ?, ?)', args: [modId, courseId, mod.title || 'Module', mod.content || '', mi] })
     const questions = mod.questions || []
     for (let qi = 0; qi < questions.length; qi++) {
-      const q    = questions[qi]
-      const opts = q.options || q.opts || ['', '', '', '']
+      const q = questions[qi], opts = q.options || q.opts || ['', '', '', '']
       stmts.push({
-        sql: `INSERT INTO questions
-                (id, module_id, question,
-                 option_a, option_b, option_c, option_d,
-                 correct_index, explanation, sort_order)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        args: [
-          uid(), modId,
-          q.question || q.q || '',
-          opts[0] || '', opts[1] || '', opts[2] || '', opts[3] || '',
-          q.correct_index ?? q.correct ?? 0,
-          q.explanation   || q.exp    || '',
-          qi,
-        ],
+        sql: 'INSERT INTO questions (id, module_id, question, option_a, option_b, option_c, option_d, correct_index, explanation, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        args: [uid(), modId, q.question || q.q || '', opts[0] || '', opts[1] || '', opts[2] || '', opts[3] || '', q.correct_index ?? q.correct ?? 0, q.explanation || q.exp || '', qi]
       })
     }
   }
@@ -174,1116 +90,295 @@ function buildModuleStmts(courseId, modules) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-//  APP
+//  APP & MIDDLEWARE
 // ══════════════════════════════════════════════════════════════════════════════
 
 const app = new Hono()
 
-// ── CORS ──────────────────────────────────────────────────────────────────────
-// ALLOWED_ORIGIN should be your GitHub Pages URL in production.
-// Unset → defaults to "*" (open), which is fine during local dev.
-
-app.use('/api/*', async (c, next) =>
-  cors({
-    origin:         c.env.ALLOWED_ORIGIN || '*',
-    allowMethods:   ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowHeaders:   ['Content-Type', 'Authorization'],
-    maxAge:         86_400,
-  })(c, next)
-)
-
-// ── Global error handler ──────────────────────────────────────────────────────
-// All unhandled throws end up here.  Always returns JSON — never a raw 500 page.
-
-app.onError((err, c) => {
-  return c.json({ error: 'Internal server error' }, 500)
-})
-
+app.use('/api/*', async (c, next) => cors({ origin: c.env.ALLOWED_ORIGIN || '*', allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'], allowHeaders: ['Content-Type', 'Authorization'], maxAge: 86400 })(c, next))
+app.onError((err, c) => c.json({ error: 'Internal server error', detail: err.message }, 500))
 app.notFound(c => c.json({ error: 'Not found' }, 404))
 
-// ── Admin auth middleware ─────────────────────────────────────────────────────
-
-async function adminAuth(c, next) {
+async function requireAdmin(c, next) {
   const auth = c.req.header('Authorization')
-  if (!auth?.startsWith('Bearer ')) {
-    return c.json({ error: 'Unauthorized' }, 401)
-  }
+  if (!auth?.startsWith('Bearer ')) return c.json({ error: 'Unauthorized' }, 401)
   try {
     const payload = await verify(auth.slice(7), c.env.JWT_SECRET, 'HS256')
     if (payload.role !== 'admin') throw new Error('wrong role')
-    c.set('admin', payload)
+    c.set('user', { ...payload, isAdmin: true, scopedToTeam: null })
     await next()
-  } catch {
-    return c.json({ error: 'Unauthorized' }, 401)
-  }
+  } catch { return c.json({ error: 'Unauthorized' }, 401) }
 }
 
-// ── Learner auth middleware ───────────────────────────────────────────────────
-
-async function learnerAuth(c, next) {
+async function requireManager(c, next) {
   const auth = c.req.header('Authorization')
-  if (!auth?.startsWith('Bearer ')) {
-    return c.json({ error: 'Unauthorized' }, 401)
-  }
+  if (!auth?.startsWith('Bearer ')) return c.json({ error: 'Unauthorized' }, 401)
   try {
     const payload = await verify(auth.slice(7), c.env.JWT_SECRET, 'HS256')
-    if (payload.role !== 'learner') throw new Error('wrong role')
-    c.set('learner', { id: payload.id, name: payload.name })
+    if (payload.role === 'admin') c.set('user', { ...payload, isAdmin: true, scopedToTeam: null })
+    else if (payload.role === 'manager') c.set('user', { ...payload, isAdmin: false, scopedToTeam: payload.team_id })
+    else throw new Error('wrong role')
     await next()
-  } catch {
-    return c.json({ error: 'Unauthorized' }, 401)
-  }
+  } catch { return c.json({ error: 'Unauthorized' }, 401) }
+}
+
+async function requireLearner(c, next) {
+  const auth = c.req.header('Authorization')
+  if (!auth?.startsWith('Bearer ')) return c.json({ error: 'Unauthorized' }, 401)
+  try {
+    const payload = await verify(auth.slice(7), c.env.JWT_SECRET, 'HS256')
+    c.set('user', payload)
+    await next()
+  } catch { return c.json({ error: 'Unauthorized' }, 401) }
+}
+
+async function requireAnyAuth(c, next) {
+  const auth = c.req.header('Authorization')
+  if (!auth?.startsWith('Bearer ')) return c.json({ error: 'Unauthorized' }, 401)
+  try {
+    const payload = await verify(auth.slice(7), c.env.JWT_SECRET, 'HS256')
+    c.set('user', payload)
+    await next()
+  } catch { return c.json({ error: 'Unauthorized' }, 401) }
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-//  PUBLIC ROUTES
+//  ROUTES
 // ══════════════════════════════════════════════════════════════════════════════
-
-// ── GET /api/brand ────────────────────────────────────────────────────────────
 
 app.get('/api/brand', async (c) => {
-  const db    = getDb(c.env)
-  const brand = toObj(await db.execute({
-    sql: 'SELECT * FROM brand WHERE id = ?', args: ['default'],
-  }))
-  if (!brand) return c.json({ error: 'Brand not initialised' }, 404)
-  return c.json(brand)
+  const db = getDb(c.env), brand = toObj(await db.execute({ sql: 'SELECT * FROM brand WHERE id = ?', args: ['default'] }))
+  return brand ? c.json(brand) : c.json({ error: 'Brand not initialised' }, 404)
 })
-
-// ── GET /api/courses ──────────────────────────────────────────────────────────
-// Returns ALL courses with nested modules and questions.
-// Uses 3 queries total (courses → modules → questions) assembled in JS to
-// avoid N+1 without complex SQL aggregation.
 
 app.get('/api/courses', async (c) => {
-  const db         = getDb(c.env)
-  const coursesRes = await db.execute('SELECT * FROM courses ORDER BY created_at')
-  if (!coursesRes.rows.length) return c.json([])
-
-  const courses   = toObjs(coursesRes)
-  const courseIds = courses.map(c => c.id)
-  const ph        = courseIds.map(() => '?').join(',')
-
-  const [modsRes, qsRes] = await Promise.all([
-    db.execute({
-      sql:  `SELECT * FROM modules WHERE course_id IN (${ph}) ORDER BY sort_order`,
-      args: courseIds,
-    }),
-    db.execute({
-      sql:  `SELECT q.*
-             FROM   questions q
-             JOIN   modules   m ON q.module_id = m.id
-             WHERE  m.course_id IN (${ph})
-             ORDER  BY q.sort_order`,
-      args: courseIds,
-    }),
-  ])
-
-  const modules   = toObjs(modsRes)
-  const questions = toObjs(qsRes)
-
-  // Index questions by module_id
-  const qByMod = {}
-  for (const q of questions) {
-    const mid = String(q.module_id);
-    (qByMod[mid] ??= []).push(q)
-  }
-
-  // Index modules (with their questions) by course_id
-  const mByCourse = {}
-  for (const m of modules) {
-    const cid = String(m.course_id);
-    (mByCourse[cid] ??= []).push({ ...m, questions: qByMod[String(m.id)] || [] })
-  }
-
-  return c.json(courses.map(course => ({
-    ...course,
-    modules: mByCourse[String(course.id)] || [],
-  })))
+  const db = getDb(c.env), res = await db.execute('SELECT * FROM courses ORDER BY created_at')
+  if (!res.rows.length) return c.json([])
+  const courses = toObjs(res), ids = courses.map(c => c.id), ph = ids.map(() => '?').join(',')
+  const [modsRes, qsRes] = await Promise.all([db.execute({ sql: `SELECT * FROM modules WHERE course_id IN (${ph}) ORDER BY sort_order`, args: ids }), db.execute({ sql: `SELECT q.* FROM questions q JOIN modules m ON q.module_id = m.id WHERE m.course_id IN (${ph}) ORDER BY q.sort_order`, args: ids })])
+  const qByMod = {}; for (const q of toObjs(qsRes)) (qByMod[q.module_id] ??= []).push(q)
+  const mByC = {}; for (const m of toObjs(modsRes)) (mByC[m.course_id] ??= []).push({ ...m, questions: qByMod[m.id] || [] })
+  return c.json(courses.map(c => ({ ...c, modules: mByC[c.id] || [] })))
 })
 
-// ── GET /api/courses/:id ──────────────────────────────────────────────────────
-
-app.get('/api/courses/:id', async (c) => {
-  const id = c.req.param('id')
-  const db = getDb(c.env)
-
-  const course = toObj(await db.execute({
-    sql: 'SELECT * FROM courses WHERE id = ?', args: [id],
-  }))
-  if (!course) return c.json({ error: 'Course not found' }, 404)
-
-  const modules = toObjs(await db.execute({
-    sql:  'SELECT * FROM modules WHERE course_id = ? ORDER BY sort_order',
-    args: [id],
-  }))
-
-  if (!modules.length) return c.json({ ...course, modules: [] })
-
-  const modIds = modules.map(m => m.id)
-  const ph     = modIds.map(() => '?').join(',')
-  const qsRes  = await db.execute({
-    sql:  `SELECT * FROM questions WHERE module_id IN (${ph}) ORDER BY sort_order`,
-    args: modIds,
-  })
-
-  const qByMod = {}
-  for (const q of toObjs(qsRes)) {
-    const mid = String(q.module_id);
-    (qByMod[mid] ??= []).push(q)
-  }
-
-  return c.json({
-    ...course,
-    modules: modules.map(m => ({ ...m, questions: qByMod[String(m.id)] || [] })),
-  })
-})
-
-// ── POST /api/completions ─────────────────────────────────────────────────────
-// Requires learner JWT — learner identity comes from the token, not the body.
-
-app.post('/api/completions', learnerAuth, async (c) => {
-  const body = await c.req.json().catch(() => null)
-  if (!body) return c.json({ error: 'Invalid JSON' }, 400)
-
-  const { course_id, score, passed, responses } = body
-  const learner = c.get('learner')
-
-  if (!course_id) return c.json({ error: 'course_id is required' }, 400)
-  if (typeof score !== 'number' || score < 0 || score > 100) {
-    return c.json({ error: 'score must be a number between 0 and 100' }, 400)
-  }
-
-  const db = getDb(c.env)
-  
-  // Check for existing completion record for this user+course (do not duplicate if already passed)
-  const existing = toObj(await db.execute({
-    sql: 'SELECT id, cert_id, passed FROM completions WHERE learner_id = ? AND course_id = ? AND passed = 1 LIMIT 1',
-    args: [learner.id, course_id],
-  }))
-
-  const id  = uid()
-  const now = Math.floor(Date.now() / 1000)
-  let cid   = existing?.cert_id
-
-  if (passed && !cid) {
-    cid = certId()
-  }
-
-  const queries = [
-    {
-      sql:  `INSERT INTO completions
-               (id, course_id, learner_id, learner_name, score, passed, completed_at, cert_id)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      args: [id, course_id, learner.id, learner.name, Math.round(score), passed ? 1 : 0, now, cid || null],
-    }
-  ]
-
-  // Log individual question responses if provided
-  if (Array.isArray(responses)) {
-    for (const r of responses) {
-      if (r.question_id && typeof r.is_correct === 'boolean') {
-        queries.push({
-          sql: 'INSERT INTO question_responses (completion_id, question_id, is_correct) VALUES (?, ?, ?)',
-          args: [id, r.question_id, r.is_correct ? 1 : 0]
-        })
-      }
-    }
-  }
-
+app.post('/api/completions', requireLearner, async (c) => {
+  const body = await c.req.json().catch(() => null), user = c.get('user')
+  if (!body || !body.course_id || typeof body.score !== 'number') return c.json({ error: 'Invalid data' }, 400)
+  const db = getDb(c.env), existing = toObj(await db.execute({ sql: 'SELECT cert_id FROM completions WHERE learner_id = ? AND course_id = ? AND passed = 1 LIMIT 1', args: [user.id, body.course_id] }))
+  const id = uid(), now = Math.floor(Date.now() / 1000), cid = (body.passed && !existing?.cert_id) ? certId() : (existing?.cert_id || null)
+  const queries = [{ sql: 'INSERT INTO completions (id, course_id, learner_id, learner_name, score, passed, completed_at, cert_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', args: [id, body.course_id, user.id, user.name, Math.round(body.score), body.passed ? 1 : 0, now, cid] }]
+  if (Array.isArray(body.responses)) for (const r of body.responses) if (r.question_id) queries.push({ sql: 'INSERT INTO question_responses (completion_id, question_id, is_correct) VALUES (?, ?, ?)', args: [id, r.question_id, r.is_correct ? 1 : 0] })
   await db.batch(queries, 'write')
-
-  return c.json({ id, cert_id: cid, passed: Boolean(passed), score: Math.round(score), completed_at: now }, 201)
+  return c.json({ id, cert_id: cid, passed: !!body.passed, score: Math.round(body.score), completed_at: now }, 201)
 })
 
-// ── GET /api/completions/me ───────────────────────────────────────────────────
-// Learner sees only their own records, joined with course titles.
-
-app.get('/api/completions/me', learnerAuth, async (c) => {
-  const learner = c.get('learner')
-  const db      = getDb(c.env)
-  const res     = await db.execute({
-    sql:  `SELECT c.*, co.title AS course_title
-           FROM   completions c
-           JOIN   courses co ON c.course_id = co.id
-           WHERE  c.learner_id = ?
-           ORDER  BY c.completed_at DESC`,
-    args: [learner.id],
-  })
-  return c.json(toObjs(res).map(r => ({ ...r, passed: Boolean(r.passed) })))
+app.get('/api/completions/me', requireLearner, async (c) => {
+  const user = c.get('user'), db = getDb(c.env)
+  const res = await db.execute({ sql: 'SELECT c.*, co.title AS course_title FROM completions c JOIN courses co ON c.course_id = co.id WHERE c.learner_id = ? ORDER BY c.completed_at DESC', args: [user.id] })
+  return c.json(toObjs(res).map(r => ({ ...r, passed: !!r.passed })))
 })
 
-// ── GET /api/admin/completions ────────────────────────────────────────────────
-
-app.get('/api/admin/completions', adminAuth, async (c) => {
-  const courseId = c.req.query('course_id')
-  const db       = getDb(c.env)
-  
-  let sql = `SELECT c.*, co.title AS course_title, l.id AS user_id, l.name AS user_name
-             FROM   completions c
-             JOIN   courses co ON c.course_id = co.id
-             JOIN   learners l ON c.learner_id = l.id`
-  const args = []
-  
-  if (courseId) {
-    sql += ' WHERE c.course_id = ?'
-    args.push(courseId)
-  }
-  
-  sql += ' ORDER BY c.completed_at DESC'
-  
-  const res = await db.execute({ sql, args })
-  return c.json(toObjs(res).map(r => ({ ...r, passed: Boolean(r.passed) })))
+app.get('/api/admin/completions', requireManager, async (c) => {
+  const user = c.get('user'), db = getDb(c.env), cid = c.req.query('course_id')
+  let sql = 'SELECT c.*, co.title AS course_title, u.id AS user_id, u.name AS user_name FROM completions c JOIN courses co ON c.course_id = co.id JOIN users u ON c.learner_id = u.id', args = [], where = []
+  if (cid) { where.push('c.course_id = ?'); args.push(cid) }
+  if (user.scopedToTeam) { where.push('u.team_id = ?'); args.push(user.scopedToTeam) }
+  if (where.length) sql += ' WHERE ' + where.join(' AND ')
+  const res = await db.execute({ sql: sql + ' ORDER BY c.completed_at DESC', args })
+  return c.json(toObjs(res).map(r => ({ ...r, passed: !!r.passed })))
 })
-
-// ── GET /api/certificates/:certId ─────────────────────────────────────────────
-// Public certificate verification endpoint.
 
 app.get('/api/certificates/:certId', async (c) => {
-  const certId = c.req.param('certId').toUpperCase()
-  const db     = getDb(c.env)
-
-  const res = await db.execute({
-    sql: `SELECT l.name AS learner_name, co.title AS course_title, c.completed_at, c.passed
-          FROM   completions c
-          JOIN   learners l ON c.learner_id = l.id
-          JOIN   courses co ON c.course_id = co.id
-          WHERE  c.cert_id = ? AND c.passed = 1`,
-    args: [certId],
-  })
-  const record = toObj(res)
-  if (!record) return c.json({ valid: false }, 404)
-
-  return c.json({
-    valid: true,
-    learner_name: record.learner_name,
-    course_title: record.course_title,
-    completed_at: new Date(record.completed_at * 1000).toISOString(),
-  })
+  const db = getDb(c.env), res = await db.execute({ sql: 'SELECT u.name AS learner_name, co.title AS course_title, c.completed_at FROM completions c JOIN users u ON c.learner_id = u.id JOIN courses co ON c.course_id = co.id WHERE c.cert_id = ? AND c.passed = 1', args: [c.req.param('certId').toUpperCase()] })
+  const r = toObj(res); return r ? c.json({ valid: true, ...r, completed_at: new Date(r.completed_at * 1000).toISOString() }) : c.json({ valid: false }, 404)
 })
-
-// ── GET /api/completions/learner/:name ────────────────────────────────────────
-// Admin lookup by name.
-
-app.get('/api/completions/learner/:name', adminAuth, async (c) => {
-  const name = decodeURIComponent(c.req.param('name'))
-  const db   = getDb(c.env)
-
-  const res = await db.execute({
-    sql:  'SELECT * FROM completions WHERE learner_name = ? ORDER BY completed_at DESC',
-    args: [name],
-  })
-
-  return c.json(toObjs(res).map(r => ({ ...r, passed: Boolean(r.passed) })))
-})
-
-// ── GET /api/completions/cert/:certId ────────────────────────────────────────
-// Public certificate verification endpoint.
-// Returns the completion record that matches the cert_id, or 404 if not found.
-
-app.get('/api/completions/cert/:certId', async (c) => {
-  const certId = c.req.param('certId').toUpperCase()
-  const db     = getDb(c.env)
-
-  const res    = await db.execute({
-    sql:  'SELECT * FROM completions WHERE cert_id = ?',
-    args: [certId],
-  })
-  const record = toObj(res)
-  if (!record) return c.json({ error: 'Certificate not found' }, 404)
-
-  return c.json({ ...record, passed: Boolean(record.passed) })
-})
-
-// ── POST /api/auth/login ──────────────────────────────────────────────────────
 
 app.post('/api/auth/login', async (c) => {
-  const body = await c.req.json().catch(() => null)
-  if (!body?.password) return c.json({ error: 'password is required' }, 400)
-
-  const db     = getDb(c.env)
-  const stored = await getStoredHash(db, c.env)
-
-  if (!stored) {
-    return c.json({
-      error: 'Admin account not initialised — set ADMIN_PASSWORD_HASH in Worker secrets',
-    }, 503)
-  }
-
-  const ok = await pbkdf2Verify(body.password, stored)
-  if (!ok) {
-    // Deliberate 400 ms pause to blunt brute-force attempts.
-    await new Promise(r => setTimeout(r, 400))
-    return c.json({ error: 'Incorrect password' }, 401)
-  }
-
-  const now   = Math.floor(Date.now() / 1000)
-  const token = await sign(
-    { role: 'admin', iat: now, exp: now + CONSTANTS.ADMIN_JWT_EXP_SEC },
-    c.env.JWT_SECRET,
-    'HS256'
-  )
-  return c.json({ token })
+  const body = await c.req.json().catch(() => null), db = getDb(c.env)
+  const hash = await getStoredHash(db, c.env)
+  if (!hash) return c.json({ error: 'Admin not initialised' }, 503)
+  if (!body?.password || !(await pbkdf2Verify(body.password, hash))) { await new Promise(r => setTimeout(r, 400)); return c.json({ error: 'Unauthorized' }, 401) }
+  const now = Math.floor(Date.now() / 1000)
+  return c.json({ token: await sign({ role: 'admin', iat: now, exp: now + CONSTANTS.ADMIN_JWT_EXP_SEC }, c.env.JWT_SECRET, 'HS256') })
 })
-
-// ══════════════════════════════════════════════════════════════════════════════
-//  LEARNER AUTH ROUTES
-// ══════════════════════════════════════════════════════════════════════════════
-
-// ── POST /api/learners/login ──────────────────────────────────────────────────
 
 app.post('/api/learners/login', async (c) => {
-  const body = await c.req.json().catch(() => null)
-  if (!body?.name?.trim() || !body?.password) {
-    return c.json({ error: 'name and password are required' }, 400)
-  }
-
-  const db  = getDb(c.env)
-  const res = await db.execute({
-    sql:  'SELECT * FROM learners WHERE name = ?',
-    args: [body.name.trim()],
-  })
-  const learner = toObj(res)
-
-  // Use the same delay whether name not found or password wrong — prevents enumeration.
-  if (!learner || !(await pbkdf2Verify(body.password, String(learner.password_hash)))) {
-    await new Promise(r => setTimeout(r, 400))
-    return c.json({ error: 'Invalid name or password' }, 401)
-  }
-
-  await db.execute({
-    sql:  'UPDATE learners SET last_login_at = ? WHERE id = ?',
-    args: [Math.floor(Date.now() / 1000), learner.id],
-  })
-
-  const now   = Math.floor(Date.now() / 1000)
-  const token = await sign(
-    { role: 'learner', id: learner.id, name: learner.name, iat: now, exp: now + CONSTANTS.LEARNER_JWT_EXP_SEC },
-    c.env.JWT_SECRET,
-    'HS256'
-  )
-  return c.json({ token, id: learner.id, name: learner.name })
-})
-
-// ── GET /api/learners/me ──────────────────────────────────────────────────────
-
-app.get('/api/learners/me', learnerAuth, async (c) => {
-  const learner = c.get('learner')
-  return c.json({ id: learner.id, name: learner.name })
-})
-
-// ── PATCH /api/learners/me/name ───────────────────────────────────────────────
-
-app.patch('/api/learners/me/name', learnerAuth, async (c) => {
-  const learner = c.get('learner')
-  const body    = await c.req.json().catch(() => null)
-  const name    = body?.name?.trim()
-
-  if (!name || name.length > 100) {
-    return c.json({ error: 'Name is required and must be under 100 characters' }, 400)
-  }
-
-  const db = getDb(c.env)
-  await db.execute({
-    sql:  'UPDATE learners SET name = ? WHERE id = ?',
-    args: [name, learner.id],
-  })
-  return c.json({ name })
-})
-
-// ── GET /api/assignments/me ───────────────────────────────────────────────────
-
-app.get('/api/assignments/me', learnerAuth, async (c) => {
-  const learner = c.get('learner')
-  const db      = getDb(c.env)
-  const res     = await db.execute({
-    sql: `SELECT a.course_id, co.title AS course_title, a.assigned_at, a.due_at,
-                 (SELECT COUNT(*) FROM completions c WHERE c.learner_id = a.learner_id AND c.course_id = a.course_id AND c.passed = 1) > 0 AS completed
-          FROM   assignments a
-          JOIN   courses co ON a.course_id = co.id
-          WHERE  a.learner_id = ?`,
-    args: [learner.id],
-  })
-  return c.json(toObjs(res).map(r => ({ ...r, completed: Boolean(r.completed) })))
-})
-
-// ── PUT /api/learners/me/password ─────────────────────────────────────────────
-
-app.put('/api/learners/me/password', learnerAuth, async (c) => {
-  const learner = c.get('learner')
-  const body    = await c.req.json().catch(() => null)
-
-  if (!body?.current_password) return c.json({ error: 'current_password is required' }, 400)
-  if (!body?.new_password || body.new_password.length < 8) {
-    return c.json({ error: 'new_password must be at least 8 characters' }, 400)
-  }
-
-  const db  = getDb(c.env)
-  const row = toObj(await db.execute({
-    sql: 'SELECT password_hash FROM learners WHERE id = ?', args: [learner.id],
-  }))
-  if (!row) return c.json({ error: 'Learner not found' }, 404)
-
-  const ok = await pbkdf2Verify(body.current_password, String(row.password_hash))
-  if (!ok) {
-    await new Promise(r => setTimeout(r, 400))
-    return c.json({ error: 'Current password is incorrect' }, 401)
-  }
-
-  await db.execute({
-    sql:  'UPDATE learners SET password_hash = ? WHERE id = ?',
-    args: [await pbkdf2Hash(body.new_password), learner.id],
-  })
-  return c.json({ updated: true })
-})
-
-// ══════════════════════════════════════════════════════════════════════════════
-//  ADMIN ROUTES  — Bearer JWT required on every route below
-// ══════════════════════════════════════════════════════════════════════════════
-
-// ── POST /api/courses ─────────────────────────────────────────────────────────
-
-app.post('/api/courses', adminAuth, async (c) => {
-  const body = await c.req.json().catch(() => null)
-  if (!body?.title?.trim()) return c.json({ error: 'title is required' }, 400)
-
-  const db       = getDb(c.env)
-  const courseId = uid()
-
-  await db.batch([
-    {
-      sql:  'INSERT INTO courses (id, icon, title, description) VALUES (?, ?, ?, ?)',
-      args: [courseId, body.icon || '📋', body.title.trim(), body.description || ''],
-    },
-    ...buildModuleStmts(courseId, body.modules || []),
-  ], 'write')
-
-  return c.json({ id: courseId }, 201)
-})
-
-// ── PUT /api/courses/:id ──────────────────────────────────────────────────────
-// Full replace strategy: delete existing modules (questions cascade via FK)
-// then re-insert.  Simpler and safer than diffing.
-
-app.put('/api/courses/:id', adminAuth, async (c) => {
-  const id   = c.req.param('id')
-  const body = await c.req.json().catch(() => null)
-  if (!body?.title?.trim()) return c.json({ error: 'title is required' }, 400)
-
-  const db       = getDb(c.env)
-  const existing = toObj(await db.execute({
-    sql: 'SELECT id FROM courses WHERE id = ?', args: [id],
-  }))
-  if (!existing) return c.json({ error: 'Course not found' }, 404)
-
-  await db.batch([
-    {
-      sql:  'UPDATE courses SET icon = ?, title = ?, description = ? WHERE id = ?',
-      args: [body.icon || '📋', body.title.trim(), body.description || '', id],
-    },
-    { sql: 'DELETE FROM modules WHERE course_id = ?', args: [id] },
-    ...buildModuleStmts(id, body.modules || []),
-  ], 'write')
-
-  return c.json({ id })
-})
-
-// ── DELETE /api/courses/:id ───────────────────────────────────────────────────
-
-app.delete('/api/courses/:id', adminAuth, async (c) => {
-  const id       = c.req.param('id')
-  const db       = getDb(c.env)
-  const existing = toObj(await db.execute({
-    sql: 'SELECT id FROM courses WHERE id = ?', args: [id],
-  }))
-  if (!existing) return c.json({ error: 'Course not found' }, 404)
-
-  // FK CASCADE removes modules and questions automatically.
-  await db.execute({ sql: 'DELETE FROM courses WHERE id = ?', args: [id] })
-  return c.json({ deleted: id })
-})
-
-// ── GET /api/completions ──────────────────────────────────────────────────────
-// Paginated admin view.  Query params: limit (max 500, default 200), offset.
-
-app.get('/api/completions', adminAuth, async (c) => {
-  const limit  = Math.min(Math.max(Number(c.req.query('limit')  || 200), 1), 500)
-  const offset = Math.max(Number(c.req.query('offset') || 0), 0)
-  const db     = getDb(c.env)
-
-  const [dataRes, countRes] = await Promise.all([
-    db.execute({
-      sql:  'SELECT * FROM completions ORDER BY completed_at DESC LIMIT ? OFFSET ?',
-      args: [limit, offset],
-    }),
-    db.execute('SELECT COUNT(*) AS total FROM completions'),
-  ])
-
-  return c.json({
-    total:  Number(toObj(countRes).total),
-    limit,
-    offset,
-    rows:   toObjs(dataRes).map(r => ({ ...r, passed: Boolean(r.passed) })),
-  })
-})
-
-// ── DELETE /api/completions ───────────────────────────────────────────────────
-
-app.delete('/api/completions', adminAuth, async (c) => {
-  const db      = getDb(c.env)
-  const before  = toObj(await db.execute('SELECT COUNT(*) AS total FROM completions'))
-  await db.execute('DELETE FROM completions')
-  return c.json({ deleted: Number(before.total) })
-})
-
-// ── PUT /api/brand ────────────────────────────────────────────────────────────
-
-app.put('/api/brand', adminAuth, async (c) => {
-  const body = await c.req.json().catch(() => null)
-  if (!body) return c.json({ error: 'Invalid JSON' }, 400)
-
-  const {
-    org_name, tagline, logo_url,
-    primary_color, secondary_color, pass_threshold,
-  } = body
-
-  const db = getDb(c.env)
-  await db.execute({
-    sql: `INSERT INTO brand
-            (id, org_name, tagline, logo_url, primary_color, secondary_color, pass_threshold)
-          VALUES ('default', ?, ?, ?, ?, ?, ?)
-          ON CONFLICT(id) DO UPDATE SET
-            org_name        = excluded.org_name,
-            tagline         = excluded.tagline,
-            logo_url        = excluded.logo_url,
-            primary_color   = excluded.primary_color,
-            secondary_color = excluded.secondary_color,
-            pass_threshold  = excluded.pass_threshold`,
-    args: [
-      (org_name || 'TrainFlow').trim(),
-      (tagline  || 'Training & Certification Platform').trim(),
-      logo_url        || '',
-      primary_color   || '#2563eb',
-      secondary_color || '#1d4ed8',
-      Number(pass_threshold) || 80,
-    ],
-  })
-
-  // Return the saved row so the frontend can sync state immediately.
-  const updated = toObj(await db.execute({
-    sql: 'SELECT * FROM brand WHERE id = ?', args: ['default'],
-  }))
-  return c.json(updated)
-})
-
-// ── PUT /api/auth/password ────────────────────────────────────────────────────
-// Writes a new PBKDF2 hash to the admin table.  From this point on the DB
-// value overrides the ADMIN_PASSWORD_HASH env secret for all future logins.
-
-app.put('/api/auth/password', adminAuth, async (c) => {
-  const body = await c.req.json().catch(() => null)
-  if (!body?.password) return c.json({ error: 'password is required' }, 400)
-  if (typeof body.password !== 'string' || body.password.length < 8) {
-    return c.json({ error: 'Password must be at least 8 characters' }, 400)
-  }
-
-  const hash = await pbkdf2Hash(body.password)
-  const db   = getDb(c.env)
-
-  await db.execute({
-    sql: `INSERT INTO admin (id, password_hash) VALUES ('default', ?)
-          ON CONFLICT(id) DO UPDATE SET password_hash = excluded.password_hash`,
-    args: [hash],
-  })
-
-  return c.json({ updated: true })
-})
-
-// ── GET /api/assignments ──────────────────────────────────────────────────────
-
-app.get('/api/assignments', adminAuth, async (c) => {
-  const db = getDb(c.env)
-  const res = await db.execute('SELECT * FROM assignments')
-  return c.json(toObjs(res))
-})
-
-// ── POST /api/assignments ─────────────────────────────────────────────────────
-
-app.post('/api/assignments', adminAuth, async (c) => {
-  const body = await c.req.json().catch(() => null)
-  if (!body || !body.course_id || !body.learner_id) return c.json({ error: 'Missing course_id or learner_id' }, 400)
-  
-  const db = getDb(c.env)
-  try {
-    await db.execute({
-      sql: `INSERT INTO assignments (course_id, learner_id, due_at, assigned_at)
-            VALUES (?, ?, ?, strftime('%Y-%m-%d %H:%M:%S', 'now'))
-            ON CONFLICT(course_id, learner_id) DO UPDATE SET
-              due_at = excluded.due_at`,
-      args: [body.course_id, body.learner_id, body.due_at || null],
-    })
-    return c.json({ ok: true, course_id: body.course_id, learner_id: body.learner_id, due_at: body.due_at || null })
-  } catch (err) {
-    return c.json({ error: 'Failed to update assignment', detail: err.message }, 500)
-  }
-})
-
-// ── DELETE /api/assignments ───────────────────────────────────────────────────
-
-app.delete('/api/assignments', adminAuth, async (c) => {
-  const body = await c.req.json().catch(() => null)
-  if (!body || !body.course_id || !body.learner_id) return c.json({ error: 'Missing course_id or learner_id' }, 400)
-
-  const db = getDb(c.env)
-  try {
-    await db.execute({
-      sql: 'DELETE FROM assignments WHERE course_id = ? AND learner_id = ?',
-      args: [body.course_id, body.learner_id],
-    })
-    return c.json({ ok: true })
-  } catch (err) {
-    return c.json({ error: 'Failed to remove assignment', detail: err.message }, 500)
-  }
-})
-
-// ── GET /api/learners/me/assignments ──────────────────────────────────────────
-
-app.get('/api/learners/me/assignments', learnerAuth, async (c) => {
-  const learner = c.get('learner')
-  const db = getDb(c.env)
-  const res = await db.execute({
-    sql: 'SELECT course_id FROM assignments WHERE learner_id = ?',
-    args: [learner.id],
-  })
-  return c.json(toObjs(res).map(r => r.course_id))
-})
-
-// ── GET /api/tags ─────────────────────────────────────────────────────────────
-
-app.get('/api/tags', adminAuth, async (c) => {
-  const db = getDb(c.env)
-  const res = await db.execute('SELECT * FROM tags ORDER BY name')
-  return c.json(toObjs(res))
-})
-
-// ── POST /api/tags ────────────────────────────────────────────────────────────
-
-app.post('/api/tags', adminAuth, async (c) => {
-  const body = await c.req.json().catch(() => null)
-  if (!body?.name?.trim()) return c.json({ error: 'Tag name is required' }, 400)
-  
-  const db = getDb(c.env)
-  const id = uid()
-  try {
-    await db.execute({
-      sql: 'INSERT INTO tags (id, name) VALUES (?, ?)',
-      args: [id, body.name.trim()],
-    })
-    return c.json({ id, name: body.name.trim() })
-  } catch (err) {
-    if (String(err.message).includes('UNIQUE')) return c.json({ error: 'Tag already exists' }, 409)
-    throw err
-  }
-})
-
-// ── DELETE /api/tags/:id ──────────────────────────────────────────────────────
-
-app.delete('/api/tags/:id', adminAuth, async (c) => {
-  const id = c.req.param('id')
-  const db = getDb(c.env)
-  await db.execute({ sql: 'DELETE FROM tags WHERE id = ?', args: [id] })
-  return c.json({ ok: true })
-})
-
-// ── POST /api/learners/:id/tags ───────────────────────────────────────────────
-
-app.post('/api/learners/:id/tags', adminAuth, async (c) => {
-  const learnerId = c.req.param('id')
-  const body = await c.req.json().catch(() => null)
-  if (!body || !Array.isArray(body.tag_ids)) return c.json({ error: 'tag_ids array is required' }, 400)
-
-  const db = getDb(c.env)
-  await db.batch([
-    { sql: 'DELETE FROM learner_tags WHERE learner_id = ?', args: [learnerId] },
-    ...body.tag_ids.map(tid => ({
-      sql: 'INSERT INTO learner_tags (learner_id, tag_id) VALUES (?, ?)',
-      args: [learnerId, tid]
-    }))
-  ], 'write')
-  return c.json({ ok: true })
-})
-
-// ── GET /api/tag-assignments ──────────────────────────────────────────────────
-
-app.get('/api/tag-assignments', adminAuth, async (c) => {
-  const db = getDb(c.env)
-  const res = await db.execute('SELECT * FROM tag_assignments')
-  return c.json(toObjs(res))
-})
-
-// ── POST /api/tag-assignments ─────────────────────────────────────────────────
-
-app.post('/api/tag-assignments', adminAuth, async (c) => {
-  const body = await c.req.json().catch(() => null)
-  if (!body || !body.course_id || !body.tag_id) return c.json({ error: 'Missing course_id or tag_id' }, 400)
-
-  const db = getDb(c.env)
-  await db.execute({
-    sql: `INSERT INTO tag_assignments (course_id, tag_id, due_at)
-          VALUES (?, ?, ?)
-          ON CONFLICT(course_id, tag_id) DO UPDATE SET
-            due_at = excluded.due_at`,
-    args: [body.course_id, body.tag_id, body.due_at || null]
-  })
-  return c.json({ ok: true })
-})
-
-// ── DELETE /api/tag-assignments ───────────────────────────────────────────────
-
-app.delete('/api/tag-assignments', adminAuth, async (c) => {
-  const body = await c.req.json().catch(() => null)
-  if (!body || !body.course_id || !body.tag_id) return c.json({ error: 'Missing course_id or tag_id' }, 400)
-
-  const db = getDb(c.env)
-  await db.execute({
-    sql: 'DELETE FROM tag_assignments WHERE course_id = ? AND tag_id = ?',
-    args: [body.course_id, body.tag_id]
-  })
-  return c.json({ ok: true })
-})
-
-// ── GET /api/learners ─────────────────────────────────────────────────────────
-
-app.get('/api/learners', adminAuth, async (c) => {
-  const db  = getDb(c.env)
-  try {
-    const [learnersRes, tagsRes] = await Promise.all([
-      db.execute(`
-        SELECT l.id, l.name, l.last_login_at, l.created_at,
-               COUNT(DISTINCT c.id) AS completion_count,
-               (SELECT COUNT(*) FROM (
-                  SELECT a.course_id FROM assignments a WHERE a.learner_id = l.id AND a.due_at IS NOT NULL AND a.due_at < datetime('now')
-                  UNION
-                  SELECT ta.course_id FROM tag_assignments ta JOIN learner_tags lt ON ta.tag_id = lt.tag_id WHERE lt.learner_id = l.id AND ta.due_at IS NOT NULL AND ta.due_at < datetime('now')
-                ) as all_a
-                WHERE NOT EXISTS (SELECT 1 FROM completions comp WHERE comp.learner_id = l.id AND comp.course_id = all_a.course_id AND comp.passed = 1)
-               ) AS overdue_count
-        FROM   learners l
-        LEFT   JOIN completions c ON c.learner_id = l.id
-        GROUP  BY l.id
-        ORDER  BY l.name
-      `),
-      db.execute(`
-        SELECT lt.learner_id, t.id, t.name
-        FROM   learner_tags lt
-        JOIN   tags t ON lt.tag_id = t.id
-      `)
-    ])
-
-    const tagsByLearner = {}
-    for (const row of toObjs(tagsRes)) {
-      (tagsByLearner[row.learner_id] ??= []).push({ id: row.id, name: row.name })
-    }
-
-    const learners = toObjs(learnersRes).map(l => ({
-      ...l,
-      tags: tagsByLearner[l.id] || []
-    }))
-
-    return c.json(learners)
-  } catch (err) {
-    return c.json({ 
-      error: 'Failed to load learners', 
-      detail: err.message
-    }, 500)
-  }
-})
-
-// ── POST /api/learners ────────────────────────────────────────────────────────
-
-app.post('/api/learners', adminAuth, async (c) => {
-  const body = await c.req.json().catch(() => null)
-  if (!body?.name?.trim()) return c.json({ error: 'name is required' }, 400)
-  if (!body?.password || body.password.length < 8) {
-    return c.json({ error: 'password must be at least 8 characters' }, 400)
-  }
-
-  const db   = getDb(c.env)
-  const id   = uid()
-  const hash = await pbkdf2Hash(body.password)
-
-  try {
-    await db.execute({
-      sql:  'INSERT INTO learners (id, name, password_hash) VALUES (?, ?, ?)',
-      args: [id, body.name.trim(), hash],
-    })
-  } catch (e) {
-    if (String(e.message).includes('UNIQUE')) {
-      return c.json({ error: 'A learner with that name already exists' }, 409)
-    }
-    throw e
-  }
-
-  return c.json({ id, name: body.name.trim() }, 201)
-})
-
-// ── DELETE /api/learners/:id ──────────────────────────────────────────────────
-
-app.delete('/api/learners/:id', adminAuth, async (c) => {
-  const id       = c.req.param('id')
-  const db       = getDb(c.env)
-  const existing = toObj(await db.execute({
-    sql: 'SELECT id FROM learners WHERE id = ?', args: [id],
-  }))
-  if (!existing) return c.json({ error: 'Learner not found' }, 404)
-
-  // FK ON DELETE CASCADE removes their completions automatically.
-  await db.execute({ sql: 'DELETE FROM learners WHERE id = ?', args: [id] })
-  return c.json({ deleted: id })
-})
-
-// ── PUT /api/learners/:id/password ────────────────────────────────────────────
-
-app.put('/api/learners/:id/password', adminAuth, async (c) => {
-  const id   = c.req.param('id')
-  const body = await c.req.json().catch(() => null)
-  if (!body?.password || body.password.length < 8) {
-    return c.json({ error: 'password must be at least 8 characters' }, 400)
-  }
-
-  const db       = getDb(c.env)
-  const existing = toObj(await db.execute({
-    sql: 'SELECT id FROM learners WHERE id = ?', args: [id],
-  }))
-  if (!existing) return c.json({ error: 'Learner not found' }, 404)
-
-  await db.execute({
-    sql:  'UPDATE learners SET password_hash = ? WHERE id = ?',
-    args: [await pbkdf2Hash(body.password), id],
-  })
-  return c.json({ updated: true })
-})
-
-// ── GET /api/progress/:courseId ───────────────────────────────────────────────
-// Returns saved module_progress rows for this learner + course.
-
-app.get('/api/progress/:courseId', learnerAuth, async (c) => {
-  const learner  = c.get('learner')
-  const courseId = c.req.param('courseId')
-  const db       = getDb(c.env)
-  const res = await db.execute({
-    sql:  'SELECT * FROM module_progress WHERE learner_id = ? AND course_id = ?',
-    args: [learner.id, courseId],
-  })
-  return c.json(toObjs(res).map(r => ({ ...r, passed: Boolean(r.passed) })))
-})
-
-// ── POST /api/progress ────────────────────────────────────────────────────────
-// Upserts a module_progress row for this learner.
-
-app.post('/api/progress', learnerAuth, async (c) => {
-  const body = await c.req.json().catch(() => null)
-  if (!body) return c.json({ error: 'Invalid JSON' }, 400)
-
-  const { module_id, course_id, passed, score } = body
-  const learner = c.get('learner')
-
-  if (!module_id || !course_id) {
-    return c.json({ error: 'module_id and course_id are required' }, 400)
-  }
-
-  const db  = getDb(c.env)
+  const body = await c.req.json().catch(() => null), db = getDb(c.env)
+  if (!body?.name || !body?.password) return c.json({ error: 'Missing credentials' }, 400)
+  const user = toObj(await db.execute({ sql: 'SELECT * FROM users WHERE name = ?', args: [body.name.trim()] }))
+  if (!user || !(await pbkdf2Verify(body.password, user.password_hash))) { await new Promise(r => setTimeout(r, 400)); return c.json({ error: 'Invalid credentials' }, 401) }
+  await db.execute({ sql: 'UPDATE users SET last_login_at = ? WHERE id = ?', args: [Math.floor(Date.now() / 1000), user.id] })
   const now = Math.floor(Date.now() / 1000)
+  return c.json({ token: await sign({ role: user.role, id: user.id, name: user.name, team_id: user.team_id, iat: now, exp: now + CONSTANTS.LEARNER_JWT_EXP_SEC }, c.env.JWT_SECRET, 'HS256'), id: user.id, name: user.name, role: user.role, team_id: user.team_id })
+})
 
-  await db.execute({
-    sql: `INSERT INTO module_progress
-            (id, learner_id, module_id, course_id, passed, score, completed_at, created_at, updated_at)
-          VALUES (lower(hex(randomblob(16))), ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())
-          ON CONFLICT(learner_id, module_id) DO UPDATE SET
-            passed       = excluded.passed,
-            score        = excluded.score,
-            completed_at = excluded.completed_at,
-            updated_at   = unixepoch()`,
-    args: [learner.id, module_id, course_id, passed ? 1 : 0, Math.round(score), now],
-  })
+app.get('/api/admin/teams', requireAdmin, async (c) => {
+  const db = getDb(c.env), res = await db.execute("SELECT t.*, (SELECT COUNT(*) FROM users u WHERE u.team_id = t.id AND u.role = 'learner') as learner_count, (SELECT COUNT(*) FROM users u WHERE u.team_id = t.id AND u.role = 'manager') as manager_count FROM teams t ORDER BY t.name")
+  return c.json(toObjs(res))
+})
 
+app.post('/api/admin/teams', requireAdmin, async (c) => {
+  const body = await c.req.json().catch(() => null), db = getDb(c.env)
+  if (!body?.name?.trim()) return c.json({ error: 'Name required' }, 400)
+  const res = await db.execute({ sql: 'INSERT INTO teams (name) VALUES (?) RETURNING id', args: [body.name.trim()] })
+  return c.json({ id: res.rows[0][0], name: body.name.trim() })
+})
+
+app.patch('/api/admin/teams/:id', requireAdmin, async (c) => {
+  const body = await c.req.json().catch(() => null), db = getDb(c.env)
+  await db.execute({ sql: 'UPDATE teams SET name = ? WHERE id = ?', args: [body.name.trim(), c.req.param('id')] })
   return c.json({ ok: true })
 })
 
-// ── POST /api/ai/generate ───────────────────────────────────────────────────
-
-app.post('/api/ai/generate', adminAuth, async (c) => {
-  const body = await c.req.json().catch(() => null)
-  const { type, title, content, qCount, difficulty, focus } = body || {}
-  
-  if (!type || !content) return c.json({ error: 'type and content are required' }, 400)
-  if (!c.env.GEMINI_API_KEY) return c.json({ error: 'GEMINI_API_KEY not configured' }, 500)
-
-  let prompt = ''
-  if (type === 'questions') {
-    const focusInstructions = {
-      general: 'Test comprehension of the key concepts presented.',
-      support: 'Focus on how a support agent would handle real situations described in this content.',
-      process: 'Focus on the correct sequence of steps and workflows.',
-      technical: 'Focus on specific values, limits, and technical requirements.'
-    }
-    const diffInstructions = {
-      foundational: 'Test basic recall and recognition. Clear right/wrong answers.',
-      applied: 'Test if the learner can apply the content. Include scenario-based questions.',
-      analytical: 'Test judgment and edge cases. Include nuanced understanding.'
-    }
-    prompt = `Write ${qCount || 5} multiple-choice quiz questions for a training module.
-MODULE: ${title || 'Untitled'}
-CONTENT: ${content.slice(0, 4000)}
-RULES:
-- ${focusInstructions[focus || 'general']}
-- ${diffInstructions[difficulty || 'applied']}
-- Each question has exactly 4 options.
-- Keep explanations under 20 words.
-- Respond with a JSON array only: [{"question":"","options":["","","",""],"correct_index":0,"explanation":""}]`
-  } else if (type === 'summary') {
-    prompt = `Write a learner-friendly summary of this module.
-MODULE: ${title || 'Untitled'}
-SOURCE CONTENT: ${content.slice(0, 4000)}
-Respond with a JSON object only:
-{
-  "intro": "2-3 sentence plain-English overview.",
-  "bullets": ["Key point 1", "Key point 2", "Key point 3", "Key point 4", "Key point 5"]
-}`
-  } else {
-    return c.json({ error: 'Invalid generation type' }, 400)
-  }
-
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${c.env.GEMINI_API_KEY}`
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { response_mime_type: 'application/json' },
-    }),
-  })
-
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({ error: response.statusText }))
-    throw new Error(err.error?.message || response.statusText)
-  }
-
-  const data = await response.json()
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text
-  if (!text) throw new Error('No content returned from Gemini')
-  return c.json(JSON.parse(text))
+app.delete('/api/admin/teams/:id', requireAdmin, async (c) => {
+  const db = getDb(c.env), id = c.req.param('id'), check = toObj(await db.execute({ sql: 'SELECT COUNT(*) as n FROM users WHERE team_id = ?', args: [id] }))
+  if (check.n > 0) return c.json({ error: 'Team not empty' }, 409)
+  await db.execute({ sql: 'DELETE FROM teams WHERE id = ?', args: [id] }); return c.json({ ok: true })
 })
 
-// ── GET /api/admin/trouble-spots ─────────────────────────────────────────────
-
-app.get('/api/admin/trouble-spots', adminAuth, async (c) => {
-  const db = getDb(c.env)
-  const res = await db.execute(`
-    SELECT q.id, q.question, co.title as course_title, m.title as module_title,
-           COUNT(r.id) as total_attempts,
-           SUM(CASE WHEN r.is_correct = 0 THEN 1 ELSE 0 END) as failure_count
-    FROM   questions q
-    JOIN   modules m ON q.module_id = m.id
-    JOIN   courses co ON m.course_id = co.id
-    JOIN   question_responses r ON q.id = r.question_id
-    GROUP  BY q.id
-    HAVING failure_count > 0
-    ORDER  BY failure_count DESC
-    LIMIT  10
-  `)
-  return c.json(toObjs(res).map(r => ({
-    ...r,
-    failure_rate: Math.round((r.failure_count / r.total_attempts) * 100)
-  })))
+app.post('/api/auth/manager/register', async (c) => {
+  const body = await c.req.json().catch(() => null), db = getDb(c.env)
+  const invite = toObj(await db.execute({ sql: "SELECT * FROM invite_codes WHERE code = ? AND role = 'manager' AND used = 0", args: [body?.invite_code?.toUpperCase()] }))
+  if (!invite || (invite.expires_at && new Date(invite.expires_at) < new Date())) return c.json({ error: 'Invalid invite' }, 400)
+  const id = uid(), hash = await pbkdf2Hash(body.password), now = Math.floor(Date.now() / 1000)
+  await db.batch([{ sql: 'INSERT INTO users (id, name, password_hash, role, team_id, created_at) VALUES (?, ?, ?, ?, ?, ?)', args: [id, body.name.trim(), hash, 'manager', invite.team_id, now] }, { sql: 'UPDATE invite_codes SET used = 1, used_by = ? WHERE id = ?', args: [id, invite.id] }], 'write')
+  return c.json({ token: await sign({ id, name: body.name.trim(), role: 'manager', team_id: invite.team_id, iat: now, exp: now + CONSTANTS.LEARNER_JWT_EXP_SEC }, c.env.JWT_SECRET, 'HS256'), id, name: body.name.trim(), role: 'manager', team_id: invite.team_id })
 })
 
-// ── GET /api/admin/stats ──────────────────────────────────────────────────────
-// One-call dashboard: summary tiles + learner activity + course activity.
+app.get('/api/admin/invites', requireAdmin, async (c) => {
+  const db = getDb(c.env), res = await db.execute('SELECT i.*, t.name as team_name, u.name as used_by_name FROM invite_codes i LEFT JOIN teams t ON i.team_id = t.id LEFT JOIN users u ON i.used_by = u.id ORDER BY i.created_at DESC')
+  return c.json(toObjs(res))
+})
 
-app.get('/api/admin/stats', adminAuth, async (c) => {
-  const db = getDb(c.env)
+app.post('/api/admin/invites', requireAdmin, async (c) => {
+  const body = await c.req.json().catch(() => null), db = getDb(c.env), code = crypto.randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase()
+  await db.execute({ sql: 'INSERT INTO invite_codes (code, team_id, expires_at) VALUES (?, ?, ?)', args: [code, body.team_id, body.expires_at || null] })
+  return c.json({ code, team_id: body.team_id, expires_at: body.expires_at || null })
+})
 
-  const [
-    learnersCountRes,
-    coursesCountRes,
-    compMonthRes,
-    passRateRes,
-    learnersRes,
-    coursesRes,
-    modulesRes,
-  ] = await Promise.all([
-    db.execute('SELECT COUNT(*) AS n FROM learners'),
+app.get('/api/learners', requireManager, async (c) => {
+  const user = c.get('user'), db = getDb(c.env), tid = c.req.query('team_id')
+  let where = ["role = 'learner'"], args = []
+  if (user.scopedToTeam) { where.push('team_id = ?'); args.push(user.scopedToTeam) } else if (tid) { where.push('team_id = ?'); args.push(tid) }
+  const learners = toObjs(await db.execute({ sql: `SELECT l.*, (SELECT COUNT(*) FROM completions c WHERE c.learner_id = l.id) as completion_count, (SELECT COUNT(*) FROM (SELECT a.course_id FROM assignments a WHERE a.learner_id = l.id AND a.due_at < datetime('now') UNION SELECT ta.course_id FROM tag_assignments ta JOIN learner_tags lt ON ta.tag_id = lt.tag_id WHERE lt.learner_id = l.id AND ta.due_at < datetime('now')) as all_a WHERE NOT EXISTS (SELECT 1 FROM completions comp WHERE comp.learner_id = l.id AND comp.course_id = all_a.course_id AND comp.passed = 1)) as overdue_count FROM users l WHERE ${where.join(' AND ')} ORDER BY l.name`, args }))
+  const tags = toObjs(await db.execute('SELECT lt.learner_id, t.id, t.name FROM learner_tags lt JOIN tags t ON lt.tag_id = t.id')), tByL = {}
+  for (const t of tags) (tByL[t.learner_id] ??= []).push(t)
+  return c.json(learners.map(l => ({ ...l, tags: tByL[l.id] || [] })))
+})
+
+app.post('/api/learners', requireManager, async (c) => {
+  const body = await c.req.json().catch(() => null), user = c.get('user'), db = getDb(c.env), id = uid(), hash = await pbkdf2Hash(body.password), tid = user.scopedToTeam || body.team_id || null
+  await db.execute({ sql: 'INSERT INTO users (id, name, password_hash, role, team_id) VALUES (?, ?, ?, ?, ?)', args: [id, body.name.trim(), hash, 'learner', tid] })
+  return c.json({ id, name: body.name.trim(), role: 'learner', team_id: tid }, 201)
+})
+
+app.get('/api/admin/stats', requireManager, async (c) => {
+  const user = c.get('user'), db = getDb(c.env), st = user.scopedToTeam, w = st ? ' WHERE team_id = ?' : '', wa = st ? [st] : []
+  const [lc, cc, cm, pr, lr, cr, mr] = await Promise.all([
+    db.execute({ sql: `SELECT COUNT(*) AS n FROM users WHERE role = 'learner' ${st ? ' AND team_id = ?' : ''}`, args: wa }),
     db.execute('SELECT COUNT(*) AS n FROM courses'),
-    db.execute("SELECT COUNT(*) AS n FROM completions WHERE completed_at >= unixepoch('now','start of month')"),
-    db.execute('SELECT COUNT(*) AS total, SUM(passed) AS passed FROM completions'),
-    db.execute(`
-      SELECT l.id, l.name, l.last_login_at,
-             COUNT(DISTINCT mp.course_id)  AS courses_started,
-             COUNT(DISTINCT c.course_id)   AS courses_completed,
-             CAST(AVG(CASE WHEN mp.score > 0 THEN mp.score END) AS INTEGER) AS avg_score
-      FROM   learners l
-      LEFT   JOIN module_progress mp ON mp.learner_id = l.id
-      LEFT   JOIN completions c      ON c.learner_id  = l.id
-      GROUP  BY l.id
-      ORDER  BY l.name
-    `),
-    db.execute(`
-      SELECT co.id, co.title,
-             COUNT(DISTINCT mp.learner_id)  AS enrolled,
-             COUNT(DISTINCT c.learner_id)   AS completed,
-             CAST(AVG(c.score) AS INTEGER)  AS avg_score,
-             CAST(100.0 * SUM(c.passed) / NULLIF(COUNT(c.id), 0) AS INTEGER) AS pass_rate
-      FROM   courses co
-      LEFT   JOIN module_progress mp ON mp.course_id = co.id
-      LEFT   JOIN completions c      ON c.course_id  = co.id
-      GROUP  BY co.id
-      ORDER  BY co.title
-    `),
-    db.execute(`
-      SELECT mp.learner_id, mp.passed, mp.score, mp.completed_at,
-             co.title AS course_title,
-             m.title  AS module_title,
-             m.sort_order
-      FROM   module_progress mp
-      JOIN   courses co ON co.id = mp.course_id
-      JOIN   modules  m ON m.id  = mp.module_id
-      ORDER  BY co.title, m.sort_order
-    `),
+    db.execute({ sql: `SELECT COUNT(*) AS n FROM completions c JOIN users u ON c.learner_id = u.id WHERE c.completed_at >= unixepoch('now','start of month') ${st ? ' AND u.team_id = ?' : ''}`, args: wa }),
+    db.execute({ sql: `SELECT COUNT(*) AS total, SUM(c.passed) AS passed FROM completions c JOIN users u ON c.learner_id = u.id ${st ? ' WHERE u.team_id = ?' : ''}`, args: wa }),
+    db.execute({ sql: `SELECT l.id, l.name, l.last_login_at, COUNT(DISTINCT mp.course_id) AS courses_started, COUNT(DISTINCT c.course_id) AS courses_completed, CAST(AVG(CASE WHEN mp.score > 0 THEN mp.score END) AS INTEGER) AS avg_score FROM users l LEFT JOIN module_progress mp ON mp.learner_id = l.id LEFT JOIN completions c ON c.learner_id = l.id WHERE l.role = 'learner' ${st ? ' AND l.team_id = ?' : '' } GROUP BY l.id ORDER BY l.name`, args: wa }),
+    db.execute({ sql: `SELECT co.id, co.title, COUNT(DISTINCT mp.learner_id) AS enrolled, COUNT(DISTINCT c.learner_id) AS completed, CAST(AVG(c.score) AS INTEGER) AS avg_score, CAST(100.0 * SUM(c.passed) / NULLIF(COUNT(c.id), 0) AS INTEGER) AS pass_rate FROM courses co LEFT JOIN module_progress mp ON mp.course_id = co.id LEFT JOIN completions c ON c.course_id = co.id ${st ? ' JOIN users u ON (mp.learner_id = u.id OR c.learner_id = u.id) WHERE u.team_id = ?' : ''} GROUP BY co.id ORDER BY co.title`, args: wa }),
+    db.execute({ sql: `SELECT mp.learner_id, mp.passed, mp.score, mp.completed_at, co.title AS course_title, m.title AS module_title FROM module_progress mp JOIN courses co ON co.id = mp.course_id JOIN modules m ON m.id = mp.module_id JOIN users u ON mp.learner_id = u.id WHERE u.role = 'learner' ${st ? ' AND u.team_id = ?' : ''} ORDER BY co.title`, args: wa })
   ])
-
-  const pr       = toObj(passRateRes)
-  const passRate = Number(pr.total) > 0 ? Math.round(100 * Number(pr.passed) / Number(pr.total)) : 0
-
-  // Group module_progress rows by learner_id
-  const mpByLearner = {}
-  for (const row of toObjs(modulesRes)) {
-    const lid = String(row.learner_id);
-    (mpByLearner[lid] ??= []).push({
-      course_title:  row.course_title,
-      module_title:  row.module_title,
-      passed:        Boolean(row.passed),
-      score:         row.score,
-      completed_at:  row.completed_at,
-    })
-  }
-
-  const learners = toObjs(learnersRes).map(l => ({
-    ...l,
-    modules: mpByLearner[String(l.id)] || [],
-  }))
-
-  return c.json({
-    summary: {
-      total_learners:         Number(toObj(learnersCountRes).n),
-      total_courses:          Number(toObj(coursesCountRes).n),
-      completions_this_month: Number(toObj(compMonthRes).n),
-      pass_rate:              passRate,
-    },
-    learners,
-    courses: toObjs(coursesRes).map(r => ({ ...r, pass_rate: r.pass_rate ?? 0 })),
-  })
+  const p = toObj(pr), mpL = {}; for (const r of toObjs(mr)) (mpL[r.learner_id] ??= []).push({ ...r, passed: !!r.passed })
+  return c.json({ summary: { total_learners: toObj(lc).n, total_courses: toObj(cc).n, completions_this_month: toObj(cm).n, pass_rate: p.total > 0 ? Math.round(100 * p.passed / p.total) : 0 }, learners: toObjs(lr).map(l => ({ ...l, modules: mpL[l.id] || [] })), courses: toObjs(cr) })
 })
 
-// ── Export ────────────────────────────────────────────────────────────────────
+app.get('/api/admin/trouble-spots', requireManager, async (c) => {
+  const user = c.get('user'), db = getDb(c.env)
+  let sql = 'SELECT q.id, q.question, co.title as course_title, m.title as module_title, COUNT(r.id) as total_attempts, SUM(CASE WHEN r.is_correct = 0 THEN 1 ELSE 0 END) as failure_count FROM questions q JOIN modules m ON q.module_id = m.id JOIN courses co ON m.course_id = co.id JOIN question_responses r ON q.id = r.question_id', args = []
+  if (user.scopedToTeam) { sql += ' JOIN completions comp ON r.completion_id = comp.id JOIN users u ON comp.learner_id = u.id WHERE u.team_id = ?'; args.push(user.scopedToTeam) }
+  const res = await db.execute({ sql: sql + ' GROUP BY q.id HAVING failure_count > 0 ORDER BY failure_count DESC LIMIT 10', args })
+  return c.json(toObjs(res).map(r => ({ ...r, failure_rate: Math.round(r.failure_count / r.total_attempts * 100) })))
+})
+
+app.post('/api/ai/generate', requireManager, async (c) => {
+  const body = await c.req.json().catch(() => null); if (!body?.type || !body?.content || !c.env.GEMINI_API_KEY) return c.json({ error: 'Missing data' }, 400)
+  let prompt = ''; if (body.type === 'questions') prompt = `Write ${body.qCount || 5} multiple-choice questions for module: ${body.title}. Content: ${body.content.slice(0, 4000)}. JSON array only: [{"question":"","options":["","","",""],"correct_index":0,"explanation":""}]`
+  else if (body.type === 'summary') prompt = `Summarize module: ${body.title}. Content: ${body.content.slice(0, 4000)}. JSON object: {"intro":"","bullets":[]}`
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${c.env.GEMINI_API_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { response_mime_type: 'application/json' } }) })
+  const d = await res.json(), t = d.candidates?.[0]?.content?.parts?.[0]?.text; return t ? c.json(JSON.parse(t)) : c.json({ error: 'AI failed' }, 500)
+})
+
+app.get('/api/assignments/me', requireLearner, async (c) => {
+  const user = c.get('user'), db = getDb(c.env)
+  const res = await db.execute({ sql: "SELECT course_id, course_title, assigned_at, due_at, completed FROM (SELECT a.course_id, co.title AS course_title, a.assigned_at, a.due_at, (SELECT COUNT(*) FROM completions c WHERE c.learner_id = a.learner_id AND c.course_id = a.course_id AND c.passed = 1) > 0 AS completed FROM assignments a JOIN courses co ON a.course_id = co.id WHERE a.learner_id = ? UNION ALL SELECT ta.course_id, co.title AS course_title, datetime(ta.created_at, 'unixepoch') AS assigned_at, ta.due_at, (SELECT COUNT(*) FROM completions c WHERE c.learner_id = lt.learner_id AND c.course_id = ta.course_id AND c.passed = 1) > 0 AS completed FROM tag_assignments ta JOIN courses co ON ta.course_id = co.id JOIN learner_tags lt ON ta.tag_id = lt.tag_id WHERE lt.learner_id = ?) GROUP BY course_id", args: [user.id, user.id] })
+  return c.json(toObjs(res).map(r => ({ ...r, completed: !!r.completed })))
+})
+
+app.get('/api/progress/:courseId', requireLearner, async (c) => {
+  const user = c.get('user'), db = getDb(c.env)
+  const res = await db.execute({ sql: 'SELECT * FROM module_progress WHERE learner_id = ? AND course_id = ?', args: [user.id, c.req.param('courseId')] })
+  return c.json(toObjs(res).map(r => ({ ...r, passed: !!r.passed })))
+})
+
+app.get('/api/assignments', requireManager, async (c) => {
+  const user = c.get('user'), db = getDb(c.env)
+  let sql = 'SELECT * FROM assignments', args = []
+  if (user.scopedToTeam) { sql = 'SELECT a.* FROM assignments a JOIN users u ON a.learner_id = u.id WHERE u.team_id = ?'; args.push(user.scopedToTeam) }
+  return c.json(toObjs(await db.execute({ sql, args })))
+})
+
+app.post('/api/assignments', requireManager, async (c) => {
+  const user = c.get('user'), body = await c.req.json().catch(() => null), db = getDb(c.env)
+  if (user.scopedToTeam) { const l = toObj(await db.execute({ sql: 'SELECT team_id FROM users WHERE id = ?', args: [body.learner_id] })); if (!l || l.team_id !== user.scopedToTeam) return c.json({ error: 'Forbidden' }, 403) }
+  await db.execute({ sql: "INSERT INTO assignments (course_id, learner_id, due_at, assigned_at) VALUES (?, ?, ?, strftime('%Y-%m-%d %H:%M:%S', 'now')) ON CONFLICT(course_id, learner_id) DO UPDATE SET due_at = excluded.due_at", args: [body.course_id, body.learner_id, body.due_at || null] })
+  return c.json({ ok: true })
+})
+
+app.delete('/api/assignments', requireManager, async (c) => {
+  const user = c.get('user'), body = await c.req.json().catch(() => null), db = getDb(c.env)
+  if (user.scopedToTeam) { const l = toObj(await db.execute({ sql: 'SELECT team_id FROM users WHERE id = ?', args: [body.learner_id] })); if (!l || l.team_id !== user.scopedToTeam) return c.json({ error: 'Forbidden' }, 403) }
+  await db.execute({ sql: 'DELETE FROM assignments WHERE course_id = ? AND learner_id = ?', args: [body.course_id, body.learner_id] }); return c.json({ ok: true })
+})
+
+app.get('/api/tags', requireManager, async (c) => {
+  const db = getDb(c.env), res = await db.execute('SELECT * FROM tags ORDER BY name')
+  return c.json(toObjs(res))
+})
+
+app.post('/api/tags', requireManager, async (c) => {
+  const body = await c.req.json().catch(() => null), db = getDb(c.env), id = uid()
+  await db.execute({ sql: 'INSERT INTO tags (id, name) VALUES (?, ?)', args: [id, body.name.trim()] })
+  return c.json({ id, name: body.name.trim() })
+})
+
+app.delete('/api/tags/:id', requireManager, async (c) => {
+  const db = getDb(c.env); await db.execute({ sql: 'DELETE FROM tags WHERE id = ?', args: [c.req.param('id')] }); return c.json({ ok: true })
+})
+
+app.post('/api/learners/:id/tags', requireManager, async (c) => {
+  const lid = c.req.param('id'), user = c.get('user'), body = await c.req.json().catch(() => null), db = getDb(c.env)
+  if (user.scopedToTeam) { const l = toObj(await db.execute({ sql: 'SELECT team_id FROM users WHERE id = ?', args: [lid] })); if (!l || l.team_id !== user.scopedToTeam) return c.json({ error: 'Forbidden' }, 403) }
+  await db.batch([{ sql: 'DELETE FROM learner_tags WHERE learner_id = ?', args: [lid] }, ...body.tag_ids.map(tid => ({ sql: 'INSERT INTO learner_tags (learner_id, tag_id) VALUES (?, ?)', args: [lid, tid] }))], 'write'); return c.json({ ok: true })
+})
+
+app.get('/api/tag-assignments', requireManager, async (c) => {
+  const db = getDb(c.env); return c.json(toObjs(await db.execute('SELECT * FROM tag_assignments')))
+})
+
+app.post('/api/tag-assignments', requireManager, async (c) => {
+  const body = await c.req.json().catch(() => null), db = getDb(c.env)
+  await db.execute({ sql: 'INSERT INTO tag_assignments (course_id, tag_id, due_at) VALUES (?, ?, ?) ON CONFLICT(course_id, tag_id) DO UPDATE SET due_at = excluded.due_at', args: [body.course_id, body.tag_id, body.due_at || null] }); return c.json({ ok: true })
+})
+
+app.delete('/api/tag-assignments', requireManager, async (c) => {
+  const body = await c.req.json().catch(() => null), db = getDb(c.env)
+  await db.execute({ sql: 'DELETE FROM tag_assignments WHERE course_id = ? AND tag_id = ?', args: [body.course_id, body.tag_id] }); return c.json({ ok: true })
+})
+
+app.put('/api/brand', requireAdmin, async (c) => {
+  const body = await c.req.json().catch(() => null), db = getDb(c.env)
+  await db.execute({ sql: "INSERT INTO brand (id, org_name, tagline, logo_url, primary_color, secondary_color, pass_threshold) VALUES ('default', ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET org_name=excluded.org_name, tagline=excluded.tagline, logo_url=excluded.logo_url, primary_color=excluded.primary_color, secondary_color=excluded.secondary_color, pass_threshold=excluded.pass_threshold", args: [body.org_name.trim(), body.tagline.trim(), body.logo_url, body.primary_color, body.secondary_color, Number(body.pass_threshold)] })
+  return c.json(toObj(await db.execute({ sql: "SELECT * FROM brand WHERE id = 'default'" })))
+})
+
+app.put('/api/auth/password', requireAdmin, async (c) => {
+  const body = await c.req.json().catch(() => null), db = getDb(c.env), hash = await pbkdf2Hash(body.password)
+  await db.execute({ sql: "INSERT INTO admin (id, password_hash) VALUES ('default', ?) ON CONFLICT(id) DO UPDATE SET password_hash=excluded.password_hash", args: [hash] }); return c.json({ updated: true })
+})
+
 export default app

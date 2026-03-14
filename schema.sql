@@ -1,18 +1,56 @@
 -- ══════════════════════════════════════════════════════════
 --  TrainFlow — Turso / libSQL schema
 --  Compatible with libSQL (SQLite 3.44+)
---  json_group_array / json_object available for course queries
 -- ══════════════════════════════════════════════════════════
 
 PRAGMA journal_mode = WAL;
 PRAGMA foreign_keys  = ON;
 
 
+-- ─── TEAMS ───────────────────────────────────────────────
+-- Organizational units.
+
+CREATE TABLE IF NOT EXISTS teams (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  name         TEXT NOT NULL UNIQUE,
+  created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+
+-- ─── USERS ────────────────────────────────────────────────
+-- All database-backed accounts (Managers and Learners).
+-- Hardcoded Admin does not have a row here.
+
+CREATE TABLE IF NOT EXISTS users (
+  id            TEXT    PRIMARY KEY,              -- uid() string
+  name          TEXT    NOT NULL UNIQUE,
+  password_hash TEXT    NOT NULL,
+  role          TEXT    NOT NULL DEFAULT 'learner', -- 'manager' | 'learner'
+  team_id       INTEGER REFERENCES teams(id),
+  last_login_at INTEGER,
+  created_at    INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+
+-- ─── INVITE CODES ────────────────────────────────────────
+-- Used for manager self-registration.
+
+CREATE TABLE IF NOT EXISTS invite_codes (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  code         TEXT NOT NULL UNIQUE,
+  role         TEXT NOT NULL DEFAULT 'manager',
+  team_id      INTEGER REFERENCES teams(id),
+  used         INTEGER NOT NULL DEFAULT 0,
+  used_by      TEXT REFERENCES users(id),
+  created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+  expires_at   TEXT
+);
+
+
 -- ─── COURSES ─────────────────────────────────────────────
--- Top-level training unit visible to learners.
 
 CREATE TABLE IF NOT EXISTS courses (
-  id          TEXT    PRIMARY KEY,               -- uid() string e.g. "lc3k9a"
+  id          TEXT    PRIMARY KEY,
   icon        TEXT    NOT NULL DEFAULT '📋',
   title       TEXT    NOT NULL,
   description TEXT    NOT NULL DEFAULT '',
@@ -29,16 +67,12 @@ END;
 
 
 -- ─── MODULES ─────────────────────────────────────────────
--- Ordered sections within a course. Each module has prose content
--- followed by a competency quiz.
--- `sort_order` is set explicitly by the frontend and is independent
--- of insert order, so the UI can reorder modules without re-inserting.
 
 CREATE TABLE IF NOT EXISTS modules (
   id         TEXT    PRIMARY KEY,
   course_id  TEXT    NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
   title      TEXT    NOT NULL,
-  content    TEXT    NOT NULL DEFAULT '',   -- HTML prose (sanitised before storage)
+  content    TEXT    NOT NULL DEFAULT '',
   sort_order INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL DEFAULT (unixepoch()),
   updated_at INTEGER NOT NULL DEFAULT (unixepoch())
@@ -55,9 +89,6 @@ END;
 
 
 -- ─── QUESTIONS ───────────────────────────────────────────
--- Multiple-choice questions belonging to a module.
--- Always four options (A–D). correct_index: 0=A 1=B 2=C 3=D.
--- `sort_order` is set explicitly by the frontend.
 
 CREATE TABLE IF NOT EXISTS questions (
   id            TEXT    PRIMARY KEY,
@@ -67,7 +98,7 @@ CREATE TABLE IF NOT EXISTS questions (
   option_b      TEXT    NOT NULL DEFAULT '',
   option_c      TEXT    NOT NULL DEFAULT '',
   option_d      TEXT    NOT NULL DEFAULT '',
-  correct_index INTEGER NOT NULL DEFAULT 0,   -- 0=A  1=B  2=C  3=D
+  correct_index INTEGER NOT NULL DEFAULT 0,
   explanation   TEXT    NOT NULL DEFAULT '',
   sort_order    INTEGER NOT NULL DEFAULT 0,
   created_at    INTEGER NOT NULL DEFAULT (unixepoch()),
@@ -85,35 +116,18 @@ END;
 
 
 -- ─── COMPLETIONS ─────────────────────────────────────────
--- One row per quiz attempt. Multiple rows per learner+course are
--- allowed (retry support). cert_id is globally unique for verification.
--- Completions are logically immutable but updated_at is included for
--- schema consistency; the trigger handles any administrative corrections.
 
 CREATE TABLE IF NOT EXISTS completions (
-  id           TEXT    PRIMARY KEY,              -- uid() string
+  id           TEXT    PRIMARY KEY,
   course_id    TEXT    NOT NULL REFERENCES courses(id),
-  learner_id   TEXT    NOT NULL REFERENCES learners(id) ON DELETE CASCADE,
+  learner_id   TEXT    NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   learner_name TEXT    NOT NULL,
-  score        INTEGER NOT NULL,                 -- 0–100 (whole number)
-  passed       INTEGER NOT NULL DEFAULT 0,       -- 0 | 1  (SQLite boolean)
-  completed_at INTEGER NOT NULL DEFAULT (unixepoch()),  -- Unix seconds
+  score        INTEGER NOT NULL,
+  passed       INTEGER NOT NULL DEFAULT 0,
+  completed_at INTEGER NOT NULL DEFAULT (unixepoch()),
   updated_at   INTEGER NOT NULL DEFAULT (unixepoch()),
-  cert_id      TEXT    NOT NULL UNIQUE           -- "TF-" + 8 uppercase hex chars
+  cert_id      TEXT    NOT NULL UNIQUE
 );
-
--- ─── QUESTION RESPONSES ──────────────────────────────────
--- Logs individual answers for "Trouble Spot" analytics.
-
-CREATE TABLE IF NOT EXISTS question_responses (
-  id            INTEGER PRIMARY KEY AUTOINCREMENT,
-  completion_id TEXT    NOT NULL REFERENCES completions(id) ON DELETE CASCADE,
-  question_id   TEXT    NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
-  is_correct    INTEGER NOT NULL,                -- 0 | 1
-  created_at    INTEGER NOT NULL DEFAULT (unixepoch())
-);
-
-CREATE INDEX IF NOT EXISTS idx_responses_question ON question_responses(question_id);
 
 CREATE INDEX IF NOT EXISTS idx_completions_learner ON completions(learner_id);
 CREATE INDEX IF NOT EXISTS idx_completions_course  ON completions(course_id);
@@ -127,20 +141,34 @@ BEGIN
 END;
 
 
+-- ─── MODULE PROGRESS ─────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS module_progress (
+  id           TEXT    PRIMARY KEY,
+  learner_id   TEXT    NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  module_id    TEXT    NOT NULL REFERENCES modules(id) ON DELETE CASCADE,
+  course_id    TEXT    NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+  passed       INTEGER NOT NULL DEFAULT 0,
+  score        INTEGER NOT NULL DEFAULT 0,
+  completed_at INTEGER,
+  created_at   INTEGER NOT NULL DEFAULT (unixepoch()),
+  updated_at   INTEGER NOT NULL DEFAULT (unixepoch()),
+  UNIQUE(learner_id, module_id)
+);
+
+
 -- ─── ASSIGNMENTS ─────────────────────────────────────────
--- Assigns a course to a specific learner.
 
 CREATE TABLE IF NOT EXISTS assignments (
   course_id   TEXT NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
-  learner_id  TEXT NOT NULL REFERENCES learners(id) ON DELETE CASCADE,
+  learner_id  TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   assigned_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%S', 'now')),
-  due_at      TEXT,                     -- ISO8601 date
+  due_at      TEXT,
   PRIMARY KEY (course_id, learner_id)
 );
 
 
 -- ─── TAGS ────────────────────────────────────────────────
--- Departments or Cohorts like "Sales", "Engineering", "New Hires"
 
 CREATE TABLE IF NOT EXISTS tags (
   id         TEXT    PRIMARY KEY,
@@ -149,7 +177,7 @@ CREATE TABLE IF NOT EXISTS tags (
 );
 
 CREATE TABLE IF NOT EXISTS learner_tags (
-  learner_id TEXT NOT NULL REFERENCES learners(id) ON DELETE CASCADE,
+  learner_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   tag_id     TEXT NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
   PRIMARY KEY (learner_id, tag_id)
 );
@@ -163,9 +191,20 @@ CREATE TABLE IF NOT EXISTS tag_assignments (
 );
 
 
+-- ─── QUESTION RESPONSES ──────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS question_responses (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  completion_id TEXT    NOT NULL REFERENCES completions(id) ON DELETE CASCADE,
+  question_id   TEXT    NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
+  is_correct    INTEGER NOT NULL,
+  created_at    INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+CREATE INDEX IF NOT EXISTS idx_responses_question ON question_responses(question_id);
+
+
 -- ─── BRAND ───────────────────────────────────────────────
--- Single-row config table (id always = 'default').
--- Seeded on first deploy; updated via admin branding page.
 
 CREATE TABLE IF NOT EXISTS brand (
   id              TEXT    PRIMARY KEY DEFAULT 'default',
@@ -174,47 +213,19 @@ CREATE TABLE IF NOT EXISTS brand (
   logo_url        TEXT    NOT NULL DEFAULT '',
   primary_color   TEXT    NOT NULL DEFAULT '#2563eb',
   secondary_color TEXT    NOT NULL DEFAULT '#1d4ed8',
-  pass_threshold  INTEGER NOT NULL DEFAULT 80,    -- percentage required to pass
+  pass_threshold  INTEGER NOT NULL DEFAULT 80,
   created_at      INTEGER NOT NULL DEFAULT (unixepoch()),
   updated_at      INTEGER NOT NULL DEFAULT (unixepoch())
 );
 
--- Seed the default row so GET /api/brand always returns something.
 INSERT OR IGNORE INTO brand (id) VALUES ('default');
-
-CREATE TRIGGER IF NOT EXISTS trg_brand_updated_at
-AFTER UPDATE ON brand
-FOR EACH ROW WHEN OLD.updated_at = NEW.updated_at
-BEGIN
-  UPDATE brand SET updated_at = unixepoch() WHERE id = NEW.id;
-END;
 
 
 -- ─── ADMIN ───────────────────────────────────────────────
--- Single-row admin credentials (id always = 'default').
---
--- Password storage strategy:
---   • On first deploy the worker reads ADMIN_PASSWORD_HASH from the
---     Cloudflare Worker environment secret (a pre-computed bcrypt hash).
---   • Subsequent password changes via the admin settings panel write
---     a new bcrypt hash to this table, which takes precedence.
---   • bcrypt embeds the salt in the hash string ($2b$10$<salt><hash>),
---     so no separate salt column is required.
---
--- Login lookup order:
---   1. SELECT password_hash FROM admin WHERE id = 'default'
---   2. If no row, fall back to env.ADMIN_PASSWORD_HASH
 
 CREATE TABLE IF NOT EXISTS admin (
   id            TEXT    PRIMARY KEY DEFAULT 'default',
-  password_hash TEXT    NOT NULL,   -- bcrypt hash, e.g. $2b$10$...
+  password_hash TEXT    NOT NULL,
   created_at    INTEGER NOT NULL DEFAULT (unixepoch()),
   updated_at    INTEGER NOT NULL DEFAULT (unixepoch())
 );
-
-CREATE TRIGGER IF NOT EXISTS trg_admin_updated_at
-AFTER UPDATE ON admin
-FOR EACH ROW WHEN OLD.updated_at = NEW.updated_at
-BEGIN
-  UPDATE admin SET updated_at = unixepoch() WHERE id = NEW.id;
-END;

@@ -29,12 +29,17 @@
       <div class="role-tile" onclick="App.goLearner()">
         <div class="role-tile-icon">🎓</div>
         <div class="role-tile-title">Learner</div>
-        <div class="role-tile-desc">Access courses, complete training, earn certificates.</div>
+        <div class="role-tile-desc">Access your training and earn certificates.</div>
+      </div>
+      <div class="role-tile" onclick="App.goManager()">
+        <div class="role-tile-icon">💼</div>
+        <div class="role-tile-title">Manager</div>
+        <div class="role-tile-desc">Manage your team, assign training, and track progress.</div>
       </div>
       <div class="role-tile" onclick="App.goAdmin()">
         <div class="role-tile-icon">⚙️</div>
-        <div class="role-tile-title">Manager</div>
-        <div class="role-tile-desc">Create content, manage courses, track completions.</div>
+        <div class="role-tile-title">Admin</div>
+        <div class="role-tile-desc">Configure branding, teams, and global settings.</div>
       </div>
     </div>
     <div style="margin-bottom:var(--space-8);">
@@ -46,12 +51,63 @@
   </div>
 </div>
 
-<!-- ══════════ SCREEN: LOGIN ══════════ -->
-<div id="screen-login" class="screen">
+<!-- ══════════ SCREEN: MANAGER LOGIN ══════════ -->
+<div id="screen-manager-login" class="screen">
   <div class="login-wrap">
     <div class="login-header">
       <div class="login-title">Manager Access</div>
-      <div class="login-sub">Sign in to manage courses and settings.</div>
+      <div class="login-sub" id="m-login-sub">Sign in to manage your team.</div>
+    </div>
+    
+    <!-- Login Form -->
+    <div class="login-card" id="m-login-form">
+      <div class="field">
+        <label>Name</label>
+        <input type="text" id="m-login-name" placeholder="Your name…" onkeydown="if(event.key==='Enter')$$('m-login-pw').focus()">
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="m-login-pw" placeholder="Enter password…" onkeydown="if(event.key==='Enter')App.doManagerLogin()">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:var(--space-3);">
+        <button class="btn btn-primary" onclick="App.doManagerLogin()">Sign In</button>
+        <button class="btn btn-ghost btn-sm" onclick="App.toggleManagerReg(true)">Register with Invite Code</button>
+        <button class="btn btn-outline btn-sm" onclick="App.show('screen-landing')">Back</button>
+      </div>
+    </div>
+
+    <!-- Registration Form (Hidden by default) -->
+    <div class="login-card hidden" id="m-reg-form">
+      <div class="field">
+        <label>Full Name</label>
+        <input type="text" id="m-reg-name" placeholder="e.g. Jane Doe">
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="m-reg-pw1" placeholder="8+ characters…">
+      </div>
+      <div class="field">
+        <label>Confirm Password</label>
+        <input type="password" id="m-reg-pw2" placeholder="Confirm password…">
+      </div>
+      <div class="field">
+        <label>Invite Code</label>
+        <input type="text" id="m-reg-code" placeholder="8-character code…" style="text-transform:uppercase;font-family:monospace;letter-spacing:0.1em;">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:var(--space-3);">
+        <button class="btn btn-primary" onclick="App.doManagerRegister()">Create Account</button>
+        <button class="btn btn-ghost btn-sm" onclick="App.toggleManagerReg(false)">Back to Sign In</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ SCREEN: LOGIN (ADMIN) ══════════ -->
+<div id="screen-login" class="screen">
+  <div class="login-wrap">
+    <div class="login-header">
+      <div class="login-title">Admin Access</div>
+      <div class="login-sub">Sign in to manage global settings and teams.</div>
     </div>
     <div class="login-card">
       <div class="field">
@@ -63,6 +119,111 @@
         <button class="btn btn-primary" onclick="App.doLogin()">Sign In</button>
         <button class="btn btn-outline" onclick="App.startDemo()" style="border-style:dashed;border-color:var(--brand-1);color:var(--brand-1);">Skip to Demo Mode ✨</button>
         <button class="btn btn-ghost btn-sm" onclick="App.show('screen-landing')">Back</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ... FIRST RUN ... -->
+
+<!-- ══════════ SCREEN: MANAGER ══════════ -->
+<div id="screen-manager" class="screen">
+  <div class="topbar">
+    <div class="brand">
+      <img id="m-logo" class="brand-logo hidden" src="" alt="">
+      <span id="m-brand">TrainFlow</span>
+    </div>
+    <div style="margin-left:var(--space-3);">
+      <span class="chip chip-blue" id="m-team-badge" style="font-size:10px;">Team</span>
+    </div>
+    <div class="topbar-right">
+      <button class="btn btn-ghost btn-sm" onclick="App.showLearner()" title="View as Learner">🎓 Learner View</button>
+      <button class="btn btn-ghost btn-sm" onclick="App.managerLogout()">Sign Out</button>
+    </div>
+  </div>
+  <div class="app-layout">
+    <nav class="sidenav">
+      <button class="nav-btn active" id="mn-dashboard"   onclick="App.mNav('dashboard')"><span class="nav-icon">▦</span>Dashboard</button>
+      <button class="nav-btn"        id="mn-courses"     onclick="App.mNav('courses')"><span class="nav-icon">📚</span>Courses</button>
+      <button class="nav-btn"        id="mn-team"        onclick="App.mNav('team')"><span class="nav-icon">👥</span>Team</button>
+      <button class="nav-btn"        id="mn-completions" onclick="App.mNav('completions')"><span class="nav-icon">✓</span>Completions</button>
+      <div class="sidenav-section">
+        <div class="sidenav-label">Settings</div>
+        <button class="nav-btn" id="mn-account"  onclick="App.mNav('account')"><span class="nav-icon">👤</span>Account</button>
+      </div>
+    </nav>
+    <div class="main">
+      <div class="page active" id="mp-dashboard">
+        <div class="page-head">
+          <div class="page-eyebrow">Team Overview</div>
+          <div class="page-title">Dashboard</div>
+        </div>
+        <div class="stats-row" id="m-stats"></div>
+        <div id="m-trouble-spots" style="margin-bottom:var(--space-8);"></div>
+        <div id="m-recent"></div>
+      </div>
+      <div class="page hidden" id="mp-courses">
+        <div class="page-head page-head-row">
+          <div>
+            <div class="page-eyebrow">Content</div>
+            <div class="page-title">Courses</div>
+          </div>
+          <button class="btn btn-primary" onclick="App.openBuilder()">+ New Course</button>
+        </div>
+        <div class="courses-grid" id="m-courses-grid"></div>
+      </div>
+      <div class="page hidden" id="mp-team">
+        <div class="page-head page-head-row">
+          <div>
+            <div class="page-eyebrow">Management</div>
+            <div class="page-title">My Team</div>
+          </div>
+          <button class="btn btn-primary" onclick="App.openAddLearner()">+ Add Learner</button>
+        </div>
+        <div class="table-wrap">
+          <table><thead><tr><th>Name</th><th>Assignments</th><th>Completed</th><th>Pass Rate</th><th>Actions</th></tr></thead>
+          <tbody id="m-team-tbody"></tbody></table>
+        </div>
+      </div>
+      <div class="page hidden" id="mp-completions">
+        <div class="page-head page-head-row">
+          <div>
+            <div class="page-eyebrow">Records</div>
+            <div class="page-title">Completions</div>
+          </div>
+          <div style="display:flex;gap:var(--space-3);align-items:center;">
+            <select id="m-comp-filter" class="btn btn-outline btn-sm" style="width:auto;" onchange="App.renderMComps(this.value)">
+              <option value="">All Courses</option>
+            </select>
+            <button class="btn btn-outline btn-sm" onclick="App.exportCSV('team')">↓ Export CSV</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table><thead><tr><th>Learner</th><th>Course</th><th>Score</th><th>Status</th><th>Date</th><th>Cert ID</th></tr></thead>
+          <tbody id="m-comp-tbody"></tbody></table>
+        </div>
+      </div>
+      <div class="page hidden" id="mp-account">
+        <div class="page-head">
+          <div class="page-eyebrow">Account</div>
+          <div class="page-title">Profile Settings</div>
+        </div>
+        <div style="max-width:400px;display:flex;flex-direction:column;gap:var(--space-4);">
+          <div class="card">
+            <div class="card-title">Display Name</div>
+            <div class="field">
+              <input type="text" id="mcp-name" placeholder="Your full name…">
+            </div>
+            <button class="btn btn-primary" onclick="App.updateManagerName()">Update Name</button>
+          </div>
+          <div class="card">
+            <div class="card-title">Change Password</div>
+            <div class="field"><label>Current Password</label><input type="password" id="mcp-cur" placeholder="Current password…"></div>
+            <div class="field"><label>New Password</label><input type="password" id="mcp-new" placeholder="New password (8+ characters)…"></div>
+            <div class="field"><label>Confirm New Password</label><input type="password" id="mcp-confirm" placeholder="Confirm new password…"></div>
+            <button class="btn btn-primary" onclick="App.changeManagerPw()">Update Password</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -243,6 +404,7 @@
       <button class="nav-btn"        id="an-courses"     onclick="App.aNav('courses')"><span class="nav-icon">📚</span>Courses</button>
       <button class="nav-btn"        id="an-importer"    onclick="App.aNav('importer')"><span class="nav-icon">🪄</span>AI Importer</button>
       <button class="nav-btn"        id="an-learners"    onclick="App.aNav('learners')"><span class="nav-icon">👥</span>Learners</button>
+      <button class="nav-btn"        id="an-teams"       onclick="App.aNav('teams')"><span class="nav-icon">🏘️</span>Teams</button>
       <button class="nav-btn"        id="an-completions" onclick="App.aNav('completions')"><span class="nav-icon">✓</span>Completions</button>
       <div class="sidenav-section">
         <div class="sidenav-label">Settings</div>
@@ -385,7 +547,11 @@
             <div class="page-eyebrow">People</div>
             <div class="page-title">Learners</div>
           </div>
-          <div style="display:flex;gap:var(--space-2);">
+          <div style="display:flex;gap:var(--space-3);align-items:center;">
+            <select id="l-team-filter" class="btn btn-outline btn-sm" style="width:auto;" onchange="App.renderLearners()">
+              <option value="">All Teams</option>
+              <option value="unassigned">Unassigned</option>
+            </select>
             <button class="btn btn-outline" onclick="App.openTagsModal()">Manage Tags</button>
             <button class="btn btn-primary" onclick="App.openAddLearner()">+ Add Learner</button>
           </div>
@@ -394,8 +560,31 @@
           <input type="text" id="learners-search" placeholder="Search by name or tag..." oninput="App.filterLearners(this.value)">
         </div>
         <div class="table-wrap">
-          <table><thead><tr><th>Name</th><th>Tags</th><th>Last Login</th><th>Completions</th><th>Actions</th></tr></thead>
+          <table><thead><tr><th>Name</th><th>Team</th><th>Tags</th><th>Last Login</th><th>Comps</th><th>Actions</th></tr></thead>
           <tbody id="learners-tbody"></tbody></table>
+        </div>
+      </div>
+      <div class="page hidden" id="ap-teams">
+        <div class="page-head page-head-row">
+          <div>
+            <div class="page-eyebrow">Organisation</div>
+            <div class="page-title">Teams</div>
+          </div>
+          <button class="btn btn-primary" onclick="App.openCreateTeam()">+ New Team</button>
+        </div>
+        <div id="teams-grid" class="courses-grid stagger"></div>
+        <div class="divider" style="margin:var(--space-8) 0;"></div>
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="App.toggleInvites()">
+            <div style="font-weight:700;">Manager Invite Codes</div>
+            <span id="invites-toggle-icon">▾</span>
+          </div>
+          <div id="invites-section" class="hidden" style="margin-top:var(--space-5);">
+            <div class="table-wrap">
+              <table><thead><tr><th>Code</th><th>Team</th><th>Status</th><th>Created</th><th>Expires</th><th>Action</th></tr></thead>
+              <tbody id="invites-tbody"></tbody></table>
+            </div>
+          </div>
         </div>
       </div>
       <div class="page hidden" id="ap-completions">
@@ -551,12 +740,60 @@
     </div>
     <div class="modal-body">
       <div class="field"><label>Name</label><input type="text" id="al-name" placeholder="Full name…" autocomplete="off"></div>
+      <div class="field">
+        <label>Team (Optional)</label>
+        <select id="al-team"></select>
+      </div>
       <div class="field"><label>Password</label><input type="password" id="al-pw1" placeholder="Password (8+ characters)…"></div>
       <div class="field"><label>Confirm Password</label><input type="password" id="al-pw2" placeholder="Confirm…"></div>
     </div>
     <div class="modal-foot">
       <button class="btn btn-ghost" onclick="App.closeAddLearner()">Cancel</button>
       <button class="btn btn-primary" onclick="App.submitAddLearner()">Create Account</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ MODAL: INVITE CODE ══════════ -->
+<div class="overlay hidden" id="invite-modal">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">New Manager Invite</div>
+      <div id="invite-subtitle" class="modal-sub"></div>
+    </div>
+    <div class="modal-body" id="invite-form">
+      <div class="field"><label>Expires (optional)</label><input type="date" id="invite-expiry"></div>
+      <button class="btn btn-primary w-full" onclick="App.submitGenerateInvite()">Generate Code</button>
+    </div>
+    <div class="modal-body hidden" id="invite-result">
+      <div style="text-align:center;padding:var(--space-4) 0;">
+        <div style="font-size:var(--text-xs);color:var(--ink-4);text-transform:uppercase;margin-bottom:var(--space-3);">Invite Code</div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:var(--space-3);margin-bottom:var(--space-5);">
+          <div id="generated-code" style="font-size:32px;font-family:monospace;letter-spacing:0.1em;background:var(--rule-2);padding:var(--space-3) var(--space-5);border-radius:var(--r);font-weight:700;"></div>
+          <button class="btn btn-outline" onclick="App.copyInviteCode()">Copy</button>
+        </div>
+        <p style="font-size:var(--text-sm);color:var(--ink-3);">Share this code with your new manager. It can only be used once.</p>
+        <p id="invite-expiry-label" style="font-size:var(--text-xs);color:var(--ink-4);margin-top:var(--space-2);"></p>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-primary" onclick="$$('invite-modal').classList.add('hidden')">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ MODAL: CREATE TEAM ══════════ -->
+<div class="overlay hidden" id="team-modal">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="team-modal-title">New Team</div>
+    </div>
+    <div class="modal-body">
+      <div class="field"><label>Team Name</label><input type="text" id="team-name-input" placeholder="e.g. Sales, Engineering..."></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="$$('team-modal').classList.add('hidden')">Cancel</button>
+      <button class="btn btn-primary" id="team-modal-btn">Create Team</button>
     </div>
   </div>
 </div>
@@ -706,7 +943,33 @@
 
 </div><!-- #app -->
 
-<script src="js/app.js"></script>
+<script src="js/core.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/admin.js"></script>
+<script src="js/manager.js"></script>
+<script src="js/learner.js"></script>
+<script src="js/builder.js"></script>
+<script>
+  // Global Entry Point — maps App.* to the modular objects
+  const AppProxy = {
+    ...Auth, ...Admin, ...Learner, ...Manager, ...Builder,
+    init: async () => {
+      await App.init();
+      // Role-based entry
+      if (getToken()) Admin.init();
+      else if (getManagerToken()) Manager.init();
+      else if (getLearnerToken()) Learner.init();
+    },
+    show: App.show,
+    goLearner: App.goLearner,
+    goManager: App.goManager,
+    goAdmin: App.goAdmin,
+    startDemo: App.startDemo,
+    closeAssign: () => $$('assign-overlay').classList.add('hidden')
+  };
+  Object.assign(App, AppProxy);
+  AppProxy.init();
+</script>
 
 </body>
 </html>
