@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#fafaf9">
 <meta name="description" content="TrainFlow — Department Training & Certification">
 <title>TrainFlow</title>
+<link rel="icon" href="data:;base64,iVBORw0KGgo=">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Inter:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -120,7 +121,21 @@
   </div>
 </div>
 
-<!-- ... FIRST RUN ... -->
+<!-- FIRST RUN REQUIRED OVERLAY -->
+<div id="first-run-overlay" class="overlay hidden">
+  <div class="modal" style="max-width:500px;">
+    <h3 style="margin-bottom:var(--space-2);color:var(--fail);">Worker Initialization Required</h3>
+    <p style="margin-bottom:var(--space-4);">The Cloudflare Worker is running, but it has not been initialized with the required secrets (e.g. <code>ADMIN_PASSWORD_HASH</code>, <code>JWT_SECRET</code>).</p>
+    <div style="background:var(--rule-2);padding:var(--space-4);border-radius:var(--r);font-family:monospace;font-size:12px;margin-bottom:var(--space-4);overflow-x:auto;">
+      npx wrangler secret put ADMIN_PASSWORD_HASH<br>
+      npx wrangler secret put JWT_SECRET<br>
+      npx wrangler secret put TURSO_TOKEN
+    </div>
+    <div style="text-align:right;">
+      <button class="btn btn-primary" onclick="document.getElementById('first-run-overlay').classList.add('hidden')">Close</button>
+    </div>
+  </div>
+</div>
 
 <!-- ══════════ SCREEN: MANAGER ══════════ -->
 <div id="screen-manager" class="screen">
@@ -221,22 +236,6 @@
           </div>
         </div>
       </div>
-    </div>
-  </div>
-</div>
-
-<!-- FIRST RUN REQUIRED OVERLAY -->
-<div id="first-run-overlay" class="overlay hidden">
-  <div class="modal" style="max-width:500px;">
-    <h3 style="margin-bottom:var(--space-2);color:var(--fail);">Worker Initialization Required</h3>
-    <p style="margin-bottom:var(--space-4);">The Cloudflare Worker is running, but it has not been initialized with the required secrets (e.g. <code>ADMIN_PASSWORD_HASH</code>, <code>JWT_SECRET</code>).</p>
-    <div style="background:var(--rule-2);padding:var(--space-4);border-radius:var(--r);font-family:monospace;font-size:12px;margin-bottom:var(--space-4);overflow-x:auto;">
-      npx wrangler secret put ADMIN_PASSWORD_HASH<br>
-      npx wrangler secret put JWT_SECRET<br>
-      npx wrangler secret put TURSO_TOKEN
-    </div>
-    <div style="text-align:right;">
-      <button class="btn btn-primary" onclick="document.getElementById('first-run-overlay').classList.add('hidden')">Close</button>
     </div>
   </div>
 </div>
@@ -387,7 +386,7 @@
       <span id="a-brand">TrainFlow</span>
     </div>
     <div style="margin-left:var(--space-3);">
-      <span class="chip chip-amber" style="font-size:10px;">Manager</span>
+      <span class="chip chip-amber" style="font-size:10px;">Admin</span>
     </div>
     <div class="topbar-right">
       <button class="btn btn-ghost btn-sm" onclick="App.showLearner()" title="View as Learner">🎓 Learner View</button>
@@ -819,7 +818,7 @@
       <div class="modal-title">Delete Learner</div>
     </div>
     <div class="modal-body">
-      <p id="confirm-delete-msg" style="color:var(--ink-2);"></p>
+      <p id="confirm-delete-msg" style="color:var(--fail);"></p>
     </div>
     <div class="modal-foot">
       <button class="btn btn-ghost" onclick="App.closeConfirmDelete()">Cancel</button>
