@@ -177,6 +177,8 @@ app.get('/api/learners', requireManager, async (c) => {
   const user = c.get('user')
   const db = getDb(c.env)
   const tid = c.req.query('team_id')
+  const limit = Math.min(parseInt(c.req.query('limit') || '50'), 100)
+  const offset = parseInt(c.req.query('offset') || '0')
   
   let where = ["role = 'learner'"]
   let args = []
@@ -189,9 +191,19 @@ app.get('/api/learners', requireManager, async (c) => {
     where.push('team_id IS NULL')
   }
 
-  const sql = `SELECT * FROM users WHERE ${where.join(' AND ')} ORDER BY name`
-  const res = await db.execute({ sql, args })
-  return c.json(toObjs(res))
+  const whereStr = where.join(' AND ')
+  const countSql = `SELECT COUNT(*) as total FROM users WHERE ${whereStr}`
+  const dataSql = `SELECT * FROM users WHERE ${whereStr} ORDER BY name LIMIT ? OFFSET ?`
+  
+  const [countRes, dataRes] = await Promise.all([
+    db.execute({ sql: countSql, args }),
+    db.execute({ sql: dataSql, args: [...args, limit, offset] })
+  ])
+
+  return c.json({
+    total: toObj(countRes)?.total || 0,
+    rows: toObjs(dataRes)
+  })
 })
 
 app.get('/api/admin/stats', requireManager, async (c) => {
