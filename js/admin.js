@@ -41,7 +41,8 @@ const Admin = {
       
       Admin.renderTroubleSpots();
     } catch(e) {
-      $$('a-stats').innerHTML = `<div class="card" style="color:var(--fail);border-color:var(--fail);">Failed to load dashboard: ${esc(e.message)}</div>`;
+      const msg = e.detail ? `${e.message}: ${e.detail}` : e.message;
+      $$('a-stats').innerHTML = `<div class="card" style="color:var(--fail);border-color:var(--fail);">Failed to load dashboard: ${esc(msg)}</div>`;
     }
   },
 
@@ -71,7 +72,8 @@ const Admin = {
           <div id="team-members-${t.id}" class="hidden" style="margin-top:12px;padding-top:8px;border-top:1px solid var(--rule);"></div>
         </div>`).join('');
     } catch(e) { 
-      $$('teams-grid').innerHTML = `<div class="card" style="color:var(--fail);">Failed to load teams: ${esc(e.message)}</div>`;
+      const msg = e.detail ? `${e.message}: ${e.detail}` : e.message;
+      $$('teams-grid').innerHTML = `<div class="card" style="color:var(--fail);">Failed to load teams: ${esc(msg)}</div>`;
     }
   },
   async toggleTeamMembers(tid) {
@@ -169,7 +171,8 @@ const Admin = {
       _allLearners = learners;
       Admin.filterLearners($$('learners-search').value);
     } catch(e) { 
-      $$('learners-tbody').innerHTML = `<tr><td colspan="4" style="text-align:center;padding:32px;color:var(--fail);">${esc(e.message)}</td></tr>`;
+      const msg = e.detail ? `${e.message}: ${e.detail}` : e.message;
+      $$('learners-tbody').innerHTML = `<tr><td colspan="4" style="text-align:center;padding:32px;color:var(--fail);">${esc(msg)}</td></tr>`;
     }
   },
   filterLearners(q) {
