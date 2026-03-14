@@ -848,13 +848,13 @@ const App = {
         const dueVal = assign?.due_at ? assign.due_at.split(' ')[0] : '';
         return `<div style="display:flex;align-items:center;justify-content:space-between;padding:var(--space-3) 0;border-bottom:1px solid var(--rule);">
           <div style="flex:1;">
-            <div style="font-weight:600;">${esc(l.name)}</div>
+            <div style="font-weight:600;color:var(--ink);">${esc(l.name)}</div>
             ${isAssigned ? `<div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
-              <span style="font-size:10px;color:var(--ink-4);text-transform:uppercase;">Due Date:</span>
-              <input type="date" id="due-${l.id}" value="${dueVal}" style="width:auto;padding:2px 4px;font-size:11px;" onchange="App.toggleAssign('${l.id}', true)">
+              <span style="font-size:10px;color:var(--ink-4);text-transform:uppercase;font-weight:700;">Deadline:</span>
+              <input type="date" id="due-${l.id}" value="${dueVal}" style="width:auto;padding:4px 8px;font-size:12px;border-radius:var(--r-sm);border:1px solid var(--rule);" onchange="App.toggleAssign(event, '${l.id}', true)">
             </div>` : ''}
           </div>
-          <button class="btn btn-sm ${isAssigned ? 'btn-ghost' : 'btn-outline'}" onclick="App.toggleAssign('${l.id}', ${isAssigned})">
+          <button class="btn btn-sm ${isAssigned ? 'btn-ghost' : 'btn-outline'}" onclick="App.toggleAssign(event, '${l.id}', ${isAssigned})">
             ${isAssigned ? 'Unassign' : 'Assign'}
           </button>
         </div>`;
@@ -867,10 +867,10 @@ const App = {
     $$('assign-overlay').classList.add('hidden');
     App._assignCourseId = null;
   },
-  async toggleAssign(learnerId, currentlyAssigned) {
+  async toggleAssign(ev, learnerId, currentlyAssigned) {
+    if(ev) ev.stopPropagation();
     try {
-      // Check if the trigger was a date change or an unassign click
-      const isDateChange = event && event.target && event.target.tagName === 'INPUT';
+      const isDateChange = ev && ev.target && ev.target.tagName === 'INPUT';
       
       if (currentlyAssigned && !isDateChange) {
         await api('/api/assignments', { method: 'DELETE', body: JSON.stringify({ course_id: App._assignCourseId, learner_id: learnerId }) });
