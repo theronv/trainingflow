@@ -45,6 +45,7 @@ let brandCache   = { name: CONFIG.DEFAULT_BRAND_NAME, tagline: CONFIG.DEFAULT_TA
 let coursesCache = [];
 let assignCache  = []; // course_id list for learner
 let isDemo       = false;
+let _allLearners = [];
 
 const MOCK_COURSES = [
   {
@@ -793,6 +794,28 @@ const App = {
     }
   },
 
+  async renderTroubleSpots() {
+    const el = $$('a-trouble-spots');
+    try {
+      const spots = await api('/api/admin/trouble-spots');
+      if (!spots.length) { el.innerHTML = ''; return; }
+      
+      el.innerHTML = `
+        <div style="font-weight:700;font-size:var(--text-base);margin:var(--space-8) 0 var(--space-4);color:var(--fail);display:flex;align-items:center;gap:8px;">
+          <span>⚠️ Trouble Spots</span>
+          <span style="font-weight:400;font-size:var(--text-xs);color:var(--ink-4);">(Questions with high failure rates)</span>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Question</th><th>Course / Module</th><th>Failure Rate</th></tr></thead>
+          <tbody>${spots.map(s => `<tr>
+            <td style="max-width:300px;white-space:normal;font-weight:500;">${esc(s.question)}</td>
+            <td style="font-size:var(--text-xs);color:var(--ink-3);">${esc(s.course_title)}<br>${esc(s.module_title)}</td>
+            <td><span class="chip chip-red" style="font-weight:700;">${s.failure_rate}% Fail</span></td>
+          </tr>`).join('')}</tbody>
+        </table></div>`;
+    } catch (e) { el.innerHTML = ''; }
+  },
+
   _openLearners: new Set(),
   _dashLearners: [],
 
@@ -1009,22 +1032,8 @@ const App = {
     const tbody = $$('learners-tbody');
     try {
       const learners = await api('/api/learners');
-      if(!learners.length){ tbody.innerHTML='<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--ink-4);">No learners yet. Add one to get started.</td></tr>'; return; }
-      tbody.innerHTML = learners.map(l=>{
-        const lastLogin = l.last_login_at ? new Date(l.last_login_at*1000).toLocaleDateString() : '—';
-        const overdueBadge = l.overdue_count > 0 ? `<span class="chip chip-red" style="margin-left:8px;font-size:10px;">⚠️ ${l.overdue_count} overdue</span>` : '';
-        const tagsHtml = (l.tags||[]).map(t => `<span class="chip chip-blue" style="font-size:10px;padding:2px 6px;">${esc(t.name)}</span>`).join(' ') || '<span style="color:var(--ink-4);font-size:var(--text-xs);">No tags</span>';
-        return `<tr>
-          <td>${esc(l.name)}${overdueBadge}</td>
-          <td>${tagsHtml} <button class="btn btn-ghost btn-icon btn-sm" onclick="App.openLearnerTags('${l.id}','${esc(l.name)}')" title="Edit Tags">🏷️</button></td>
-          <td>${lastLogin}</td>
-          <td>${l.completion_count}</td>
-          <td style="display:flex;gap:4px;">
-            <button class="btn btn-ghost btn-sm" onclick="App.openResetPw('${l.id}','${esc(l.name)}')">Reset Password</button>
-            <button class="btn btn-ghost btn-sm" style="color:var(--fail);" onclick="App.openConfirmDelete('${l.id}','${esc(l.name)}')">Delete</button>
-          </td>
-        </tr>`;
-      }).join('');
+      _allLearners = learners;
+      App.filterLearners($$('learners-search').value);
     } catch(e) {
       const detail = e.detail ? `<div style="font-size:11px;opacity:0.7;margin-top:8px;">${esc(e.detail)}</div>` : '';
       tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--fail);">
@@ -1032,6 +1041,35 @@ const App = {
         ${detail}
       </td></tr>`;
     }
+  },
+  filterLearners(q) {
+    const tbody = $$('learners-tbody');
+    const query = q.toLowerCase().trim();
+    const filtered = _allLearners.filter(l => {
+      const tags = (l.tags||[]).map(t => t.name.toLowerCase()).join(' ');
+      return l.name.toLowerCase().includes(query) || tags.includes(query);
+    });
+
+    if(!filtered.length){ 
+      tbody.innerHTML='<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--ink-4);">No matching learners.</td></tr>'; 
+      return; 
+    }
+
+    tbody.innerHTML = filtered.map(l=>{
+      const lastLogin = l.last_login_at ? new Date(l.last_login_at*1000).toLocaleDateString() : '—';
+      const overdueBadge = l.overdue_count > 0 ? `<span class="chip chip-red" style="margin-left:8px;font-size:10px;">⚠️ ${l.overdue_count} overdue</span>` : '';
+      const tagsHtml = (l.tags||[]).map(t => `<span class="chip chip-blue" style="font-size:10px;padding:2px 6px;">${esc(t.name)}</span>`).join(' ') || '<span style="color:var(--ink-4);font-size:var(--text-xs);">No tags</span>';
+      return `<tr>
+        <td>${esc(l.name)}${overdueBadge}</td>
+        <td>${tagsHtml} <button class="btn btn-ghost btn-icon btn-sm" onclick="App.openLearnerTags('${l.id}','${esc(l.name)}')" title="Edit Tags">🏷️</button></td>
+        <td>${lastLogin}</td>
+        <td>${l.completion_count}</td>
+        <td style="display:flex;gap:4px;">
+          <button class="btn btn-ghost btn-sm" onclick="App.openResetPw('${l.id}','${esc(l.name)}')">Reset Password</button>
+          <button class="btn btn-ghost btn-sm" style="color:var(--fail);" onclick="App.openConfirmDelete('${l.id}','${esc(l.name)}')">Delete</button>
+        </td>
+      </tr>`;
+    }).join('');
   },
 
   // Tag Management
@@ -1485,7 +1523,7 @@ const App = {
     const qs = session.qs;
     const q = qs[qi];
     const ok = sel === q.correct;
-    session.ans.push({sel, correct: q.correct, ok});
+    session.ans.push({sel, correct: q.correct, ok, question_id: q.id});
 
     const opts = $$('mod-main').querySelectorAll('.quiz-opt');
     opts.forEach((el, i) => {
@@ -1561,10 +1599,24 @@ const App = {
     const modScores = (curCourse.mods||[]).map((_,i) => quizSt[i]?.score ?? 0);
     const score  = modScores.length ? Math.round(modScores.reduce((a,b)=>a+b,0) / modScores.length) : 100;
     const passed = score >= (brandCache.pass || CONFIG.DEFAULT_PASS);
+
+    // Collect all question responses for analytics
+    const responses = [];
+    (curCourse.mods||[]).forEach((m, mi) => {
+      const st = quizSt[mi];
+      if (st && st.ans) {
+        st.ans.forEach(a => {
+          if (a.question_id) {
+            responses.push({ question_id: a.question_id, is_correct: a.ok });
+          }
+        });
+      }
+    });
+
     try {
       const res = await learnerApi('/api/completions', {
         method: 'POST',
-        body: JSON.stringify({ course_id: curCourse.id, score, passed }),
+        body: JSON.stringify({ course_id: curCourse.id, score, passed, responses }),
       });
       return res; // { id, cert_id, passed, score, completed_at }
     } catch(e) { 

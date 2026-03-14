@@ -346,7 +346,7 @@ app.post('/api/completions', learnerAuth, async (c) => {
   const body = await c.req.json().catch(() => null)
   if (!body) return c.json({ error: 'Invalid JSON' }, 400)
 
-  const { course_id, score, passed } = body
+  const { course_id, score, passed, responses } = body
   const learner = c.get('learner')
 
   if (!course_id) return c.json({ error: 'course_id is required' }, 400)
@@ -370,12 +370,28 @@ app.post('/api/completions', learnerAuth, async (c) => {
     cid = certId()
   }
 
-  await db.execute({
-    sql:  `INSERT INTO completions
-             (id, course_id, learner_id, learner_name, score, passed, completed_at, cert_id)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    args: [id, course_id, learner.id, learner.name, Math.round(score), passed ? 1 : 0, now, cid || null],
-  })
+  const queries = [
+    {
+      sql:  `INSERT INTO completions
+               (id, course_id, learner_id, learner_name, score, passed, completed_at, cert_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [id, course_id, learner.id, learner.name, Math.round(score), passed ? 1 : 0, now, cid || null],
+    }
+  ]
+
+  // Log individual question responses if provided
+  if (Array.isArray(responses)) {
+    for (const r of responses) {
+      if (r.question_id && typeof r.is_correct === 'boolean') {
+        queries.push({
+          sql: 'INSERT INTO question_responses (completion_id, question_id, is_correct) VALUES (?, ?, ?)',
+          args: [id, r.question_id, r.is_correct ? 1 : 0]
+        })
+      }
+    }
+  }
+
+  await db.batch(queries, 'write')
 
   return c.json({ id, cert_id: cid, passed: Boolean(passed), score: Math.round(score), completed_at: now }, 201)
 })
@@ -1157,6 +1173,29 @@ Respond with a JSON object only:
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text
   if (!text) throw new Error('No content returned from Gemini')
   return c.json(JSON.parse(text))
+})
+
+// ── GET /api/admin/trouble-spots ─────────────────────────────────────────────
+
+app.get('/api/admin/trouble-spots', adminAuth, async (c) => {
+  const db = getDb(c.env)
+  const res = await db.execute(`
+    SELECT q.id, q.question, co.title as course_title, m.title as module_title,
+           COUNT(r.id) as total_attempts,
+           SUM(CASE WHEN r.is_correct = 0 THEN 1 ELSE 0 END) as failure_count
+    FROM   questions q
+    JOIN   modules m ON q.module_id = m.id
+    JOIN   courses co ON m.course_id = co.id
+    JOIN   question_responses r ON q.id = r.question_id
+    GROUP  BY q.id
+    HAVING failure_count > 0
+    ORDER  BY failure_count DESC
+    LIMIT  10
+  `)
+  return c.json(toObjs(res).map(r => ({
+    ...r,
+    failure_rate: Math.round((r.failure_count / r.total_attempts) * 100)
+  })))
 })
 
 // ── GET /api/admin/stats ──────────────────────────────────────────────────────

@@ -257,6 +257,7 @@
           <div class="page-title">Dashboard</div>
         </div>
         <div class="stats-row" id="a-stats"></div>
+        <div id="a-trouble-spots" style="margin-bottom:var(--space-8);"></div>
         <div id="a-recent"></div>
         <div id="a-course-stats"></div>
       </div>
@@ -388,6 +389,9 @@
             <button class="btn btn-outline" onclick="App.openTagsModal()">Manage Tags</button>
             <button class="btn btn-primary" onclick="App.openAddLearner()">+ Add Learner</button>
           </div>
+        </div>
+        <div class="field" style="margin-bottom:var(--space-5);">
+          <input type="text" id="learners-search" placeholder="Search by name or tag..." oninput="App.filterLearners(this.value)">
         </div>
         <div class="table-wrap">
           <table><thead><tr><th>Name</th><th>Tags</th><th>Last Login</th><th>Completions</th><th>Actions</th></tr></thead>

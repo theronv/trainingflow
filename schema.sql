@@ -102,6 +102,19 @@ CREATE TABLE IF NOT EXISTS completions (
   cert_id      TEXT    NOT NULL UNIQUE           -- "TF-" + 8 uppercase hex chars
 );
 
+-- ─── QUESTION RESPONSES ──────────────────────────────────
+-- Logs individual answers for "Trouble Spot" analytics.
+
+CREATE TABLE IF NOT EXISTS question_responses (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  completion_id TEXT    NOT NULL REFERENCES completions(id) ON DELETE CASCADE,
+  question_id   TEXT    NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
+  is_correct    INTEGER NOT NULL,                -- 0 | 1
+  created_at    INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+CREATE INDEX IF NOT EXISTS idx_responses_question ON question_responses(question_id);
+
 CREATE INDEX IF NOT EXISTS idx_completions_learner ON completions(learner_id);
 CREATE INDEX IF NOT EXISTS idx_completions_course  ON completions(course_id);
 CREATE INDEX IF NOT EXISTS idx_completions_date    ON completions(completed_at DESC);
