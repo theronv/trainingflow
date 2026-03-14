@@ -106,6 +106,7 @@ input, select, textarea { font-family: inherit; }
 
 .btn-ghost { background: transparent; color: var(--ink-3); border-color: transparent; }
 .btn-ghost:hover { background: var(--rule-2); color: var(--ink); }
+.btn-ghost.active { background: var(--brand-1); color: var(--white); }
 
 .btn-danger { background: var(--fail-lt); color: var(--fail); border-color: #fecaca; }
 .btn-danger:hover { background: var(--fail); color: var(--white); transform: translateY(-1px); box-shadow: 0 8px 16px rgba(185,28,28,0.2); }

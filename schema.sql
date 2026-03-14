@@ -120,9 +120,33 @@ END;
 CREATE TABLE IF NOT EXISTS assignments (
   course_id   TEXT NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
   learner_id  TEXT NOT NULL REFERENCES learners(id) ON DELETE CASCADE,
-  assigned_at TEXT NOT NULL DEFAULT (datetime('now')),
+  assigned_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%S', 'now')),
   due_at      TEXT,                     -- ISO8601 date
   PRIMARY KEY (course_id, learner_id)
+);
+
+
+-- ─── TAGS ────────────────────────────────────────────────
+-- Departments or Cohorts like "Sales", "Engineering", "New Hires"
+
+CREATE TABLE IF NOT EXISTS tags (
+  id         TEXT    PRIMARY KEY,
+  name       TEXT    NOT NULL UNIQUE,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+CREATE TABLE IF NOT EXISTS learner_tags (
+  learner_id TEXT NOT NULL REFERENCES learners(id) ON DELETE CASCADE,
+  tag_id     TEXT NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+  PRIMARY KEY (learner_id, tag_id)
+);
+
+CREATE TABLE IF NOT EXISTS tag_assignments (
+  course_id  TEXT NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+  tag_id     TEXT NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+  due_at     TEXT,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+  PRIMARY KEY (course_id, tag_id)
 );
 
 

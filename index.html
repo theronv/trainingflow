@@ -178,10 +178,19 @@
       <div id="assign-subtitle" class="modal-sub"></div>
     </div>
     <div class="modal-body">
-      <div class="field" style="margin-bottom:var(--space-4);">
-        <input type="text" id="assign-search" placeholder="Search learners..." oninput="App.filterAssignList(this.value)" style="margin-bottom:0;">
+      <div style="display:flex;gap:var(--space-4);margin-bottom:var(--space-4);border-bottom:1px solid var(--rule);">
+        <button class="btn btn-ghost btn-sm active" id="assign-tab-learners" onclick="App.setAssignTab('learners')">Learners</button>
+        <button class="btn btn-ghost btn-sm" id="assign-tab-tags" onclick="App.setAssignTab('tags')">Tags (Bulk)</button>
       </div>
-      <div id="assign-list" style="max-height:400px;overflow-y:auto;"></div>
+      <div id="assign-view-learners">
+        <div class="field" style="margin-bottom:var(--space-4);">
+          <input type="text" id="assign-search" placeholder="Search learners..." oninput="App.filterAssignList(this.value)" style="margin-bottom:0;">
+        </div>
+        <div id="assign-list" style="max-height:400px;overflow-y:auto;"></div>
+      </div>
+      <div id="assign-view-tags" class="hidden">
+        <div id="assign-tags-list" style="max-height:400px;overflow-y:auto;"></div>
+      </div>
     </div>
     <div class="modal-foot">
       <button class="btn btn-primary" onclick="App.closeAssign()">Done</button>
@@ -375,10 +384,13 @@
             <div class="page-eyebrow">People</div>
             <div class="page-title">Learners</div>
           </div>
-          <button class="btn btn-primary" onclick="App.openAddLearner()">+ Add Learner</button>
+          <div style="display:flex;gap:var(--space-2);">
+            <button class="btn btn-outline" onclick="App.openTagsModal()">Manage Tags</button>
+            <button class="btn btn-primary" onclick="App.openAddLearner()">+ Add Learner</button>
+          </div>
         </div>
         <div class="table-wrap">
-          <table><thead><tr><th>Name</th><th>Last Login</th><th>Completions</th><th>Actions</th></tr></thead>
+          <table><thead><tr><th>Name</th><th>Tags</th><th>Last Login</th><th>Completions</th><th>Actions</th></tr></thead>
           <tbody id="learners-tbody"></tbody></table>
         </div>
       </div>
@@ -486,6 +498,42 @@
           </div>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ MODAL: MANAGE TAGS ══════════ -->
+<div class="overlay hidden" id="tags-modal">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">Manage Tags</div>
+      <div class="modal-sub">Create tags like "Sales" or "Engineering" to group learners.</div>
+    </div>
+    <div class="modal-body">
+      <div class="field-row">
+        <input type="text" id="new-tag-name" placeholder="Tag name..." style="flex:1;">
+        <button class="btn btn-primary" onclick="App.createTag()">Add Tag</button>
+      </div>
+      <div id="tags-list" style="margin-top:var(--space-4);max-height:300px;overflow-y:auto;"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-primary" onclick="App.closeTagsModal()">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ MODAL: EDIT LEARNER TAGS ══════════ -->
+<div class="overlay hidden" id="learner-tags-modal">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">Learner Tags</div>
+      <div id="lt-subtitle" class="modal-sub"></div>
+    </div>
+    <div class="modal-body">
+      <div id="lt-tags-list" style="max-height:300px;overflow-y:auto;"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-primary" onclick="App.closeLearnerTagsModal()">Done</button>
     </div>
   </div>
 </div>

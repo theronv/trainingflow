@@ -831,82 +831,82 @@ const App = {
   _assignCourseId: null,
   _assignLearners: [],
   _assignState: [],
+  _assignTags: [],
+  _assignTagState: [],
+  _assignTab: 'learners',
   async openAssign(id, title) {
     App._assignCourseId = id;
-    $$('assign-subtitle').textContent = `Assign ${title} to learners`;
+    App._assignTab = 'learners';
+    $$('assign-subtitle').textContent = `Assign ${title} to learners or cohorts`;
     $$('assign-overlay').classList.remove('hidden');
     $$('assign-list').innerHTML = '<div style="padding:var(--space-4);text-align:center;color:var(--ink-4);">Loading...</div>';
     $$('assign-search').value = '';
+    App.setAssignTab('learners');
     try {
-      const [learners, assigns] = await Promise.all([
+      const [learners, assigns, tags, tagAssigns] = await Promise.all([
         api('/api/learners'),
-        api('/api/assignments')
+        api('/api/assignments'),
+        api('/api/tags'),
+        api('/api/tag-assignments')
       ]);
       App._assignLearners = learners;
       App._assignState = assigns.filter(a => a.course_id === id);
+      App._assignTags = tags;
+      App._assignTagState = tagAssigns.filter(a => a.course_id === id);
       App.filterAssignList('');
+      App.renderAssignTags();
     } catch (e) {
       $$('assign-list').innerHTML = `<div style="color:var(--fail);padding:var(--space-4);">${esc(e.message)}</div>`;
     }
   },
-  filterAssignList(q) {
-    const list = $$('assign-list');
-    const query = q.toLowerCase().trim();
-    const filtered = App._assignLearners.filter(l => l.name.toLowerCase().includes(query));
-    
-    if (!filtered.length) {
-      list.innerHTML = '<div style="padding:var(--space-4);text-align:center;color:var(--ink-4);">No matching learners.</div>';
+  setAssignTab(tab) {
+    App._assignTab = tab;
+    $$('assign-tab-learners').classList.toggle('active', tab === 'learners');
+    $$('assign-tab-tags').classList.toggle('active', tab === 'tags');
+    $$('assign-view-learners').classList.toggle('hidden', tab !== 'learners');
+    $$('assign-view-tags').classList.toggle('hidden', tab !== 'tags');
+  },
+  renderAssignTags() {
+    const list = $$('assign-tags-list');
+    if (!App._assignTags.length) {
+      list.innerHTML = '<div style="padding:var(--space-4);text-align:center;color:var(--ink-4);">No tags created yet.</div>';
       return;
     }
-
-    list.innerHTML = filtered.map(l => {
-      const assign = App._assignState.find(a => a.learner_id === l.id);
+    list.innerHTML = App._assignTags.map(t => {
+      const assign = App._assignTagState.find(a => a.tag_id === t.id);
       const isAssigned = !!assign;
       const dueVal = assign?.due_at ? assign.due_at.split(' ')[0] : '';
       return `<div style="display:flex;align-items:center;justify-content:space-between;padding:var(--space-3) 0;border-bottom:1px solid var(--rule);">
         <div style="flex:1;">
-          <div style="font-weight:600;color:var(--ink);">${esc(l.name)}</div>
+          <div style="font-weight:600;color:var(--ink);">${esc(t.name)}</div>
           ${isAssigned ? `<div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
             <span style="font-size:10px;color:var(--ink-4);text-transform:uppercase;font-weight:700;">Deadline:</span>
-            <input type="date" id="due-${l.id}" value="${dueVal}" style="width:auto;padding:4px 8px;font-size:12px;border-radius:var(--r-sm);border:1px solid var(--rule);" onchange="App.toggleAssign(event, '${l.id}', true)">
+            <input type="date" id="tag-due-${t.id}" value="${dueVal}" style="width:auto;padding:4px 8px;font-size:12px;border-radius:var(--r-sm);border:1px solid var(--rule);" onchange="App.toggleTagAssign(event, '${t.id}', true)">
           </div>` : ''}
         </div>
-        <button class="btn btn-sm ${isAssigned ? 'btn-ghost' : 'btn-outline'}" onclick="App.toggleAssign(event, '${l.id}', ${isAssigned})">
-          ${isAssigned ? 'Unassign' : 'Assign'}
+        <button class="btn btn-sm ${isAssigned ? 'btn-ghost' : 'btn-outline'}" onclick="App.toggleTagAssign(event, '${t.id}', ${isAssigned})">
+          ${isAssigned ? 'Unassign' : 'Assign to All'}
         </button>
       </div>`;
     }).join('');
   },
-  closeAssign() {
-    $$('assign-overlay').classList.add('hidden');
-    App._assignCourseId = null;
-    App._assignLearners = [];
-    App._assignState = [];
-  },
-  async toggleAssign(ev, learnerId, currentlyAssigned) {
+  async toggleTagAssign(ev, tagId, currentlyAssigned) {
     if(ev) ev.stopPropagation();
     try {
       const isDateChange = ev && ev.target && ev.target.tagName === 'INPUT';
-      
       if (currentlyAssigned && !isDateChange) {
-        await api('/api/assignments', { method: 'DELETE', body: JSON.stringify({ course_id: App._assignCourseId, learner_id: learnerId }) });
+        await api('/api/tag-assignments', { method: 'DELETE', body: JSON.stringify({ course_id: App._assignCourseId, tag_id: tagId }) });
       } else {
-        const dueEl = $$(`due-${learnerId}`);
+        const dueEl = $$(`tag-due-${tagId}`);
         const due_at = dueEl ? dueEl.value : null;
-        await api('/api/assignments', { method: 'POST', body: JSON.stringify({ course_id: App._assignCourseId, learner_id: learnerId, due_at }) });
+        await api('/api/tag-assignments', { method: 'POST', body: JSON.stringify({ course_id: App._assignCourseId, tag_id: tagId, due_at }) });
       }
       
-      // Update local state and re-filter
-      const [learners, assigns] = await Promise.all([
-        api('/api/learners'),
-        api('/api/assignments')
-      ]);
-      App._assignLearners = learners;
-      App._assignState = assigns.filter(a => a.course_id === App._assignCourseId);
-      App.filterAssignList($$('assign-search').value);
+      const tagAssigns = await api('/api/tag-assignments');
+      App._assignTagState = tagAssigns.filter(a => a.course_id === App._assignCourseId);
+      App.renderAssignTags();
     } catch (e) {
-      const msg = e.detail ? `Error: ${e.detail}` : 'Could not update assignment: ' + e.message;
-      Toast.err(msg);
+      Toast.err(e.message);
     }
   },
 
@@ -1009,12 +1009,14 @@ const App = {
     const tbody = $$('learners-tbody');
     try {
       const learners = await api('/api/learners');
-      if(!learners.length){ tbody.innerHTML='<tr><td colspan="4" style="text-align:center;padding:32px;color:var(--ink-4);">No learners yet. Add one to get started.</td></tr>'; return; }
+      if(!learners.length){ tbody.innerHTML='<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--ink-4);">No learners yet. Add one to get started.</td></tr>'; return; }
       tbody.innerHTML = learners.map(l=>{
         const lastLogin = l.last_login_at ? new Date(l.last_login_at*1000).toLocaleDateString() : '—';
         const overdueBadge = l.overdue_count > 0 ? `<span class="chip chip-red" style="margin-left:8px;font-size:10px;">⚠️ ${l.overdue_count} overdue</span>` : '';
+        const tagsHtml = (l.tags||[]).map(t => `<span class="chip chip-blue" style="font-size:10px;padding:2px 6px;">${esc(t.name)}</span>`).join(' ') || '<span style="color:var(--ink-4);font-size:var(--text-xs);">No tags</span>';
         return `<tr>
           <td>${esc(l.name)}${overdueBadge}</td>
+          <td>${tagsHtml} <button class="btn btn-ghost btn-icon btn-sm" onclick="App.openLearnerTags('${l.id}','${esc(l.name)}')" title="Edit Tags">🏷️</button></td>
           <td>${lastLogin}</td>
           <td>${l.completion_count}</td>
           <td style="display:flex;gap:4px;">
@@ -1025,11 +1027,86 @@ const App = {
       }).join('');
     } catch(e) {
       const detail = e.detail ? `<div style="font-size:11px;opacity:0.7;margin-top:8px;">${esc(e.detail)}</div>` : '';
-      tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:32px;color:var(--fail);">
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--fail);">
         ${esc(e.message)}
         ${detail}
       </td></tr>`;
     }
+  },
+
+  // Tag Management
+  async openTagsModal() {
+    $$('tags-modal').classList.remove('hidden');
+    App.renderTags();
+  },
+  closeTagsModal() { $$('tags-modal').classList.add('hidden'); },
+  async renderTags() {
+    const list = $$('tags-list');
+    try {
+      const tags = await api('/api/tags');
+      if (!tags.length) { list.innerHTML = '<p style="text-align:center;color:var(--ink-4);padding:var(--space-4);">No tags created yet.</p>'; return; }
+      list.innerHTML = tags.map(t => `<div style="display:flex;align-items:center;justify-content:space-between;padding:var(--space-2) 0;border-bottom:1px solid var(--rule);">
+        <span>${esc(t.name)}</span>
+        <button class="btn btn-ghost btn-sm btn-icon" onclick="App.deleteTag('${t.id}')">✕</button>
+      </div>`).join('');
+    } catch (e) { list.innerHTML = `<p style="color:var(--fail);">${esc(e.message)}</p>`; }
+  },
+  async createTag() {
+    const name = $$('new-tag-name').value.trim();
+    if (!name) return;
+    try {
+      await api('/api/tags', { method: 'POST', body: JSON.stringify({ name }) });
+      $$('new-tag-name').value = '';
+      App.renderTags();
+    } catch (e) { Toast.err(e.message); }
+  },
+  async deleteTag(id) {
+    if (!confirm('Are you sure? This will unassign all courses from this tag.')) return;
+    try {
+      await api(`/api/tags/${id}`, { method: 'DELETE' });
+      App.renderTags();
+    } catch (e) { Toast.err(e.message); }
+  },
+
+  // Learner Tag Assignment
+  _ltLearnerId: null,
+  async openLearnerTags(id, name) {
+    App._ltLearnerId = id;
+    $$('lt-subtitle').textContent = `Manage tags for ${name}`;
+    $$('learner-tags-modal').classList.remove('hidden');
+    App.renderLearnerTags();
+  },
+  closeLearnerTagsModal() { App._ltLearnerId = null; $$('learner-tags-modal').classList.add('hidden'); App.renderLearners(); },
+  async renderLearnerTags() {
+    const list = $$('lt-tags-list');
+    try {
+      const [allTags, learners] = await Promise.all([api('/api/tags'), api('/api/learners')]);
+      const learner = learners.find(l => l.id === App._ltLearnerId);
+      const activeIds = (learner.tags || []).map(t => t.id);
+      
+      if (!allTags.length) { list.innerHTML = '<p style="text-align:center;color:var(--ink-4);padding:var(--space-4);">Create tags first in "Manage Tags".</p>'; return; }
+      
+      list.innerHTML = allTags.map(t => {
+        const active = activeIds.includes(t.id);
+        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:var(--space-2) 0;border-bottom:1px solid var(--rule);">
+          <span>${esc(t.name)}</span>
+          <button class="btn btn-sm ${active ? 'btn-primary' : 'btn-outline'}" onclick="App.toggleLearnerTag('${t.id}', ${active})">
+            ${active ? '✓ Active' : 'Add'}
+          </button>
+        </div>`;
+      }).join('');
+    } catch (e) { list.innerHTML = `<p style="color:var(--fail);">${esc(e.message)}</p>`; }
+  },
+  async toggleLearnerTag(tagId, active) {
+    try {
+      const [learners] = await Promise.all([api('/api/learners')]);
+      const learner = learners.find(l => l.id === App._ltLearnerId);
+      const tagIds = (learner.tags || []).map(t => t.id);
+      
+      const nextIds = active ? tagIds.filter(id => id !== tagId) : [...tagIds, tagId];
+      await api(`/api/learners/${App._ltLearnerId}/tags`, { method: 'POST', body: JSON.stringify({ tag_ids: nextIds }) });
+      App.renderLearnerTags();
+    } catch (e) { Toast.err(e.message); }
   },
 
   // Add Learner modal

@@ -842,32 +842,143 @@ app.get('/api/learners/me/assignments', learnerAuth, async (c) => {
   return c.json(toObjs(res).map(r => r.course_id))
 })
 
+// ── GET /api/tags ─────────────────────────────────────────────────────────────
+
+app.get('/api/tags', adminAuth, async (c) => {
+  const db = getDb(c.env)
+  const res = await db.execute('SELECT * FROM tags ORDER BY name')
+  return c.json(toObjs(res))
+})
+
+// ── POST /api/tags ────────────────────────────────────────────────────────────
+
+app.post('/api/tags', adminAuth, async (c) => {
+  const body = await c.req.json().catch(() => null)
+  if (!body?.name?.trim()) return c.json({ error: 'Tag name is required' }, 400)
+  
+  const db = getDb(c.env)
+  const id = uid()
+  try {
+    await db.execute({
+      sql: 'INSERT INTO tags (id, name) VALUES (?, ?)',
+      args: [id, body.name.trim()],
+    })
+    return c.json({ id, name: body.name.trim() })
+  } catch (err) {
+    if (String(err.message).includes('UNIQUE')) return c.json({ error: 'Tag already exists' }, 409)
+    throw err
+  }
+})
+
+// ── DELETE /api/tags/:id ──────────────────────────────────────────────────────
+
+app.delete('/api/tags/:id', adminAuth, async (c) => {
+  const id = c.req.param('id')
+  const db = getDb(c.env)
+  await db.execute({ sql: 'DELETE FROM tags WHERE id = ?', args: [id] })
+  return c.json({ ok: true })
+})
+
+// ── POST /api/learners/:id/tags ───────────────────────────────────────────────
+
+app.post('/api/learners/:id/tags', adminAuth, async (c) => {
+  const learnerId = c.req.param('id')
+  const body = await c.req.json().catch(() => null)
+  if (!body || !Array.isArray(body.tag_ids)) return c.json({ error: 'tag_ids array is required' }, 400)
+
+  const db = getDb(c.env)
+  await db.batch([
+    { sql: 'DELETE FROM learner_tags WHERE learner_id = ?', args: [learnerId] },
+    ...body.tag_ids.map(tid => ({
+      sql: 'INSERT INTO learner_tags (learner_id, tag_id) VALUES (?, ?)',
+      args: [learnerId, tid]
+    }))
+  ], 'write')
+  return c.json({ ok: true })
+})
+
+// ── GET /api/tag-assignments ──────────────────────────────────────────────────
+
+app.get('/api/tag-assignments', adminAuth, async (c) => {
+  const db = getDb(c.env)
+  const res = await db.execute('SELECT * FROM tag_assignments')
+  return c.json(toObjs(res))
+})
+
+// ── POST /api/tag-assignments ─────────────────────────────────────────────────
+
+app.post('/api/tag-assignments', adminAuth, async (c) => {
+  const body = await c.req.json().catch(() => null)
+  if (!body || !body.course_id || !body.tag_id) return c.json({ error: 'Missing course_id or tag_id' }, 400)
+
+  const db = getDb(c.env)
+  await db.execute({
+    sql: `INSERT INTO tag_assignments (course_id, tag_id, due_at)
+          VALUES (?, ?, ?)
+          ON CONFLICT(course_id, tag_id) DO UPDATE SET
+            due_at = excluded.due_at`,
+    args: [body.course_id, body.tag_id, body.due_at || null]
+  })
+  return c.json({ ok: true })
+})
+
+// ── DELETE /api/tag-assignments ───────────────────────────────────────────────
+
+app.delete('/api/tag-assignments', adminAuth, async (c) => {
+  const body = await c.req.json().catch(() => null)
+  if (!body || !body.course_id || !body.tag_id) return c.json({ error: 'Missing course_id or tag_id' }, 400)
+
+  const db = getDb(c.env)
+  await db.execute({
+    sql: 'DELETE FROM tag_assignments WHERE course_id = ? AND tag_id = ?',
+    args: [body.course_id, body.tag_id]
+  })
+  return c.json({ ok: true })
+})
+
 // ── GET /api/learners ─────────────────────────────────────────────────────────
 
 app.get('/api/learners', adminAuth, async (c) => {
   const db  = getDb(c.env)
   try {
-    // Requires completions.learner_id and assignments.due_at from schema migration
-    const res = await db.execute(`
-      SELECT l.id, l.name, l.last_login_at, l.created_at,
-             COUNT(DISTINCT c.id) AS completion_count,
-             (SELECT COUNT(*) FROM assignments a 
-              WHERE a.learner_id = l.id 
-              AND a.due_at IS NOT NULL 
-              AND a.due_at < datetime('now')
-              AND NOT EXISTS (SELECT 1 FROM completions comp WHERE comp.learner_id = l.id AND comp.course_id = a.course_id AND comp.passed = 1)
-             ) AS overdue_count
-      FROM   learners l
-      LEFT   JOIN completions c ON c.learner_id = l.id
-      GROUP  BY l.id
-      ORDER  BY l.name
-    `)
-    return c.json(toObjs(res))
+    const [learnersRes, tagsRes] = await Promise.all([
+      db.execute(`
+        SELECT l.id, l.name, l.last_login_at, l.created_at,
+               COUNT(DISTINCT c.id) AS completion_count,
+               (SELECT COUNT(*) FROM (
+                  SELECT a.course_id FROM assignments a WHERE a.learner_id = l.id AND a.due_at IS NOT NULL AND a.due_at < datetime('now')
+                  UNION
+                  SELECT ta.course_id FROM tag_assignments ta JOIN learner_tags lt ON ta.tag_id = lt.tag_id WHERE lt.learner_id = l.id AND ta.due_at IS NOT NULL AND ta.due_at < datetime('now')
+                ) as all_a
+                WHERE NOT EXISTS (SELECT 1 FROM completions comp WHERE comp.learner_id = l.id AND comp.course_id = all_a.course_id AND comp.passed = 1)
+               ) AS overdue_count
+        FROM   learners l
+        LEFT   JOIN completions c ON c.learner_id = l.id
+        GROUP  BY l.id
+        ORDER  BY l.name
+      `),
+      db.execute(`
+        SELECT lt.learner_id, t.id, t.name
+        FROM   learner_tags lt
+        JOIN   tags t ON lt.tag_id = t.id
+      `)
+    ])
+
+    const tagsByLearner = {}
+    for (const row of toObjs(tagsRes)) {
+      (tagsByLearner[row.learner_id] ??= []).push({ id: row.id, name: row.name })
+    }
+
+    const learners = toObjs(learnersRes).map(l => ({
+      ...l,
+      tags: tagsByLearner[l.id] || []
+    }))
+
+    return c.json(learners)
   } catch (err) {
     return c.json({ 
       error: 'Failed to load learners', 
-      detail: err.message,
-      hint: 'Ensure completions.learner_id and assignments.due_at columns exist in the database.'
+      detail: err.message
     }, 500)
   }
 })
