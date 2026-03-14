@@ -121,10 +121,42 @@ function normCourse(c) {
 function normRecord(r) { return { cid: r.course_id, learner: r.learner_name, score: r.score, passed: Boolean(r.passed), date: (r.completed_at || 0) * 1000, cid2: r.cert_id || '', }; }
 function normBrand(b) { return { name: b.org_name || CONFIG.DEFAULT_BRAND_NAME, tagline: b.tagline || CONFIG.DEFAULT_TAGLINE, logo: b.logo_url || '', c1: b.primary_color || CONFIG.DEFAULT_C1, c2: b.secondary_color || CONFIG.DEFAULT_C2, pass: b.pass_threshold ?? CONFIG.DEFAULT_PASS, }; }
 
+const App = {
+  async init() {
+    const lt = getLearnerToken();
+    if (lt) { try { const me = await learnerApi('/api/learners/me'); curLearner = { id: me.id, name: me.name }; } catch { clearLearnerToken(); } }
+    const mt = getManagerToken();
+    if (mt) { curManager = getManagerUser(); }
+    try { const b = await api('/api/brand'); brandCache = normBrand(b); } catch { }
+    applyBrand();
+  },
+
+  show(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    $$(id).classList.add('active');
+  },
+
+  startDemo() {
+    isDemo = true;
+    curLearner = { id: 'demo-id', name: 'Demo Learner' };
+    brandCache = { name: 'TrainFlow Demo', tagline: 'Experience the new UI/UX', logo: '', c1: CONFIG.DEFAULT_C1, c2: CONFIG.DEFAULT_C2, pass: CONFIG.DEFAULT_PASS };
+    applyBrand();
+    Toast.ok('Demo Mode Activated ✨');
+    Learner.init();
+  },
+
+  // ─── LANDING ───
+  goLearner() { App.show('screen-learner'); applyBrand(); if(curLearner) Learner.init(); else showPage('lp-name'); },
+  goManager() { App.show('screen-manager-login'); Auth.toggleManagerReg(false); setTimeout(()=>$$('m-login-name').focus(),CONFIG.FOCUS_DELAY); },
+  goAdmin()   { App.show('screen-login'); setTimeout(()=>$$('pw-input').focus(),CONFIG.FOCUS_DELAY); },
+};
+
+function showPage(id) { ['lp-name','lp-courses','lp-progress','lp-certs','lp-account'].forEach(p=>{$$(p).classList.add('hidden');$$(p).classList.remove('active');}); $$(id).classList.remove('hidden'); $$(id).classList.add('active'); }
+
 function applyBrand() {
   const b = brandCache;
   document.documentElement.style.setProperty('--brand-1', b.c1);
   document.documentElement.style.setProperty('--brand-2', b.c2);
-  ['ldg-brand','l-brand','a-brand','m-brand'].forEach(id => { if($$(id)) $$(id).textContent = b.name; });
+  ['ldg-brand','l-brand','a-brand','m-brand'].forEach(id => { const el = $$(id); if(el) el.textContent = b.name; });
   ['l-logo','a-logo','m-logo'].forEach(id => { const img = $$(id); if(!img) return; if(b.logo){ img.src=b.logo; img.classList.remove('hidden'); } else { img.src=''; img.classList.add('hidden'); } });
 }
