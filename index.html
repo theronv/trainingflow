@@ -949,27 +949,7 @@
 <script src="js/manager.js"></script>
 <script src="js/learner.js"></script>
 <script src="js/builder.js"></script>
-<script>
-  // Global Entry Point — maps App.* to the modular objects
-  const AppProxy = {
-    ...Auth, ...Admin, ...Learner, ...Manager, ...Builder,
-    init: async () => {
-      await App.init();
-      // Role-based entry
-      if (getToken()) Admin.init();
-      else if (getManagerToken()) Manager.init();
-      else if (getLearnerToken()) Learner.init();
-    },
-    show: App.show,
-    goLearner: App.goLearner,
-    goManager: App.goManager,
-    goAdmin: App.goAdmin,
-    startDemo: App.startDemo,
-    closeAssign: () => $$('assign-overlay').classList.add('hidden')
-  };
-  Object.assign(App, AppProxy);
-  AppProxy.init();
-</script>
+<script src="js/app.js"></script>
 
 </body>
 </html>
