@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════════
-//  TRAINFLOW — Admin Management (Robust & Aligned)
+//  TRAINFLOW — Admin Management (Stable)
 // ══════════════════════════════════════════════════════════
 
 const Admin = {
@@ -50,7 +50,7 @@ const Admin = {
       
       const unassigned = (learners||[]).filter(l => !l.team_id).length;
       let teamHtml = '<div style="font-weight:700;margin:var(--s-6) 0 var(--s-4);">Team Compliance</div><div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(200px, 1fr));gap:var(--space-4);">';
-      teamHtml += teamsCache.map(t => `<div class="card" onclick="Admin.nav('teams')" style="cursor:pointer;"><div style="font-weight:700;">${esc(t.name)}</div><div style="font-size:11px;">${t.learner_count || 0} members</div></div>`).join('') + '</div>';
+      teamHtml += (teamsCache||[]).map(t => `<div class="card" onclick="Admin.nav('teams')" style="cursor:pointer;"><div style="font-weight:700;">${esc(t.name)}</div><div style="font-size:11px;">${t.learner_count || 0} members</div></div>`).join('') + '</div>';
       if(unassigned > 0) teamHtml += `<div class="card" onclick="Admin.nav('learners')" style="margin-top:var(--space-4);background:var(--fail-lt);color:var(--fail);cursor:pointer;">⚠️ ${unassigned} unassigned learners found.</div>`;
       $$('a-course-stats').innerHTML = teamHtml;
       
@@ -63,7 +63,7 @@ const Admin = {
       const spots = await api('/api/admin/trouble-spots').catch(() => []);
       const el = $$('a-trouble-spots'); if(!el) return;
       if(!spots || !spots.length) { el.innerHTML = ''; return; }
-      el.innerHTML = `<div style="font-weight:700;margin-bottom:var(--s-4);color:var(--fail);">⚠️ Trouble Spots</div>
+      el.innerHTML = `<div style="font-weight:700;margin-bottom:var(--space-4);color:var(--fail);">⚠️ Trouble Spots</div>
         <div class="table-wrap"><table><thead><tr><th>Question</th><th>Fail Rate</th></tr></thead>
         <tbody>${spots.map(s=>`<tr><td>${esc(s.question)}</td><td><span class="chip chip-red">${s.failure_rate}%</span></td></tr>`).join('')}</tbody></table></div>`;
     } catch(e) { }
@@ -109,8 +109,14 @@ const Admin = {
       const [apiRes, teams] = await Promise.all([api(path), api('/api/admin/teams')]);
       _allLearners = Array.isArray(apiRes) ? apiRes : (apiRes.rows || []);
       teamsCache = teams || [];
-      const filter = $$('l-team-filter'); if (filter && filter.options.length <= 2) teamsCache.forEach(t => { const o = document.createElement('option'); o.value = t.id; o.textContent = t.name; filter.appendChild(o); });
-      Admin.filterLearners($$('learners-search').value);
+      
+      const filter = $$('l-team-filter'); 
+      if (filter && filter.options.length <= 2) {
+        teamsCache.forEach(t => { 
+          const o = document.createElement('option'); o.value = t.id; o.textContent = t.name; filter.appendChild(o); 
+        });
+      }
+      Admin.filterLearners($$('learners-search') ? $$('learners-search').value : '');
     } catch(e) { tbody.innerHTML = `<tr><td colspan="6">${esc(e.message)}</td></tr>`; }
   },
   filterLearners(q) {
@@ -119,7 +125,7 @@ const Admin = {
     const filtered = _allLearners.filter(l => (l.name || '').toLowerCase().includes(query));
     if(!filtered.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;">No matches.</td></tr>'; return; }
     tbody.innerHTML = filtered.map(l => {
-      const team = teamsCache.find(t => t.id === l.team_id);
+      const team = (teamsCache||[]).find(t => t.id === l.team_id);
       const teamHtml = team ? esc(team.name) : '<span class="chip chip-amber" style="font-size:9px;">Unassigned</span>';
       const tagsHtml = (l.tags||[]).map(t => `<span class="chip chip-blue" style="font-size:9px;">${esc(t.name)}</span>`).join(' ');
       return `<tr>
@@ -128,20 +134,20 @@ const Admin = {
         <td>${tagsHtml}</td>
         <td>${l.last_login_at ? new Date(l.last_login_at*1000).toLocaleDateString() : '—'}</td>
         <td>${l.completion_count || 0}</td>
-        <td><button class="btn btn-ghost btn-sm" onclick="Admin.openResetPw('${l.id}','${esc(l.name)}')">PW</button></td>
+        <td><button class="btn btn-ghost btn-sm" onclick="App.openResetPw('${l.id}','${esc(l.name)}')">PW</button></td>
       </tr>`;
     }).join('');
   },
   async moveLearner(lid) { const tid = prompt('Target Team ID:'); if(tid!==null) { try { await api(`/api/admin/learners/${lid}/team`, { method:'PATCH', body:JSON.stringify({ team_id: tid || null }) }); Admin.renderLearners(); } catch(e){ Toast.err(e.message); } } },
-  openAddLearner() { $$('al-name').value=''; $$('al-pw1').value=''; $$('al-pw2').value=''; const sel = $$('al-team'); if(sel) sel.innerHTML = '<option value="">Unassigned</option>' + teamsCache.map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join(''); $$('add-learner-overlay').classList.remove('hidden'); },
+  openAddLearner() { $$('al-name').value=''; $$('al-pw1').value=''; $$('al-pw2').value=''; const sel = $$('al-team'); if(sel) sel.innerHTML = '<option value="">Unassigned</option>' + (teamsCache||[]).map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join(''); $$('add-learner-overlay').classList.remove('hidden'); },
   closeAddLearner() { $$('add-learner-overlay').classList.add('hidden'); },
   async submitAddLearner() { try { await api('/api/learners', { method:'POST', body:JSON.stringify({ name: $$('al-name').value.trim(), password: $$('al-pw1').value, team_id: $$('al-team')?.value || null }) }); Admin.closeAddLearner(); Admin.renderLearners(); } catch(e){ Toast.err(e.message); } },
 
   // ─── BRANDING ───
   async renderBranding() {
     if(!brandCache) return;
-    $$('br-name').value = brandCache.name;
-    $$('br-pass').value = brandCache.pass;
+    if($$('br-name')) $$('br-name').value = brandCache.name || '';
+    if($$('br-pass')) $$('br-pass').value = brandCache.pass || 80;
   },
   async saveBrand() {
     try {
@@ -165,6 +171,13 @@ const Admin = {
       const res = await api('/api/courses');
       $$('a-courses-grid').innerHTML = (res||[]).map(normCourse).map(c => `<div class="card"><div style="font-weight:700;">${esc(c.title)}</div><div style="display:flex;gap:4px;margin-top:12px;"><button class="btn btn-primary btn-sm w-full" onclick="App.openAssign('${c.id}','${esc(c.title)}')">👤 Assign</button></div></div>`).join('');
     } catch(e) { }
+  },
+
+  openResetPw(id, name) { $$('reset-pw-subtitle').textContent = name; App._resetPwId = id; $$('reset-pw-overlay').classList.remove('hidden'); },
+  closeResetPw() { $$('reset-pw-overlay').classList.add('hidden'); },
+  async submitResetPw() {
+    const pw = $$('rp-pw1').value;
+    try { await api(`/api/learners/${App._resetPwId}/password`, { method:'PUT', body:JSON.stringify({ password:pw }) }); Admin.closeResetPw(); Toast.ok('Password reset.'); } catch(e) { Toast.err(e.message); }
   },
 
   exportCSV(scope) { Toast.info('Exporting data...'); },
