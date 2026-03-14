@@ -2,13 +2,6 @@
 //  TRAINFLOW — Unified Application Proxy
 // ══════════════════════════════════════════════════════════
 
-/**
- * The App object is the global interface for the HTML.
- * It proxies calls to the modular JS files (auth.js, admin.js, etc.)
- */
-
-// Core setup already exists in js/core.js (App object)
-
 const AppProxy = {
   // Navigation
   aNav: (p) => Admin.nav(p),
@@ -25,15 +18,16 @@ const AppProxy = {
   toggleManagerReg: (s) => Auth.toggleManagerReg(s),
   doLearnerLogin: () => Auth.doLearnerLogin(),
 
-  // Builder
+  // Builder & Courses
   openBuilder: (id) => Builder.openBuilder(id),
   addMod: () => Builder.addMod(),
   saveCourse: () => Builder.saveCourse(),
   csvImportOpen: () => Builder.csvImportOpen(),
+  openAssign: (id, t) => Builder.openAssign(id, t),
   
   // Global
   init: async () => {
-    await App.init();
+    await App.baseInit();
     if (getToken()) Admin.init();
     else if (getManagerToken()) Manager.init();
     else if (getLearnerToken()) Learner.init();

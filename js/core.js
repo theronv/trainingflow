@@ -121,8 +121,31 @@ function normCourse(c) {
 function normRecord(r) { return { cid: r.course_id, learner: r.learner_name, score: r.score, passed: Boolean(r.passed), date: (r.completed_at || 0) * 1000, cid2: r.cert_id || '', }; }
 function normBrand(b) { return { name: b.org_name || CONFIG.DEFAULT_BRAND_NAME, tagline: b.tagline || CONFIG.DEFAULT_TAGLINE, logo: b.logo_url || '', c1: b.primary_color || CONFIG.DEFAULT_C1, c2: b.secondary_color || CONFIG.DEFAULT_C2, pass: b.pass_threshold ?? CONFIG.DEFAULT_PASS, }; }
 
+function applyBrand() {
+  const b = brandCache;
+  document.documentElement.style.setProperty('--brand-1', b.c1);
+  document.documentElement.style.setProperty('--brand-2', b.c2);
+  ['ldg-brand', 'l-brand', 'a-brand', 'm-brand'].forEach(id => { 
+    const el = $$(id); 
+    if(el) el.textContent = b.name; 
+  });
+  ['l-logo', 'a-logo', 'm-logo'].forEach(id => { 
+    const img = $$(id); 
+    if(!img) return; 
+    if(b.logo) { img.src=b.logo; img.classList.remove('hidden'); } 
+    else { img.src=''; img.classList.add('hidden'); } 
+  });
+}
+
+function showPage(id) { 
+  document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+  const el = $$(id);
+  if(el) el.classList.remove('hidden');
+}
+
 const App = {
-  async init() {
+  // Base initialization logic (renamed to avoid proxy collision)
+  async baseInit() {
     const lt = getLearnerToken();
     if (lt) { try { const me = await learnerApi('/api/learners/me'); curLearner = { id: me.id, name: me.name }; } catch { clearLearnerToken(); } }
     const mt = getManagerToken();
@@ -133,7 +156,8 @@ const App = {
 
   show(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    $$(id).classList.add('active');
+    const el = $$(id);
+    if(el) el.classList.add('active');
   },
 
   startDemo() {
@@ -150,13 +174,3 @@ const App = {
   goManager() { App.show('screen-manager-login'); Auth.toggleManagerReg(false); setTimeout(()=>$$('m-login-name').focus(),CONFIG.FOCUS_DELAY); },
   goAdmin()   { App.show('screen-login'); setTimeout(()=>$$('pw-input').focus(),CONFIG.FOCUS_DELAY); },
 };
-
-function showPage(id) { ['lp-name','lp-courses','lp-progress','lp-certs','lp-account'].forEach(p=>{$$(p).classList.add('hidden');$$(p).classList.remove('active');}); $$(id).classList.remove('hidden'); $$(id).classList.add('active'); }
-
-function applyBrand() {
-  const b = brandCache;
-  document.documentElement.style.setProperty('--brand-1', b.c1);
-  document.documentElement.style.setProperty('--brand-2', b.c2);
-  ['ldg-brand','l-brand','a-brand','m-brand'].forEach(id => { const el = $$(id); if(el) el.textContent = b.name; });
-  ['l-logo','a-logo','m-logo'].forEach(id => { const img = $$(id); if(!img) return; if(b.logo){ img.src=b.logo; img.classList.remove('hidden'); } else { img.src=''; img.classList.add('hidden'); } });
-}
