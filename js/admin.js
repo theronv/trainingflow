@@ -161,18 +161,20 @@ const Admin = {
   filterLearners(q) {
     const tbody = $$('learners-tbody'); if(!tbody) return;
     const query = (q || '').toLowerCase().trim();
-    const filtered = _allLearners.filter(l => l.name.toLowerCase().includes(query));
-    if (!filtered.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--ink-4);">No matching learners.</td></tr>'; return; }
+    const filtered = _allLearners.filter(l => (l.name || '').toLowerCase().includes(query));
+    if (!filtered.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--ink-4);">No matching learners.</td></tr>'; return; }
     
     tbody.innerHTML = filtered.map(l => {
       const team = (teamsCache||[]).find(t => t.id === l.team_id);
       const teamHtml = team ? esc(team.name) : '<span class="chip chip-amber" style="font-size:9px;">Unassigned</span>';
+      const tagsHtml = (l.tags||[]).map(t => `<span class="chip chip-blue" style="font-size:9px;">${esc(t.name)}</span>`).join(' ');
       return `<tr>
-        <td>${esc(l.name)} ${l.overdue_count ? `<span class="chip chip-red" style="font-size:9px;">⚠️ ${l.overdue_count}</span>` : ''}</td>
-        <td><button class="btn btn-ghost btn-sm" onclick="Admin.moveLearner('${l.id}')">${teamHtml}</button></td>
+        <td>${esc(l.name || 'Unnamed')} ${l.overdue_count ? `<span class="chip chip-red" style="font-size:9px;">⚠️ ${l.overdue_count}</span>` : ''}</td>
+        <td><button class="btn btn-ghost btn-sm" onclick="App.moveLearner('${l.id}')">${teamHtml}</button></td>
+        <td>${tagsHtml}</td>
         <td>${l.last_login_at ? new Date(l.last_login_at*1000).toLocaleDateString() : '—'}</td>
         <td>${l.completion_count || 0}</td>
-        <td><button class="btn btn-ghost btn-sm" onclick="Admin.openResetPw('${l.id}','${esc(l.name)}')">PW</button></td>
+        <td><button class="btn btn-ghost btn-sm" onclick="App.openResetPw('${l.id}','${esc(l.name)}')">PW</button></td>
       </tr>`;
     }).join('');
   },
