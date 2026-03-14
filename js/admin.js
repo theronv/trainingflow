@@ -92,8 +92,9 @@ const Admin = {
     if(!el.classList.contains('hidden')) return el.classList.add('hidden');
     el.classList.remove('hidden'); el.innerHTML = 'Loading...';
     try {
-      const learners = await api(`/api/learners?team_id=${tid}`);
-      el.innerHTML = `<div class="table-wrap"><table><tbody>${(learners.rows||[]).map(l=>`<tr><td>${esc(l.name)}</td><td><button class="btn btn-ghost btn-sm" onclick="Admin.moveLearner('${l.id}')">Move</button></td></tr>`).join('')}</tbody></table></div>`;
+      const res = await api(`/api/learners?team_id=${tid}`);
+      const rows = Array.isArray(res) ? res : (res.rows || []);
+      el.innerHTML = `<div class="table-wrap"><table><tbody>${rows.map(l=>`<tr><td>${esc(l.name)}</td><td><button class="btn btn-ghost btn-sm" onclick="Admin.moveLearner('${l.id}')">Move</button></td></tr>`).join('')}</tbody></table></div>`;
     } catch(e) { el.innerHTML = `<div style="color:var(--fail);font-size:11px;">${esc(e.message)}</div>`; }
   },
   openCreateTeam() { $$('team-modal-title').textContent = 'New Team'; $$('team-name-input').value = ''; $$('team-modal').classList.remove('hidden'); },
@@ -107,7 +108,8 @@ const Admin = {
       const tid = $$('l-team-filter').value;
       const path = tid ? `/api/learners?team_id=${tid==='unassigned'?'null':tid}` : '/api/learners';
       const [apiRes, teams] = await Promise.all([api(path), api('/api/admin/teams')]);
-      _allLearners = apiRes.rows || []; teamsCache = teams || [];
+      _allLearners = Array.isArray(apiRes) ? apiRes : (apiRes.rows || []);
+      teamsCache = teams || [];
       const filter = $$('l-team-filter'); if (filter && filter.options.length <= 2) teamsCache.forEach(t => { const o = document.createElement('option'); o.value = t.id; o.textContent = t.name; filter.appendChild(o); });
       Admin.filterLearners($$('learners-search').value);
     } catch(e) { tbody.innerHTML = `<tr><td colspan="5">${esc(e.message)}</td></tr>`; }
