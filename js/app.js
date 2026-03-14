@@ -92,7 +92,7 @@ async function api(path, opts = {}) {
   const res = await fetch(WORKER_URL + path, { ...opts, headers });
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: res.statusText }));
-    throw Object.assign(new Error(body.error || res.statusText), { status: res.status });
+    throw Object.assign(new Error(body.error || res.statusText), { status: res.status, detail: body.detail });
   }
   return res.json();
 }
@@ -167,7 +167,7 @@ async function learnerApi(path, opts = {}) {
   const res = await fetch(WORKER_URL + path, { ...opts, headers });
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: res.statusText }));
-    throw Object.assign(new Error(body.error || res.statusText), { status: res.status });
+    throw Object.assign(new Error(body.error || res.statusText), { status: res.status, detail: body.detail });
   }
   return res.json();
 }
@@ -319,8 +319,22 @@ const App = {
       pill.style.display = 'flex';
       $$('l-name-display').textContent = curLearner.name;
       $$('l-avatar').textContent = curLearner.name[0].toUpperCase();
+      if($$('lcp-name')) $$('lcp-name').value = curLearner.name;
     }
     App.lNav('courses');
+  },
+  async updateLearnerName() {
+    const name = $$('lcp-name').value.trim();
+    if (!name) { Toast.err('Name is required.'); return; }
+    try {
+      await learnerApi('/api/learners/me/name', { method: 'PATCH', body: JSON.stringify({ name }) });
+      curLearner.name = name;
+      $$('l-name-display').textContent = name;
+      $$('l-avatar').textContent = name[0].toUpperCase();
+      Toast.ok('Name updated.');
+    } catch (e) {
+      Toast.err(e.message || 'Could not update name.');
+    }
   },
   lNav(p) {
     ['courses','progress','certs','account'].forEach(k => {
@@ -391,33 +405,63 @@ const App = {
   async renderLProgress() {
     const el = $$('l-progress-content');
     try {
-      const [apiRecs, apiCourses] = await Promise.all([
+      const [apiAssigns, apiRecs] = await Promise.all([
+        learnerApi('/api/assignments/me'),
         learnerApi('/api/completions/me'),
-        api('/api/courses'),
       ]);
+      const assigns = apiAssigns;
       const recs    = apiRecs.map(normRecord);
-      const courses = apiCourses.map(normCourse);
-      coursesCache  = courses;
       const b       = brandCache;
-      if(!recs.length){ el.innerHTML=`<div class="empty"><div class="empty-icon">📊</div><div class="empty-title">No activity yet</div><div class="empty-hint">Complete a course to see your progress here.</div></div>`; return; }
-      const byCourse = {};
-      recs.forEach(r=>{ if(!byCourse[r.cid]) byCourse[r.cid]=[]; byCourse[r.cid].push(r); });
-      el.innerHTML = Object.entries(byCourse).map(([cid,rs])=>{
-        const c = courses.find(x=>x.id===cid)||{title:'Unknown',icon:'📚'};
-        const best = rs.sort((a,z)=>z.score-a.score)[0];
-        const passed = best.score>=(b.pass||CONFIG.DEFAULT_PASS);
-        return `<div class="card" style="margin-bottom:var(--space-4);">
+      
+      if (!assigns.length && !recs.length) {
+        el.innerHTML = `<div class="empty"><div class="empty-icon">📊</div><div class="empty-title">No activity yet</div><div class="empty-hint">No courses assigned yet. Check back soon.</div></div>`;
+        return;
+      }
+
+      const completedCount = assigns.filter(a => a.completed).length;
+      const totalCount = assigns.length;
+      const summaryHtml = totalCount > 0 ? `<div class="card" style="margin-bottom:var(--space-6);background:var(--brand-1);color:white;text-align:center;">
+        <div style="font-size:var(--text-xs);opacity:0.8;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Mandatory Training</div>
+        <div style="font-size:var(--text-xl);font-weight:700;">${completedCount} of ${totalCount} courses completed</div>
+      </div>` : '';
+
+      // Merge records for display
+      const allCourseIds = [...new Set([...assigns.map(a => a.course_id), ...recs.map(r => r.cid)])];
+      
+      el.innerHTML = summaryHtml + allCourseIds.map(cid => {
+        const assign = assigns.find(a => a.course_id === cid);
+        const courseRecs = recs.filter(r => r.cid === cid);
+        const best = courseRecs.sort((a, z) => z.score - a.score)[0];
+        const passed = best && best.score >= (b.pass || CONFIG.DEFAULT_PASS);
+        
+        // Find course title/icon from cache or assignments
+        const course = coursesCache.find(x => x.id === cid) || { title: assign?.course_title || 'Unknown Course', icon: '📚' };
+        
+        let statusLabel = 'Not Started';
+        let statusCls = 'chip-blue';
+        if (passed) { statusLabel = 'Completed ✓'; statusCls = 'chip-green'; }
+        else if (best) { statusLabel = 'In Progress'; statusCls = 'chip-amber'; }
+        
+        const isOverdue = assign?.due_at && !passed && new Date(assign.due_at) < new Date();
+        const dueHtml = assign?.due_at ? `<div style="font-size:var(--text-xs);${isOverdue ? 'color:var(--fail);font-weight:700;' : 'color:var(--ink-4);'}">
+          ${isOverdue ? '⚠️ OVERDUE: ' : 'Due: '}${new Date(assign.due_at).toLocaleDateString()}
+        </div>` : '';
+
+        return `<div class="card" style="margin-bottom:var(--space-4);${isOverdue ? 'border-left:4px solid var(--fail);' : assign ? 'border-left:4px solid var(--brand-1);' : ''}">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-4);">
           <div style="display:flex;align-items:center;gap:var(--space-3);">
-            <span style="font-size:22px;">${esc(c.icon||'📚')}</span>
-            <div><div style="font-weight:700;">${esc(c.title)}</div><div style="font-size:var(--text-xs);color:var(--ink-4);">${rs.length} attempt${rs.length!==1?'s':''}</div></div>
+            <span style="font-size:22px;">${esc(course.icon)}</span>
+            <div>
+              <div style="font-weight:700;">${esc(course.title)}</div>
+              ${dueHtml}
+            </div>
           </div>
-          <span class="chip ${passed?'chip-green':'chip-red'}">${passed?'Passed':'Not Passed'}</span>
+          <span class="chip ${statusCls}">${statusLabel}</span>
         </div>
         <div style="display:flex;align-items:center;gap:var(--space-4);">
-          <div class="progress-track" style="flex:1;height:6px;"><div class="progress-fill" style="width:${best.score}%"></div></div>
-          <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;">${best.score}%</div>
-          ${passed?`<button class="btn btn-outline btn-sm" onclick="App.showCert('${cid}','${esc(curLearner?.name||'')}')">Certificate</button>`:''}
+          <div class="progress-track" style="flex:1;height:6px;"><div class="progress-fill" style="width:${best ? best.score : 0}%"></div></div>
+          <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;">${best ? best.score + '%' : '—'}</div>
+          ${passed ? `<button class="btn btn-outline btn-sm" onclick="App.showCert('${cid}','${esc(curLearner?.name || '')}')">Certificate</button>` : `<button class="btn btn-primary btn-sm" onclick="App.startCourse('${cid}')">${best ? 'Continue' : 'Start'}</button>`}
         </div>
       </div>`;
       }).join('');
@@ -437,18 +481,23 @@ const App = {
       const courses = apiCourses.map(normCourse);
       coursesCache  = courses;
       const passed  = allRecs.filter(r => r.passed);
-      if(!passed.length){ el.innerHTML=`<div class="empty"><div class="empty-icon">🏅</div><div class="empty-title">No certificates yet</div><div class="empty-hint">Pass a course to earn your first certificate.</div></div>`; return; }
-      const best={};
-      passed.forEach(r=>{if(!best[r.cid]||r.score>best[r.cid].score) best[r.cid]=r;});
-      el.innerHTML = Object.values(best).map(r=>{
-        const c = courses.find(x=>x.id===r.cid)||{title:'Unknown',icon:'📚'};
+      if(!passed.length){ el.innerHTML=`<div class="empty"><div class="empty-icon">🏅</div><div class="empty-title">No certificates yet</div><div class="empty-hint">Complete a course to earn your first certificate.</div></div>`; return; }
+      
+      const best = {};
+      passed.forEach(r => { if (!best[r.cid] || r.score > best[r.cid].score) best[r.cid] = r; });
+      
+      el.innerHTML = Object.values(best).map(r => {
+        const c = courses.find(x => x.id === r.cid) || { title: 'Unknown Course', icon: '📚' };
         return `<div class="card" style="display:flex;align-items:center;gap:var(--space-5);margin-bottom:var(--space-4);">
-        <div style="font-size:36px;">🏅</div>
+        <div style="font-size:36px;">📜</div>
         <div style="flex:1;">
           <div style="font-weight:700;font-size:var(--text-md);">${esc(c.title)}</div>
-          <div style="font-size:var(--text-xs);color:var(--ink-4);margin-top:2px;">Score: ${r.score}% · ${new Date(r.date).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</div>
+          <div style="font-size:var(--text-xs);color:var(--ink-4);margin-top:2px;">
+            Completed ${new Date(r.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })} · Score: ${r.score}%
+          </div>
+          <div style="font-family:monospace;font-size:10px;color:var(--ink-4);margin-top:4px;">${r.cid2}</div>
         </div>
-        <button class="btn btn-primary btn-sm" onclick="App.showCert('${r.cid}','${esc(curLearner?.name||'')}')">View</button>
+        <button class="btn btn-outline btn-sm" onclick="App.showCert('${r.cid}','${esc(curLearner?.name || '')}', '${r.cid2}')">↓ Re-download</button>
       </div>`;
       }).join('');
     } catch (e) {
@@ -788,15 +837,23 @@ const App = {
         api('/api/learners'),
         api('/api/assignments')
       ]);
-      const courseAssigns = assigns.filter(a => a.course_id === id).map(a => a.learner_id);
+      const courseAssigns = assigns.filter(a => a.course_id === id);
       if (!learners.length) {
         $$('assign-list').innerHTML = '<div style="padding:var(--space-4);text-align:center;color:var(--ink-4);">No learners found.</div>';
         return;
       }
       $$('assign-list').innerHTML = learners.map(l => {
-        const isAssigned = courseAssigns.includes(l.id);
-        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:var(--space-2) 0;border-bottom:1px solid var(--rule);">
-          <span>${esc(l.name)}</span>
+        const assign = courseAssigns.find(a => a.learner_id === l.id);
+        const isAssigned = !!assign;
+        const dueVal = assign?.due_at ? assign.due_at.split(' ')[0] : '';
+        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:var(--space-3) 0;border-bottom:1px solid var(--rule);">
+          <div style="flex:1;">
+            <div style="font-weight:600;">${esc(l.name)}</div>
+            ${isAssigned ? `<div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+              <span style="font-size:10px;color:var(--ink-4);text-transform:uppercase;">Due Date:</span>
+              <input type="date" id="due-${l.id}" value="${dueVal}" style="width:auto;padding:2px 4px;font-size:11px;" onchange="App.toggleAssign('${l.id}', true)">
+            </div>` : ''}
+          </div>
           <button class="btn btn-sm ${isAssigned ? 'btn-ghost' : 'btn-outline'}" onclick="App.toggleAssign('${l.id}', ${isAssigned})">
             ${isAssigned ? 'Unassign' : 'Assign'}
           </button>
@@ -812,10 +869,15 @@ const App = {
   },
   async toggleAssign(learnerId, currentlyAssigned) {
     try {
-      if (currentlyAssigned) {
+      // Check if the trigger was a date change or an unassign click
+      const isDateChange = event && event.target && event.target.tagName === 'INPUT';
+      
+      if (currentlyAssigned && !isDateChange) {
         await api('/api/assignments', { method: 'DELETE', body: JSON.stringify({ course_id: App._assignCourseId, learner_id: learnerId }) });
       } else {
-        await api('/api/assignments', { method: 'POST', body: JSON.stringify({ course_id: App._assignCourseId, learner_id: learnerId }) });
+        const dueEl = $$(`due-${learnerId}`);
+        const due_at = dueEl ? dueEl.value : null;
+        await api('/api/assignments', { method: 'POST', body: JSON.stringify({ course_id: App._assignCourseId, learner_id: learnerId, due_at }) });
       }
       const course = coursesCache.find(c => c.id === App._assignCourseId);
       App.openAssign(App._assignCourseId, course ? course.title : 'Course');
@@ -856,26 +918,47 @@ const App = {
     }
   },
 
-  async renderComps() {
+  async renderComps(courseId = '') {
     const tbody = $$('comp-tbody');
     try {
-      const [compData, apiCourses] = await Promise.all([
-        api('/api/completions?limit=500'),
+      const path = courseId ? `/api/admin/completions?course_id=${courseId}` : '/api/admin/completions';
+      const [recsRaw, apiCourses] = await Promise.all([
+        api(path),
         api('/api/courses'),
       ]);
-      const recs    = compData.rows.map(normRecord);
+      const recs    = recsRaw; // Already normalized by worker endpoint
       const courses = apiCourses.map(normCourse);
       coursesCache  = courses;
-      if(!recs.length){ tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--ink-4);">No records yet.</td></tr>'; return; }
+      
+      // Populate filter if empty
+      const filter = $$('comp-filter');
+      if (filter.options.length <= 1) {
+        courses.forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c.id; opt.textContent = c.title;
+          filter.appendChild(opt);
+        });
+      }
+
+      if(!recs.length){ 
+        tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--ink-4);">No records yet.</td></tr>'; 
+        $$('comp-pass-rate').textContent = '';
+        return; 
+      }
+
+      const total = recs.length;
+      const passed = recs.filter(r => r.passed).length;
+      const rate = Math.round((passed / total) * 100);
+      $$('comp-pass-rate').textContent = `Avg Pass Rate: ${rate}%`;
+
       tbody.innerHTML = recs.map(r=>{
-        const c=courses.find(x=>x.id===r.cid);
         return `<tr>
-        <td>${esc(r.learner)}</td>
-        <td>${esc(c?.title||'Unknown')}</td>
+        <td>${esc(r.user_name)}</td>
+        <td>${esc(r.course_title)}</td>
         <td><span class="chip ${r.passed?'chip-green':'chip-red'}">${r.score}%</span></td>
         <td><span class="chip ${r.passed?'chip-green':'chip-red'}">${r.passed?'Passed':'Failed'}</span></td>
-        <td>${new Date(r.date).toLocaleDateString()}</td>
-        <td>${r.passed?`<button class="btn btn-ghost btn-sm" onclick="App.showCert('${r.cid}','${esc(r.learner)}')">Certificate</button>`:'—'}</td>
+        <td>${new Date(r.completed_at * 1000).toLocaleDateString()}</td>
+        <td><span style="font-family:monospace;font-size:10px;">${r.cert_id || '—'}</span></td>
       </tr>`;
       }).join('');
     } catch (e) {
@@ -891,8 +974,9 @@ const App = {
       if(!learners.length){ tbody.innerHTML='<tr><td colspan="4" style="text-align:center;padding:32px;color:var(--ink-4);">No learners yet. Add one to get started.</td></tr>'; return; }
       tbody.innerHTML = learners.map(l=>{
         const lastLogin = l.last_login_at ? new Date(l.last_login_at*1000).toLocaleDateString() : '—';
+        const overdueBadge = l.overdue_count > 0 ? `<span class="chip chip-red" style="margin-left:8px;font-size:10px;">⚠️ ${l.overdue_count} overdue</span>` : '';
         return `<tr>
-          <td>${esc(l.name)}</td>
+          <td>${esc(l.name)}${overdueBadge}</td>
           <td>${lastLogin}</td>
           <td>${l.completion_count}</td>
           <td style="display:flex;gap:4px;">
@@ -902,7 +986,11 @@ const App = {
         </tr>`;
       }).join('');
     } catch(e) {
-      tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:32px;color:var(--fail);">${esc(e.message)}</td></tr>`;
+      const detail = e.detail ? `<div style="font-size:11px;opacity:0.7;margin-top:8px;">${esc(e.detail)}</div>` : '';
+      tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:32px;color:var(--fail);">
+        ${esc(e.message)}
+        ${detail}
+      </td></tr>`;
     }
   },
 
@@ -1354,42 +1442,48 @@ const App = {
 
   async checkDone() {
     const allPassed = (curCourse.mods||[]).every((_,i) => quizSt[i]?.passed);
-    if (!allPassed) return;
+    if (!allPassed) return null;
     const modScores = (curCourse.mods||[]).map((_,i) => quizSt[i]?.score ?? 0);
     const score  = modScores.length ? Math.round(modScores.reduce((a,b)=>a+b,0) / modScores.length) : 100;
     const passed = score >= (brandCache.pass || CONFIG.DEFAULT_PASS);
     try {
-      await learnerApi('/api/completions', {
+      const res = await learnerApi('/api/completions', {
         method: 'POST',
         body: JSON.stringify({ course_id: curCourse.id, score, passed }),
       });
-    } catch(e) { /* silent fail */ }
+      return res; // { id, cert_id, passed, score, completed_at }
+    } catch(e) { 
+      Toast.err("Couldn't save your progress. Please check your connection.");
+      return { passed, score, error: true };
+    }
   },
 
   async courseComplete() {
     try {
-      const apiRecs = await learnerApi('/api/completions/me');
-      const recs = apiRecs.map(normRecord).filter(r => r.cid === curCourse.id && r.passed);
-      if(recs.length) {
+      const res = await App.checkDone();
+      if (res && res.passed) {
         confetti({
           particleCount: 150,
           spread: 70,
           origin: { y: 0.6 },
           colors: [brandCache.c1, brandCache.c2, '#ffffff']
         });
-        App.showCert(curCourse.id, curLearner.name);
+        App.showCert(curCourse.id, curLearner.name, res.cert_id);
+      } else if (res) {
+        Toast.info(`Course finished. Score: ${res.score}%`);
+        App.exitCourse();
+      } else {
+        App.exitCourse();
       }
-      else App.exitCourse();
-    } catch {
+    } catch (e) {
       App.exitCourse();
     }
   },
 
   // ─── CERTIFICATE ───
-  async showCert(cid, learner) {
+  async showCert(cid, learner, knownCertId) {
     try {
       const cached = coursesCache.find(c => c.id === cid);
-      // Learner context uses /me (learner JWT); admin context uses /learner/:name (admin JWT).
       const fetchRecs = getLearnerToken()
         ? learnerApi('/api/completions/me')
         : api(`/api/completions/learner/${encodeURIComponent(learner)}`);
@@ -1401,13 +1495,29 @@ const App = {
       if(!recs.length||!course){ Toast.err('No passing record found.'); return; }
       const best = recs.sort((a,z)=>z.score-a.score)[0];
       const b = brandCache;
+      const cId = knownCertId || best.cid2 || ('TF-' + uid().slice(0,8).toUpperCase());
+      
       $$('cert-accent').style.background = b.c1||CONFIG.DEFAULT_C1;
       $$('c-org').textContent = b.name||CONFIG.DEFAULT_BRAND_NAME;
       $$('c-name').textContent = learner;
       $$('c-course').textContent = course.title;
       $$('c-date').textContent = new Date(best.date).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
       $$('c-score').textContent = best.score+'%';
-      $$('c-id').textContent = best.cid2 || ('TF-' + uid().slice(0,8).toUpperCase());
+      $$('c-id').textContent = cId;
+      
+      // Verification line
+      let vEl = $$('c-verify');
+      if(!vEl) {
+        vEl = document.createElement('div');
+        vEl.id = 'c-verify';
+        vEl.style.fontSize = '9px';
+        vEl.style.color = 'var(--ink-4)';
+        vEl.style.marginTop = '4px';
+        vEl.style.textAlign = 'center';
+        $$('c-id').after(vEl);
+      }
+      vEl.textContent = `Verify at ${WORKER_URL}/api/certificates/${cId}`;
+
       $$('c-sig-dept').textContent = (b.name||CONFIG.DEFAULT_BRAND_NAME) + ' Training';
       $$('cert-overlay').classList.remove('hidden');
     } catch (e) {
@@ -1545,16 +1655,27 @@ const App = {
           const updated = await api('/api/brand', { method:'PUT', body:JSON.stringify(brandBody) });
           brandCache = normBrand(updated); applyBrand();
         }
+        
+        let imported = 0, skipped = 0;
         if(d.courses?.length) {
+          // Get current courses to check for duplicates by title
+          const currentCourses = await api('/api/courses');
+          const existingTitles = new Set(currentCourses.map(c => c.title.toLowerCase()));
+
           for(const c of d.courses) {
+            if (existingTitles.has(c.title.toLowerCase())) {
+              skipped++;
+              continue;
+            }
             const body = isV2
               ? { title:c.title, icon:c.icon, description:c.description, modules:(c.modules||[]).map(m=>({ title:m.title, content:m.content, questions:(m.questions||[]).map(q=>({ question:q.question, options:[q.option_a,q.option_b,q.option_c,q.option_d], correct_index:q.correct_index, explanation:q.explanation })) })) }
               : denormCourseBody(c);
             await api('/api/courses', { method:'POST', body:JSON.stringify(body) });
+            imported++;
           }
         }
         App.renderDash();
-        Toast.ok('Backup restored.');
+        Toast.ok(`Backup restored. Imported ${imported} courses, skipped ${skipped} duplicates.`);
       } catch(err) { Toast.err('Could not restore backup: ' + err.message); }
     };
     r.readAsText(f); e.target.value='';
