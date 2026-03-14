@@ -882,7 +882,8 @@ const App = {
       const course = coursesCache.find(c => c.id === App._assignCourseId);
       App.openAssign(App._assignCourseId, course ? course.title : 'Course');
     } catch (e) {
-      Toast.err('Could not update assignment: ' + e.message);
+      const msg = e.detail ? `Error: ${e.detail}` : 'Could not update assignment: ' + e.message;
+      Toast.err(msg);
     }
   },
 
