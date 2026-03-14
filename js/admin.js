@@ -27,6 +27,8 @@ const Admin = {
     try {
       const [stats, teams] = await Promise.all([api('/api/admin/stats'), api('/api/admin/teams')]);
       const { summary, learners } = stats;
+      teamsCache = teams || [];
+      
       $$('a-stats').innerHTML = [['Learners', summary.total_learners, '👥'],['Courses', summary.total_courses, '📚'],['Month', summary.completions_this_month, '🏆'],['Pass Rate', summary.pass_rate + '%', '📈']].map(([l,v,i])=>`<div class="stat-tile">
         <div style="font-size:24px;margin-bottom:var(--space-2);">${i}</div>
         <div class="stat-value">${v}</div>
@@ -58,7 +60,7 @@ const Admin = {
   async renderTeams() {
     try {
       const teams = await api('/api/admin/teams');
-      teamsCache = teams;
+      teamsCache = teams || [];
       if (!teams.length) { $$('teams-grid').innerHTML = '<div class="empty">No teams created yet.</div>'; return; }
       $$('teams-grid').innerHTML = teams.map(t => `
         <div class="card">
@@ -167,24 +169,33 @@ const Admin = {
   async renderLearners() {
     const tid = $$('l-team-filter').value;
     try {
-      const learners = await api(tid ? `/api/learners?team_id=${tid==='unassigned'?'null':tid}` : '/api/learners');
-      _allLearners = learners;
+      const [learners, teams] = await Promise.all([
+        api(tid ? `/api/learners?team_id=${tid==='unassigned'?'null':tid}` : '/api/learners'),
+        api('/api/admin/teams')
+      ]);
+      _allLearners = learners || [];
+      teamsCache = teams || [];
       Admin.filterLearners($$('learners-search').value);
     } catch(e) { 
       const msg = e.detail ? `${e.message}: ${e.detail}` : e.message;
-      $$('learners-tbody').innerHTML = `<tr><td colspan="4" style="text-align:center;padding:32px;color:var(--fail);">${esc(msg)}</td></tr>`;
+      $$('learners-tbody').innerHTML = `<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--fail);">${esc(msg)}</td></tr>`;
     }
   },
   filterLearners(q) {
     const query = q.toLowerCase().trim();
     const filtered = _allLearners.filter(l => l.name.toLowerCase().includes(query));
+    if (!filtered.length) { $$('learners-tbody').innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--ink-4);">No matching learners.</td></tr>'; return; }
+    
     $$('learners-tbody').innerHTML = filtered.map(l => {
-      const team = teamsCache.find(t => t.id === l.team_id);
+      const team = (teamsCache||[]).find(t => t.id === l.team_id);
+      const teamHtml = team ? esc(team.name) : '<span class="chip chip-amber" style="font-size:9px;">Unassigned</span>';
       return `<tr>
         <td>${esc(l.name)}</td>
-        <td><button class="btn btn-ghost btn-sm" onclick="Admin.moveLearner('${l.id}')">${team ? esc(team.name) : '<span class="chip chip-amber">Unassigned</span>'}</button></td>
+        <td><button class="btn btn-ghost btn-sm" onclick="Admin.moveLearner('${l.id}')">${teamHtml}</button></td>
+        <td>${(l.tags||[]).map(t=>`<span class="chip chip-blue" style="font-size:9px;">${esc(t.name)}</span>`).join(' ')}</td>
+        <td>${l.last_login_at ? new Date(l.last_login_at*1000).toLocaleDateString() : '—'}</td>
         <td>${l.completion_count}</td>
-        <td><button class="btn btn-ghost btn-sm" onclick="Admin.openResetPw('${l.id}','${esc(l.name)}')">Reset PW</button></td>
+        <td><button class="btn btn-ghost btn-sm" onclick="Admin.openResetPw('${l.id}','${esc(l.name)}')">PW</button></td>
       </tr>`;
     }).join('');
   },
@@ -221,7 +232,7 @@ const Admin = {
           <div style="font-weight:700;">${esc(c.title)}</div>
           <div style="display:flex;gap:4px;margin-top:12px;">
             <button class="btn btn-primary btn-sm w-full" onclick="App.openAssign('${c.id}','${esc(c.title)}')">👤 Assign</button>
-            <button class="btn btn-outline btn-sm" onclick="App.editCourse('${c.id}')">✏ Edit</button>
+            <button class="btn btn-outline btn-sm" onclick="Builder.editCourse('${c.id}')">✏ Edit</button>
           </div>
         </div>`).join('');
     } catch(e) { }

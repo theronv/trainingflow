@@ -43,6 +43,7 @@ async function api(path, opts = {}) {
   const token = getToken();
   if (token) headers['Authorization'] = `Bearer ${token}`;
   const res = await fetch(WORKER_URL + path, { ...opts, headers });
+  if (res.status === 401 && token) { clearToken(); App.show('screen-landing'); throw new Error('Session expired'); }
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: res.statusText }));
     throw Object.assign(new Error(body.error || res.statusText), { status: res.status, detail: body.detail });
@@ -55,6 +56,7 @@ async function managerApi(path, opts = {}) {
   const token = getManagerToken();
   if (token) headers['Authorization'] = `Bearer ${token}`;
   const res = await fetch(WORKER_URL + path, { ...opts, headers });
+  if (res.status === 401 && token) { clearManagerToken(); clearManagerUser(); App.show('screen-landing'); throw new Error('Session expired'); }
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: res.statusText }));
     throw Object.assign(new Error(body.error || res.statusText), { status: res.status, detail: body.detail });
@@ -67,6 +69,7 @@ async function learnerApi(path, opts = {}) {
   const token = getLearnerToken();
   if (token) headers['Authorization'] = `Bearer ${token}`;
   const res = await fetch(WORKER_URL + path, { ...opts, headers });
+  if (res.status === 401 && token) { clearLearnerToken(); App.show('screen-landing'); throw new Error('Session expired'); }
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: res.statusText }));
     throw Object.assign(new Error(body.error || res.statusText), { status: res.status, detail: body.detail });
@@ -80,6 +83,7 @@ let curCourse    = null;
 let curModIdx    = 0;
 let quizSt       = {};
 let cbState      = { editId: null, mods: [] };
+let csvParsed    = null;
 let compOffset   = 0;
 const COMP_LIMIT = 50;
 let _allLearners = [];
@@ -125,26 +129,16 @@ function applyBrand() {
   const b = brandCache;
   document.documentElement.style.setProperty('--brand-1', b.c1);
   document.documentElement.style.setProperty('--brand-2', b.c2);
-  ['ldg-brand', 'l-brand', 'a-brand', 'm-brand'].forEach(id => { 
-    const el = $$(id); 
-    if(el) el.textContent = b.name; 
-  });
-  ['l-logo', 'a-logo', 'm-logo'].forEach(id => { 
-    const img = $$(id); 
-    if(!img) return; 
-    if(b.logo) { img.src=b.logo; img.classList.remove('hidden'); } 
-    else { img.src=''; img.classList.add('hidden'); } 
-  });
+  ['ldg-brand', 'l-brand', 'a-brand', 'm-brand'].forEach(id => { const el = $$(id); if(el) el.textContent = b.name; });
+  ['l-logo', 'a-logo', 'm-logo'].forEach(id => { const img = $$(id); if(!img) return; if(b.logo) { img.src=b.logo; img.classList.remove('hidden'); } else { img.src=''; img.classList.add('hidden'); } });
 }
 
 function showPage(id) { 
   document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
-  const el = $$(id);
-  if(el) el.classList.remove('hidden');
+  const el = $$(id); if(el) el.classList.remove('hidden');
 }
 
 const App = {
-  // Base initialization logic (renamed to avoid proxy collision)
   async baseInit() {
     const lt = getLearnerToken();
     if (lt) { try { const me = await learnerApi('/api/learners/me'); curLearner = { id: me.id, name: me.name }; } catch { clearLearnerToken(); } }
@@ -156,8 +150,7 @@ const App = {
 
   show(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    const el = $$(id);
-    if(el) el.classList.add('active');
+    const el = $$(id); if(el) el.classList.add('active');
   },
 
   startDemo() {
@@ -169,7 +162,6 @@ const App = {
     Learner.init();
   },
 
-  // ─── LANDING ───
   goLearner() { App.show('screen-learner'); applyBrand(); if(curLearner) Learner.init(); else showPage('lp-name'); },
   goManager() { App.show('screen-manager-login'); Auth.toggleManagerReg(false); setTimeout(()=>$$('m-login-name').focus(),CONFIG.FOCUS_DELAY); },
   goAdmin()   { App.show('screen-login'); setTimeout(()=>$$('pw-input').focus(),CONFIG.FOCUS_DELAY); },
