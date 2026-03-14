@@ -354,31 +354,96 @@ app.post('/api/completions', learnerAuth, async (c) => {
     return c.json({ error: 'score must be a number between 0 and 100' }, 400)
   }
 
-  const db  = getDb(c.env)
+  const db = getDb(c.env)
+  
+  // Check for existing completion record for this user+course (do not duplicate if already passed)
+  const existing = toObj(await db.execute({
+    sql: 'SELECT id, cert_id, passed FROM completions WHERE learner_id = ? AND course_id = ? AND passed = 1 LIMIT 1',
+    args: [learner.id, course_id],
+  }))
+
   const id  = uid()
-  const cid = certId()
+  const now = Math.floor(Date.now() / 1000)
+  let cid   = existing?.cert_id
+
+  if (passed && !cid) {
+    cid = certId()
+  }
 
   await db.execute({
     sql:  `INSERT INTO completions
-             (id, course_id, learner_name, learner_id, score, passed, cert_id)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    args: [id, course_id, learner.name, learner.id, Math.round(score), passed ? 1 : 0, cid],
+             (id, course_id, learner_id, learner_name, score, passed, completed_at, cert_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    args: [id, course_id, learner.id, learner.name, Math.round(score), passed ? 1 : 0, now, cid || null],
   })
 
-  return c.json({ id, cert_id: cid }, 201)
+  return c.json({ id, cert_id: cid, passed: Boolean(passed), score: Math.round(score), completed_at: now }, 201)
 })
 
 // ── GET /api/completions/me ───────────────────────────────────────────────────
-// Learner sees only their own records.
+// Learner sees only their own records, joined with course titles.
 
 app.get('/api/completions/me', learnerAuth, async (c) => {
   const learner = c.get('learner')
   const db      = getDb(c.env)
   const res     = await db.execute({
-    sql:  'SELECT * FROM completions WHERE learner_id = ? ORDER BY completed_at DESC',
+    sql:  `SELECT c.*, co.title AS course_title
+           FROM   completions c
+           JOIN   courses co ON c.course_id = co.id
+           WHERE  c.learner_id = ?
+           ORDER  BY c.completed_at DESC`,
     args: [learner.id],
   })
   return c.json(toObjs(res).map(r => ({ ...r, passed: Boolean(r.passed) })))
+})
+
+// ── GET /api/admin/completions ────────────────────────────────────────────────
+
+app.get('/api/admin/completions', adminAuth, async (c) => {
+  const courseId = c.req.query('course_id')
+  const db       = getDb(c.env)
+  
+  let sql = `SELECT c.*, co.title AS course_title, l.id AS user_id, l.name AS user_name
+             FROM   completions c
+             JOIN   courses co ON c.course_id = co.id
+             JOIN   learners l ON c.learner_id = l.id`
+  const args = []
+  
+  if (courseId) {
+    sql += ' WHERE c.course_id = ?'
+    args.push(courseId)
+  }
+  
+  sql += ' ORDER BY c.completed_at DESC'
+  
+  const res = await db.execute({ sql, args })
+  return c.json(toObjs(res).map(r => ({ ...r, passed: Boolean(r.passed) })))
+})
+
+// ── GET /api/certificates/:certId ─────────────────────────────────────────────
+// Public certificate verification endpoint.
+
+app.get('/api/certificates/:certId', async (c) => {
+  const certId = c.req.param('certId').toUpperCase()
+  const db     = getDb(c.env)
+
+  const res = await db.execute({
+    sql: `SELECT l.name AS learner_name, co.title AS course_title, c.completed_at, c.passed
+          FROM   completions c
+          JOIN   learners l ON c.learner_id = l.id
+          JOIN   courses co ON c.course_id = co.id
+          WHERE  c.cert_id = ? AND c.passed = 1`,
+    args: [certId],
+  })
+  const record = toObj(res)
+  if (!record) return c.json({ valid: false }, 404)
+
+  return c.json({
+    valid: true,
+    learner_name: record.learner_name,
+    course_title: record.course_title,
+    completed_at: new Date(record.completed_at * 1000).toISOString(),
+  })
 })
 
 // ── GET /api/completions/learner/:name ────────────────────────────────────────
@@ -489,6 +554,41 @@ app.post('/api/learners/login', async (c) => {
 app.get('/api/learners/me', learnerAuth, async (c) => {
   const learner = c.get('learner')
   return c.json({ id: learner.id, name: learner.name })
+})
+
+// ── PATCH /api/learners/me/name ───────────────────────────────────────────────
+
+app.patch('/api/learners/me/name', learnerAuth, async (c) => {
+  const learner = c.get('learner')
+  const body    = await c.req.json().catch(() => null)
+  const name    = body?.name?.trim()
+
+  if (!name || name.length > 100) {
+    return c.json({ error: 'Name is required and must be under 100 characters' }, 400)
+  }
+
+  const db = getDb(c.env)
+  await db.execute({
+    sql:  'UPDATE learners SET name = ? WHERE id = ?',
+    args: [name, learner.id],
+  })
+  return c.json({ name })
+})
+
+// ── GET /api/assignments/me ───────────────────────────────────────────────────
+
+app.get('/api/assignments/me', learnerAuth, async (c) => {
+  const learner = c.get('learner')
+  const db      = getDb(c.env)
+  const res     = await db.execute({
+    sql: `SELECT a.course_id, co.title AS course_title, a.assigned_at, a.due_at,
+                 (SELECT COUNT(*) FROM completions c WHERE c.learner_id = a.learner_id AND c.course_id = a.course_id AND c.passed = 1) > 0 AS completed
+          FROM   assignments a
+          JOIN   courses co ON a.course_id = co.id
+          WHERE  a.learner_id = ?`,
+    args: [learner.id],
+  })
+  return c.json(toObjs(res).map(r => ({ ...r, completed: Boolean(r.completed) })))
 })
 
 // ── PUT /api/learners/me/password ─────────────────────────────────────────────
@@ -698,11 +798,18 @@ app.post('/api/assignments', adminAuth, async (c) => {
   if (!body || !body.course_id || !body.learner_id) return c.json({ error: 'Missing course_id or learner_id' }, 400)
   
   const db = getDb(c.env)
-  await db.execute({
-    sql: 'INSERT OR IGNORE INTO assignments (course_id, learner_id) VALUES (?, ?)',
-    args: [body.course_id, body.learner_id],
-  })
-  return c.json({ ok: true })
+  try {
+    await db.execute({
+      sql: `INSERT INTO assignments (course_id, learner_id, due_at, assigned_at)
+            VALUES (?, ?, ?, strftime('%Y-%m-%d %H:%M:%S', 'now'))
+            ON CONFLICT(course_id, learner_id) DO UPDATE SET
+              due_at = excluded.due_at`,
+      args: [body.course_id, body.learner_id, body.due_at || null],
+    })
+    return c.json({ ok: true, course_id: body.course_id, learner_id: body.learner_id, due_at: body.due_at || null })
+  } catch (err) {
+    return c.json({ error: 'Failed to update assignment', detail: err.message }, 500)
+  }
 })
 
 // ── DELETE /api/assignments ───────────────────────────────────────────────────
@@ -712,11 +819,15 @@ app.delete('/api/assignments', adminAuth, async (c) => {
   if (!body || !body.course_id || !body.learner_id) return c.json({ error: 'Missing course_id or learner_id' }, 400)
 
   const db = getDb(c.env)
-  await db.execute({
-    sql: 'DELETE FROM assignments WHERE course_id = ? AND learner_id = ?',
-    args: [body.course_id, body.learner_id],
-  })
-  return c.json({ ok: true })
+  try {
+    await db.execute({
+      sql: 'DELETE FROM assignments WHERE course_id = ? AND learner_id = ?',
+      args: [body.course_id, body.learner_id],
+    })
+    return c.json({ ok: true })
+  } catch (err) {
+    return c.json({ error: 'Failed to remove assignment', detail: err.message }, 500)
+  }
 })
 
 // ── GET /api/learners/me/assignments ──────────────────────────────────────────
@@ -735,15 +846,30 @@ app.get('/api/learners/me/assignments', learnerAuth, async (c) => {
 
 app.get('/api/learners', adminAuth, async (c) => {
   const db  = getDb(c.env)
-  const res = await db.execute(`
-    SELECT l.id, l.name, l.last_login_at, l.created_at,
-           COUNT(c.id) AS completion_count
-    FROM   learners l
-    LEFT   JOIN completions c ON c.learner_id = l.id
-    GROUP  BY l.id
-    ORDER  BY l.name
-  `)
-  return c.json(toObjs(res))
+  try {
+    // Requires completions.learner_id and assignments.due_at from schema migration
+    const res = await db.execute(`
+      SELECT l.id, l.name, l.last_login_at, l.created_at,
+             COUNT(DISTINCT c.id) AS completion_count,
+             (SELECT COUNT(*) FROM assignments a 
+              WHERE a.learner_id = l.id 
+              AND a.due_at IS NOT NULL 
+              AND a.due_at < datetime('now')
+              AND NOT EXISTS (SELECT 1 FROM completions comp WHERE comp.learner_id = l.id AND comp.course_id = a.course_id AND comp.passed = 1)
+             ) AS overdue_count
+      FROM   learners l
+      LEFT   JOIN completions c ON c.learner_id = l.id
+      GROUP  BY l.id
+      ORDER  BY l.name
+    `)
+    return c.json(toObjs(res))
+  } catch (err) {
+    return c.json({ 
+      error: 'Failed to load learners', 
+      detail: err.message,
+      hint: 'Ensure completions.learner_id and assignments.due_at columns exist in the database.'
+    }, 500)
+  }
 })
 
 // ── POST /api/learners ────────────────────────────────────────────────────────

@@ -93,6 +93,7 @@ END;
 CREATE TABLE IF NOT EXISTS completions (
   id           TEXT    PRIMARY KEY,              -- uid() string
   course_id    TEXT    NOT NULL REFERENCES courses(id),
+  learner_id   TEXT    NOT NULL REFERENCES learners(id) ON DELETE CASCADE,
   learner_name TEXT    NOT NULL,
   score        INTEGER NOT NULL,                 -- 0–100 (whole number)
   passed       INTEGER NOT NULL DEFAULT 0,       -- 0 | 1  (SQLite boolean)
@@ -101,7 +102,7 @@ CREATE TABLE IF NOT EXISTS completions (
   cert_id      TEXT    NOT NULL UNIQUE           -- "TF-" + 8 uppercase hex chars
 );
 
-CREATE INDEX IF NOT EXISTS idx_completions_learner ON completions(learner_name);
+CREATE INDEX IF NOT EXISTS idx_completions_learner ON completions(learner_id);
 CREATE INDEX IF NOT EXISTS idx_completions_course  ON completions(course_id);
 CREATE INDEX IF NOT EXISTS idx_completions_date    ON completions(completed_at DESC);
 
@@ -117,9 +118,10 @@ END;
 -- Assigns a course to a specific learner.
 
 CREATE TABLE IF NOT EXISTS assignments (
-  course_id  TEXT NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
-  learner_id TEXT NOT NULL REFERENCES learners(id) ON DELETE CASCADE,
-  created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+  course_id   TEXT NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+  learner_id  TEXT NOT NULL REFERENCES learners(id) ON DELETE CASCADE,
+  assigned_at TEXT NOT NULL DEFAULT (datetime('now')),
+  due_at      TEXT,                     -- ISO8601 date
   PRIMARY KEY (course_id, learner_id)
 );
 

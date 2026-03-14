@@ -1,6 +1,6 @@
 # TrainFlow 🎓
 
-TrainFlow is a modern, lightweight Learning Management System (LMS) designed for professional teams. It enables organizations to create, manage, and deliver training courses with automated AI-assisted content generation and verifiable PDF certifications.
+TrainFlow is a modern, lightweight Learning Management System (LMS) designed for professional teams. It enables organizations to create, manage, and deliver training courses with automated AI-assisted content generation, targeted assignments, and verifiable PDF certifications.
 
 ---
 
@@ -22,13 +22,15 @@ TrainFlow is built as a **decoupled SPA (Single Page Application)** with a serve
 ### 👨‍🎓 Learner Experience
 -   **Interactive Modules:** Structured reading followed by "Competency Checks" (Quizzes).
 -   **Focus Mode:** Distraction-free reading experience with collapsible navigation.
--   **Verifiable Certificates:** Passing a course generates a styled PDF certificate with a unique `CertID` for verification.
+-   **Verifiable Certificates:** Passing a course generates a styled PDF certificate with a unique server-validated `CertID`.
 -   **Gamified Feedback:** Staggered animations, haptic quiz feedback (shake/pulse), and celebratory confetti bursts.
+-   **Personalized Profiles:** Learners can update their display names and manage their passwords.
 
 ### ⚙️ Manager Experience
+-   **Targeted Assignments:** Assign specific courses to learners with optional **Due Dates** and deadlines.
+-   **Compliance Tracking:** Real-time dashboard highlighting overdue training and organizational pass rates.
 -   **AI Course Importer:** Drop Markdown files to automatically generate module summaries and multiple-choice questions via Gemini.
 -   **Course Builder:** Full-featured UI to manually create and edit modules and quizzes.
--   **Real-time Analytics:** Dashboard tracking total learners, monthly completions, and course-specific pass rates.
 -   **White-labeling:** Dynamic branding system to customize colors, logos, and pass thresholds.
 
 ---
@@ -54,7 +56,10 @@ TrainFlow is built as a **decoupled SPA (Single Page Application)** with a serve
     # GEMINI_API_KEY=your_key
     ```
 3.  **Initialize the Database:**
-    Run the contents of `schema.sql` against your Turso instance.
+    Run the contents of `schema.sql` against your Turso instance using the Turso CLI:
+    ```bash
+    turso db shell your-db-name < schema.sql
+    ```
 4.  **Run Locally:**
     ```bash
     # In the worker directory:
@@ -66,21 +71,11 @@ TrainFlow is built as a **decoupled SPA (Single Page Application)** with a serve
 
 ---
 
-## 🛠️ Tech Stack & Utilities
-
--   **Hono:** Ultra-fast web framework for the Worker.
--   **libSQL Client:** Edge-compatible database driver.
--   **html2canvas & jsPDF:** Client-side PDF generation for certificates.
--   **Canvas-Confetti:** High-performance micro-animations.
--   **Web Crypto API:** PBKDF2 password hashing (no external dependencies).
-
----
-
 ## 🛡️ Security & Polish
 -   **JWT Authentication:** Secure role-based access for Learners and Admins.
 -   **Hardened Storage:** Robust `sessionStorage` wrappers with `try/catch` fallbacks.
--   **Clean Code:** Decoupled logic, centralized constants, and zero console pollution.
 -   **Robustness:** Fixed "O'Brien Bug" (properly escaped single-quotes in UI attributes).
+-   **Detailed Error Reporting:** Integrated database error detailing for easier maintenance.
 
 ---
 
