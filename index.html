@@ -542,31 +542,21 @@
             <div class="page-eyebrow">People</div>
             <div class="page-title">Learners</div>
           </div>
-          <button class="btn btn-primary" onclick="App.openAddLearner()">+ Add Learner</button>
-        </div>
-
-        <div class="card" style="margin-bottom: var(--s-4); padding: var(--s-3);">
-          <div style="display:flex; gap:var(--s-3); align-items:center; flex-wrap:wrap;">
-            <div style="flex:1; min-width:200px;">
-              <input type="text" id="learners-search" placeholder="Search by name..." oninput="App.filterLearners(this.value)" style="margin-bottom:0;">
-            </div>
+          <div style="display:flex;gap:var(--space-3);align-items:center;">
             <select id="l-team-filter" class="btn btn-outline btn-sm" style="width:auto;" onchange="App.renderLearners()">
               <option value="">All Teams</option>
               <option value="unassigned">Unassigned</option>
             </select>
-            <button class="btn btn-outline btn-sm" onclick="App.openTagsModal()">Manage Tags</button>
+            <button class="btn btn-outline" onclick="App.openTagsModal()">Manage Tags</button>
+            <button class="btn btn-primary" onclick="App.openAddLearner()">+ Add Learner</button>
           </div>
         </div>
-
-        <div class="table-wrap">
-          <table><thead><tr><th>Name</th><th>Team</th><th>Completions</th><th>Actions</th></tr></thead>
-          <tbody id="learners-tbody"></tbody></table>
+        <div class="field" style="margin-bottom:var(--space-5);">
+          <input type="text" id="learners-search" placeholder="Search by name or tag..." oninput="App.filterLearners(this.value)">
         </div>
-
-        <div id="learner-pagination" class="hidden" style="display:flex;align-items:center;justify-content:center;gap:var(--s-4);margin-top:var(--s-5);">
-          <button class="btn btn-outline btn-sm" id="learner-prev" onclick="App.learnerPage(-1)">← Previous</button>
-          <span id="learner-page-info" style="font-size:13px;font-weight:600;color:var(--ink-meta);">Page 1</span>
-          <button class="btn btn-outline btn-sm" id="learner-next" onclick="App.learnerPage(1)">Next →</button>
+        <div class="table-wrap">
+          <table><thead><tr><th>Name</th><th>Team</th><th>Tags</th><th>Last Login</th><th>Comps</th><th>Actions</th></tr></thead>
+          <tbody id="learners-tbody"></tbody></table>
         </div>
       </div>
       <div class="page hidden" id="ap-teams">
