@@ -25,6 +25,14 @@ const AppProxy = {
   csvImportOpen: () => Builder.csvImportOpen(),
   openAssign: (id, t) => Builder.openAssign(id, t),
   
+  // Importer
+  handleDrop: (e) => Admin.handleDrop(e),
+  handleFileSelect: (e) => Admin.handleFileSelect(e),
+  proceedFromUpload: () => Admin.proceedFromUpload(),
+  startGeneration: () => Admin.startGeneration(),
+  saveAiCourse: () => Admin.saveAiCourse(),
+  goPhase: (n) => Admin.goPhase(n),
+  
   // Global
   init: async () => {
     await App.baseInit();

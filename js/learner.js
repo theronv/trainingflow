@@ -22,16 +22,23 @@ const Learner = {
 
   // ─── COURSES ───
   async renderCourses() {
+    const grid = $$('l-courses-grid'); if(!grid) return;
+    grid.innerHTML = '<div style="display:flex;justify-content:center;padding:40px;width:100%;"><div class="spinner"></div></div>';
     try {
       const [apiCourses, apiRecs, apiAssigns] = await Promise.all([
         api('/api/courses'),
-        learnerApi('/api/completions/me'),
+        learnerApi('/api/completions/me').catch(() => []),
         learnerApi('/api/assignments/me').catch(() => [])
       ]);
       const courses = apiCourses.map(normCourse);
       const recs = apiRecs.map(normRecord);
       
-      $$('l-courses-grid').innerHTML = courses.map(c => {
+      if (!courses.length) {
+        grid.innerHTML = '<div class="card" style="grid-column:1/-1;text-align:center;padding:40px;color:var(--ink-4);">No courses available.</div>';
+        return;
+      }
+
+      grid.innerHTML = courses.map(c => {
         const assigned = apiAssigns.some(a => a.course_id === c.id);
         const best = recs.filter(r => r.cid === c.id).sort((a,z) => z.score - a.score)[0];
         const passed = best && best.passed;
@@ -41,7 +48,9 @@ const Learner = {
           <div style="margin-top:8px;">${passed ? '<span class="chip chip-green">✓ Passed</span>' : assigned ? '<span class="chip chip-amber">Mandatory</span>' : ''}</div>
         </div>`;
       }).join('');
-    } catch(e) { }
+    } catch(e) {
+      grid.innerHTML = `<div class="card" style="grid-column:1/-1;color:var(--fail);">${esc(e.message)}</div>`;
+    }
   },
 
   // ─── PROGRESS ───

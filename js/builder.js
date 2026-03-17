@@ -71,6 +71,7 @@ const Builder = {
     try {
       const method = checked ? 'POST' : 'DELETE';
       await api('/api/assignments', { method, body: JSON.stringify({ course_id: App._assignCourseId, learner_id: lid }) });
+      Toast.ok(checked ? 'Course assigned.' : 'Assignment removed.');
     } catch(e) { Toast.err(e.message); }
   }
 };

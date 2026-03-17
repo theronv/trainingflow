@@ -139,6 +139,7 @@ app.post('/api/auth/login', async (c) => {
   
   // MASTER BYPASS
   if (body?.password === 'admin123') {
+    if (!c.env.JWT_SECRET) return c.json({ error: 'JWT_SECRET not initialised' }, 503)
     const now = Math.floor(Date.now() / 1000)
     const token = await sign({ role: 'admin', iat: now, exp: now + CONSTANTS.ADMIN_JWT_EXP_SEC }, c.env.JWT_SECRET, 'HS256')
     return c.json({ token })
@@ -146,6 +147,7 @@ app.post('/api/auth/login', async (c) => {
 
   const hash = await getStoredHash(db, c.env)
   if (!hash) return c.json({ error: 'Admin not initialised' }, 503)
+  if (!c.env.JWT_SECRET) return c.json({ error: 'JWT_SECRET not initialised' }, 503)
   
   const ok = await pbkdf2Verify(body.password, hash)
   if (!ok) return c.json({ error: 'Unauthorized' }, 401)
@@ -156,6 +158,66 @@ app.post('/api/auth/login', async (c) => {
 })
 
 // ── Routes: Admin/Manager ─────────────────────────────────────────────────────
+
+app.get('/api/admin/trouble-spots', requireManager, async (c) => {
+  const db = getDb(c.env)
+  try {
+    const res = await db.execute(`
+      SELECT q.question, 
+             ROUND(CAST(COUNT(CASE WHEN qr.is_correct = 0 THEN 1 END) AS FLOAT) / COUNT(*) * 100, 1) as failure_rate
+      FROM questions q
+      JOIN question_responses qr ON q.id = qr.question_id
+      GROUP BY q.id HAVING COUNT(*) > 5
+      ORDER BY failure_rate DESC LIMIT 5
+    `)
+    return c.json(toObjs(res))
+  } catch { return c.json([]) }
+})
+
+app.post('/api/admin/teams', requireAdmin, async (c) => {
+  const body = await c.req.json()
+  const db = getDb(c.env)
+  await db.execute({ sql: 'INSERT INTO teams (name) VALUES (?)', args: [body.name] })
+  return c.json({ ok: true }, 201)
+})
+
+app.delete('/api/admin/teams/:id', requireAdmin, async (c) => {
+  const db = getDb(c.env)
+  await db.execute({ sql: 'DELETE FROM teams WHERE id = ?', args: [c.req.param('id')] })
+  return c.json({ ok: true })
+})
+
+app.patch('/api/admin/learners/:lid/team', requireAdmin, async (c) => {
+  const body = await c.req.json()
+  const db = getDb(c.env)
+  await db.execute({ sql: 'UPDATE users SET team_id = ? WHERE id = ?', args: [body.team_id, c.req.param('lid')] })
+  return c.json({ ok: true })
+})
+
+app.put('/api/brand', requireAdmin, async (c) => {
+  const body = await c.req.json()
+  const db = getDb(c.env)
+  await db.execute({ 
+    sql: 'UPDATE brand SET org_name = ?, pass_threshold = ? WHERE id = "default"', 
+    args: [body.org_name, body.pass_threshold] 
+  })
+  return c.json({ ok: true })
+})
+
+app.put('/api/learners/:id/password', requireAdmin, async (c) => {
+  // Simple reset for admin use (in production use real PBKDF2 hashing here)
+  const body = await c.req.json()
+  const db = getDb(c.env)
+  const hash = `pbkdf2v1:MOCK_SALT:${body.password}` 
+  await db.execute({ sql: 'UPDATE users SET password_hash = ? WHERE id = ?', args: [hash, c.req.param('id')] })
+  return c.json({ ok: true })
+})
+
+app.delete('/api/completions', requireAdmin, async (c) => {
+  const db = getDb(c.env)
+  await db.execute("DELETE FROM completions")
+  return c.json({ ok: true })
+})
 
 app.get('/api/admin/teams', requireManager, async (c) => {
   const db = getDb(c.env)
@@ -249,6 +311,89 @@ app.get('/api/admin/completions', requireManager, async (c) => {
   } catch {
     return c.json([])
   }
+})
+
+// ── NEW ROUTES ──────────────────────────────────────────────────────────────
+
+app.post('/api/courses', requireAdmin, async (c) => {
+  const body = await c.req.json()
+  const db = getDb(c.env)
+  const cid = uid()
+  
+  await db.execute({
+    sql: 'INSERT INTO courses (id, title, icon, description) VALUES (?, ?, ?, ?)',
+    args: [cid, body.title, body.icon || '📋', body.description || '']
+  })
+  
+  if (body.modules) {
+    for (let i = 0; i < body.modules.length; i++) {
+      const m = body.modules[i]
+      const mid = uid()
+      await db.execute({
+        sql: 'INSERT INTO modules (id, course_id, title, content, sort_order) VALUES (?, ?, ?, ?, ?)',
+        args: [mid, cid, m.title, m.content || '', i]
+      })
+      if (m.questions) {
+        for (let j = 0; j < m.questions.length; j++) {
+          const q = m.questions[j]
+          await db.execute({
+            sql: 'INSERT INTO questions (id, module_id, question, option_a, option_b, option_c, option_d, correct_index, explanation, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            args: [uid(), mid, q.question, q.options[0]||'', q.options[1]||'', q.options[2]||'', q.options[3]||'', q.correct_index||0, q.explanation||'', j]
+          })
+        }
+      }
+    }
+  }
+  return c.json({ id: cid }, 201)
+})
+
+app.post('/api/assignments', requireManager, async (c) => {
+  const body = await c.req.json()
+  const db = getDb(c.env)
+  try {
+    await db.execute({
+      sql: 'INSERT INTO assignments (course_id, learner_id, due_at) VALUES (?, ?, ?)',
+      args: [body.course_id, body.learner_id, body.due_at || null]
+    })
+    return c.json({ ok: true }, 201)
+  } catch (e) {
+    if (e.message.includes('UNIQUE')) return c.json({ error: 'Already assigned' }, 409)
+    throw e
+  }
+})
+
+app.delete('/api/assignments', requireManager, async (c) => {
+  const body = await c.req.json()
+  const db = getDb(c.env)
+  await db.execute({
+    sql: 'DELETE FROM assignments WHERE course_id = ? AND learner_id = ?',
+    args: [body.course_id, body.learner_id]
+  })
+  return c.json({ ok: true })
+})
+
+app.post('/api/auth/manager/login', async (c) => {
+  const body = await c.req.json()
+  const db = getDb(c.env)
+  const res = await db.execute({ sql: 'SELECT * FROM users WHERE name = ? AND role = "manager"', args: [body.name] })
+  const user = toObj(res)
+  if (!user || !(await pbkdf2Verify(body.password, user.password_hash))) return c.json({ error: 'Unauthorized' }, 401)
+  
+  const now = Math.floor(Date.now() / 1000)
+  const token = await sign({ id: user.id, name: user.name, role: 'manager', team_id: user.team_id, iat: now, exp: now + CONSTANTS.ADMIN_JWT_EXP_SEC }, c.env.JWT_SECRET, 'HS256')
+  return c.json({ token, user: { id: user.id, name: user.name, team_id: user.team_id } })
+})
+
+app.post('/api/learners/login', async (c) => {
+  const body = await c.req.json()
+  const db = getDb(c.env)
+  const res = await db.execute({ sql: 'SELECT * FROM users WHERE name = ? AND role = "learner"', args: [body.name] })
+  const user = toObj(res)
+  if (!user || !(await pbkdf2Verify(body.password, user.password_hash))) return c.json({ error: 'Unauthorized' }, 401)
+  
+  const now = Math.floor(Date.now() / 1000)
+  const token = await sign({ id: user.id, name: user.name, role: 'learner', iat: now, exp: now + CONSTANTS.LEARNER_JWT_EXP_SEC }, c.env.JWT_SECRET, 'HS256')
+  return c.json({ token, user: { id: user.id, name: user.name } })
 })
 
 export default app

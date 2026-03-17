@@ -22,6 +22,8 @@ const Manager = {
 
   // ─── DASHBOARD ───
   async renderDash() {
+    const statsEl = $$('m-stats'); if(!statsEl) return;
+    statsEl.innerHTML = '<div style="display:flex;justify-content:center;padding:40px;width:100%;"><div class="spinner"></div></div>';
     try {
       const [learners, comps] = await Promise.all([
         managerApi(`/api/learners?team_id=${curManager.team_id}`),
@@ -31,14 +33,20 @@ const Manager = {
       const passed = comps.filter(c => c.passed).length;
       const rate = comps.length ? Math.round(passed/comps.length*100) : 0;
 
-      $$('m-stats').innerHTML = [['Members', learners.length, '👥'],['Month', comps.length, '🏆'],['Pass Rate', rate + '%', '📈'],['Overdue', overdue, '⚠️']].map(([l,v,i])=>`<div class="stat-tile">
+      statsEl.innerHTML = [['Members', learners.length, '👥'],['Month', comps.length, '🏆'],['Pass Rate', rate + '%', '📈'],['Overdue', overdue, '⚠️']].map(([l,v,i])=>`<div class="stat-tile">
         <div style="font-size:24px;">${i}</div>
         <div class="stat-value">${v}</div>
         <div class="stat-label">${l}</div>
       </div>`).join('');
 
-      $$('m-recent').innerHTML = `<h3>Recent Team Activity</h3><div class="table-wrap"><table><thead><tr><th>Learner</th><th>Course</th><th>Score</th><th>Date</th></tr></thead><tbody>${comps.slice(0,5).map(r=>`<tr><td>${esc(r.user_name)}</td><td>${esc(r.course_title)}</td><td>${r.score}%</td><td>${new Date(r.completed_at*1000).toLocaleDateString()}</td></tr>`).join('')}</tbody></table></div>`;
-    } catch(e) { }
+      if (!comps.length) {
+        $$('m-recent').innerHTML = '<div class="card" style="color:var(--ink-4);text-align:center;">No team activity recorded yet.</div>';
+      } else {
+        $$('m-recent').innerHTML = `<h3>Recent Team Activity</h3><div class="table-wrap"><table><thead><tr><th>Learner</th><th>Course</th><th>Score</th><th>Date</th></tr></thead><tbody>${comps.slice(0,5).map(r=>`<tr><td>${esc(r.user_name)}</td><td>${esc(r.course_title)}</td><td>${r.score}%</td><td>${new Date(r.completed_at*1000).toLocaleDateString()}</td></tr>`).join('')}</tbody></table></div>`;
+      }
+    } catch(e) { 
+      statsEl.innerHTML = `<div class="card" style="color:var(--fail);width:100%;">${esc(e.message)}</div>`;
+    }
   },
 
   // ─── COURSES ───

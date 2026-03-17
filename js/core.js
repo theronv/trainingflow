@@ -149,6 +149,20 @@ const App = {
   },
 
   show(id) {
+    // 🔐 RBAC / Access Control
+    if (id === 'screen-admin' && !getToken()) {
+      Toast.err('Unauthorized: Admin access required.');
+      return App.show('screen-login');
+    }
+    if (id === 'screen-manager' && !getManagerToken()) {
+      Toast.err('Unauthorized: Manager access required.');
+      return App.show('screen-manager-login');
+    }
+    if (id === 'screen-course' && !getLearnerToken() && !isDemo) {
+      Toast.err('Please sign in to view courses.');
+      return App.show('screen-landing');
+    }
+
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     const el = $$(id); if(el) el.classList.add('active');
   },

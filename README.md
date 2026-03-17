@@ -1,83 +1,153 @@
-# TrainFlow 🎓
+# TrainFlow
 
-TrainFlow is a modern, lightweight Learning Management System (LMS) designed for professional teams. It enables organizations to create, manage, and deliver training courses with automated AI-assisted content generation, targeted assignments, and verifiable PDF certifications.
+> A modern, lightweight Learning Management System (LMS) for professional teams, enabling AI-assisted course creation, targeted assignments, and verifiable certifications.
 
----
+## What It Does
+TrainFlow is a streamlined Learning Management System (LMS) designed for professional environments where rapid deployment and verifiable compliance are critical. It provides a comprehensive platform for managing the entire training lifecycle, from content ingestion to certification, with a focus on ease of use and modern aesthetics.
 
-## 🏗️ Architecture
+For **learners**, TrainFlow offers a clean, focused interface to access assigned training modules, engage with interactive content, and take quizzes to demonstrate mastery. Upon reaching the required passing threshold, learners can instantly generate and download professional, verifiable PDF certificates.
 
-TrainFlow is built as a **decoupled SPA (Single Page Application)** with a serverless backend:
+For **managers and admins**, the application provides powerful oversight and creation tools. Administrators can leverage the AI-powered content importer to transform markdown documentation into full training courses with generated summaries and quiz questions. Managers can track team compliance through a real-time dashboard, assign specific courses to individuals or groups, and export detailed completion records for audit purposes.
 
--   **Frontend:** Vanilla JavaScript, HTML5, and CSS3. 
-    -   Uses a custom **"Soft UI" Design System** for a premium, corporate aesthetic.
-    -   Modularized structure: `index.html` (DOM), `js/app.js` (Logic), `css/style.css` (Styles).
--   **Backend:** [Cloudflare Workers](https://workers.cloudflare.com/) using the [Hono](https://hono.dev/) framework.
--   **Database:** [Turso](https://turso.tech/) (Edge SQLite/libSQL) for low-latency global data access.
--   **AI Engine:** [Google Gemini 2.5 Flash](https://deepmind.google/technologies/gemini/) for automated course summaries and quiz generation.
+## Live Demo
+[Live Demo](https://trainflow.example.com) (coming soon)
 
----
+![TrainFlow Dashboard Screenshot](./docs/screenshot.png) *You can replace this with a real screenshot of the application's main dashboard.*
 
-## ✨ Key Features
+## Tech Stack
+- **Framework:** Vanilla JavaScript (Frontend) / Hono `v4.7.0` (Edge Worker)
+- **Build Tool:** Wrangler `v3.114.17`
+- **Language:** JavaScript (ES6+)
+- **Backend & DB:** Cloudflare Workers & Turso (using `@libsql/client` `v0.14.0`)
+- **Styling:** CSS3 (Custom "Premium Enterprise" Design System)
+- **Component Library:** Native HTML5 / Custom UI Components
+- **Data Fetching:** Native Fetch API
+- **Routing:** Hono (Backend) / State-based Screen Management (Frontend)
+- **Icons:** Emoji-based System & CSS Graphics
 
-### 👨‍🎓 Learner Experience
--   **Interactive Modules:** Structured reading followed by "Competency Checks" (Quizzes).
--   **Focus Mode:** Distraction-free reading experience with collapsible navigation.
--   **Verifiable Certificates:** Passing a course generates a styled PDF certificate with a unique server-validated `CertID`.
--   **Gamified Feedback:** Staggered animations, haptic quiz feedback (shake/pulse), and celebratory confetti bursts.
--   **Personalized Profiles:** Learners can update their display names and manage their passwords.
+## Architecture
+```mermaid
+graph TD
+    UI[index.html / CSS] --> JS[JS Application Logic / js/]
+    JS --> Worker[Cloudflare Worker / Hono]
+    Worker --> Auth[JWT Auth / PBKDF2]
+    Worker --> DB[(Turso / libSQL)]
+    JS --> Gemini[Google Gemini API]
+    JS --> PDF[jsPDF / html2canvas]
+```
 
-### ⚙️ Manager Experience
--   **Targeted Assignments:** Assign specific courses to learners with optional **Due Dates** and deadlines.
--   **Compliance Tracking:** Real-time dashboard highlighting overdue training and organizational pass rates.
--   **AI Course Importer:** Drop Markdown files to automatically generate module summaries and multiple-choice questions via Gemini.
--   **Course Builder:** Full-featured UI to manually create and edit modules and quizzes.
--   **White-labeling:** Dynamic branding system to customize colors, logos, and pass thresholds.
+TrainFlow utilizes a modern serverless architecture optimized for the edge. The frontend is a high-performance Single Page Application (SPA) built with vanilla JavaScript, which communicates with a Hono-powered API running on Cloudflare Workers. Turso (libSQL) serves as the primary relational database, providing global low-latency data access. Global UI state and screen transitions are managed by a centralized `App` object, while server state is handled through direct API calls and local caching. AI capabilities are integrated directly into the browser, allowing administrators to use their own Gemini API keys for content generation.
 
----
+## Project Structure
+```
+js/           # Core application logic split by role (admin, manager, learner).
+├── core.js   # Main application controller and state management.
+├── auth.js   # JWT handling and authentication logic.
+├── admin.js  # Administrative tools and dashboard logic.
+├── manager.js# Team management and assignment logic.
+├── learner.js# Course consumption and progress tracking.
+├── builder.js# Interactive course creation tools.
+worker/       # Cloudflare Worker (Hono API) and backend configuration.
+├── index.js  # Main API routes, middleware, and DB interaction.
+├── wrangler.toml # Cloudflare Workers deployment configuration.
+css/          # Modular CSS and theme definitions.
+├── style.css # Main design system and layout rules.
+scripts/      # Utility scripts for development and maintenance.
+schema.sql    # Database schema for Turso / libSQL.
+```
 
-## 🚀 Getting Started
+## Key Features
+- **AI Course Importer:** A specialized interface that parses Markdown files and uses the Google Gemini API to automatically generate module summaries and multiple-choice quiz questions.
+- **Verifiable PDF Certificates:** A client-side generation engine using `html2canvas` and `jspdf` that produces high-quality, branded certificates with unique IDs and secure metadata.
+- **Compliance Dashboard:** Real-time data visualization for administrators and managers, providing instant insights into pass rates, enrollment gaps, and recent completions.
+- **Role-Based Access Control:** Secure, tiered access for Admins (global), Managers (team-specific), and Learners, implemented using JWT-signed tokens and secure PBKDF2 password hashing.
 
+## Getting Started
 ### Prerequisites
--   [Node.js](https://nodejs.org/) installed.
--   [Wrangler](https://developers.cloudflare.com/workers/wrangler/install-setup/) CLI for Cloudflare Workers.
--   A [Turso](https://turso.tech/) database instance.
+- Node.js (v18+)
+- Wrangler CLI (`npm install -g wrangler`)
+- Turso CLI (for database management)
 
 ### Installation
+1.  Clone the repository: `git clone ...`
+2.  Install worker dependencies: `cd worker && npm install`
+3.  Deploy the database schema: `turso db shell <your-db-name> < schema.sql`
 
-1.  **Clone the repository** and navigate to the root.
-2.  **Configure the Backend:**
-    ```bash
-    cd worker
-    npm install
-    # Create .dev.vars for local secrets:
-    # TURSO_URL=libsql://your-db.turso.io
-    # TURSO_TOKEN=your_token
-    # JWT_SECRET=your_secret
-    # GEMINI_API_KEY=your_key
-    ```
-3.  **Initialize the Database:**
-    Run the contents of `schema.sql` against your Turso instance using the Turso CLI:
-    ```bash
-    turso db shell your-db-name < schema.sql
-    ```
-4.  **Run Locally:**
-    ```bash
-    # In the worker directory:
-    npm run dev
-    
-    # In the root directory (to serve the frontend):
-    npx serve .
-    ```
+### Environment Variables
+To enable full functionality, create a `.env` file (for local dev) or set Wrangler secrets for the worker.
 
----
+```
+# Cloudflare Worker Secrets
+TURSO_URL="libsql://your-db-name.turso.io"
+TURSO_TOKEN="..."
+JWT_SECRET="..."
+ADMIN_PASSWORD_HASH="..." # Generate via scripts/hash-password.mjs
 
-## 🛡️ Security & Polish
--   **JWT Authentication:** Secure role-based access for Learners and Admins.
--   **Hardened Storage:** Robust `sessionStorage` wrappers with `try/catch` fallbacks.
--   **Robustness:** Fixed "O'Brien Bug" (properly escaped single-quotes in UI attributes).
--   **Detailed Error Reporting:** Integrated database error detailing for easier maintenance.
+# Frontend (Session Storage)
+# GEMINI_API_KEY is provided via the UI during AI Import
+```
 
----
+### Running Locally
+1.  Start the local worker: `cd worker && npm run dev`
+2.  Serve the root directory: `npx serve .` (or any static file server)
+3.  Open your browser to `http://localhost:3000` (or your static server port).
+4.  The worker will be available at `http://localhost:8787`.
 
-## 🧪 Demo Mode
-The application includes a **Demo Mode** (offline) that bypasses the backend and uses mock data. This is ideal for testing UI/UX improvements or showing the platform to stakeholders without a database connection. Click **"Try Demo Mode"** on the landing page to activate.
+## Database Schema
+The system uses a libSQL (SQLite-compatible) schema managed via Turso.
+
+**Table: `users`**
+| Column | Type | Description |
+|---|---|---|
+| `id` | `TEXT` | Primary Key (UID). |
+| `name` | `TEXT` | Display name (Unique). |
+| `role` | `TEXT` | Role: `manager` or `learner`. |
+| `team_id` | `INTEGER` | FK to `teams`. |
+
+**Table: `courses`**
+| Column | Type | Description |
+|---|---|---|
+| `id` | `TEXT` | Primary Key (UID). |
+| `title` | `TEXT` | Course title. |
+| `icon` | `TEXT` | Emoji icon representation. |
+| `description`| `TEXT` | Course summary for learners. |
+
+**Table: `completions`**
+| Column | Type | Description |
+|---|---|---|
+| `id` | `TEXT` | Primary Key (UID). |
+| `course_id` | `TEXT` | FK to `courses`. |
+| `score` | `INTEGER` | Final quiz score percentage. |
+| `cert_id` | `TEXT` | Unique verifiable certificate ID. |
+
+## Edge Functions
+The backend logic is consolidated into a Hono application running on Cloudflare Workers (Edge).
+
+| Route | Method | Purpose | Auth Required? |
+|---|---|---|---|
+| `/api/auth/login` | `POST` | Authenticates users and returns a JWT. | No |
+| `/api/admin/stats` | `GET` | Aggregates global or team-level training statistics. | Yes (Admin/Manager) |
+| `/api/admin/teams` | `GET` | Retrieves all organizational units and member counts. | Yes (Admin) |
+| `/api/learners` | `GET` | Fetches filtered learner lists and progress data. | Yes (Manager) |
+
+## Design System
+TrainFlow features a "Premium Enterprise" design system built on Vanilla CSS. It uses a robust set of CSS variables (`--brand-1`, `--ink-1`, etc.) defined in `css/style.css` to manage typography, spacing, and elevation. The system is designed for high accessibility and responsiveness, utilizing CSS Grid and Flexbox for complex dashboard layouts without the overhead of external CSS frameworks.
+
+## Configuration
+- **`wrangler.toml`:** Configures the Cloudflare Worker environment, including compatibility dates and service bindings.
+- **`js/core.js`:** Contains the global `App` configuration, including API endpoints and UI state defaults.
+- **`css/style.css`:** The source of truth for all branding, including the color palette and typography defined in the `:root` selector.
+
+## Deployment
+1.  **Database:** Push the schema to Turso using the Turso CLI.
+2.  **Backend:** Deploy the Cloudflare Worker using `wrangler deploy` from the `worker/` directory.
+3.  **Frontend:** The root directory contains static files (`index.html`, `js/`, `css/`). These can be deployed to Cloudflare Pages, GitHub Pages, or any static hosting provider.
+4.  **Secrets:** Ensure `JWT_SECRET` and `ADMIN_PASSWORD_HASH` are set in the Cloudflare Dashboard.
+
+## Known Limitations
+- **AI Importer:** Currently optimized for Markdown input; direct PDF or Word ingestion is not yet supported.
+- **Storage:** PDF certificates are generated on-demand and not stored as blobs; only completion metadata and unique IDs are persisted.
+- **Real-time:** The application uses a polling/manual refresh model for dashboard updates rather than WebSockets.
+
+## Contributing
+Contributions are welcome. Please ensure that all new features include appropriate error handling and follow the established modular JS pattern. Code should be formatted according to the project's existing style (2-space indentation, clear commenting). For major changes, please open an issue first to discuss the proposed architecture.
