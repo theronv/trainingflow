@@ -20,10 +20,12 @@ const AppProxy = {
 
   // Builder & Courses
   openBuilder: (id) => Builder.openBuilder(id),
+  closeBuilder: () => Builder.closeBuilder(),
   addMod: () => Builder.addMod(),
   saveCourse: () => Builder.saveCourse(),
   csvImportOpen: () => Builder.csvImportOpen(),
   openAssign: (id, t) => Builder.openAssign(id, t),
+  closeAssign: () => $$('assign-overlay').classList.add('hidden'),
   
   // Importer
   handleDrop: (e) => Admin.handleDrop(e),
@@ -32,6 +34,40 @@ const AppProxy = {
   startGeneration: () => Admin.startGeneration(),
   saveAiCourse: () => Admin.saveAiCourse(),
   goPhase: (n) => Admin.goPhase(n),
+
+  // Admin Extra
+  renderLearners: () => Admin.renderLearners(),
+  filterLearners: (q) => Admin.filterLearners(q),
+  openAddLearner: () => Admin.openAddLearner(),
+  closeAddLearner: () => Admin.closeAddLearner(),
+  submitAddLearner: () => Admin.submitAddLearner(),
+  openCreateTeam: () => Admin.openCreateTeam(),
+  renderComps: (cid) => Admin.renderComps(cid),
+  saveBrand: () => Admin.saveBrand(),
+  clearRecords: () => Admin.clearRecords(),
+  openResetPw: (id, n) => Admin.openResetPw(id, n),
+  closeResetPw: () => Admin.closeResetPw(),
+  submitResetPw: () => Admin.submitResetPw(),
+  exportCSV: (s) => Admin.exportCSV(s),
+
+  // Manager Extra
+  toggleInvites: () => {
+    const s = $$('invites-section'); if(!s) return;
+    s.classList.toggle('hidden');
+    $$('invites-toggle-icon').textContent = s.classList.contains('hidden') ? '▾' : '▴';
+  },
+
+  // Learner Extra
+  closeCert: () => $$('cert-overlay').classList.add('hidden'),
+  downloadCertPDF: () => {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('l', 'mm', 'a4');
+    html2canvas($$('cert-sheet'), { scale: 2 }).then(canvas => {
+      const img = canvas.toDataURL('image/png');
+      doc.addImage(img, 'PNG', 0, 0, 297, 210);
+      doc.save('certificate.pdf');
+    });
+  },
   
   // Global
   init: async () => {
