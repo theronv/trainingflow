@@ -69,19 +69,58 @@ const Learner = {
 
   // ─── QUIZ ENGINE ───
   async startCourse(cid) {
-    const res = await api(`/api/courses/${cid}`);
-    curCourse = normCourse(res);
-    App.show('screen-course');
-    Learner.loadMod(0);
+    try {
+      const res = await api(`/api/courses/${cid}`);
+      curCourse = normCourse(res);
+      quizSt = {};
+      App.show('screen-course');
+      // Populate module sidebar
+      $$('mod-nav-list').innerHTML = curCourse.mods.map((m, i) => `
+        <div class="mod-item" id="mod-nav-${i}" onclick="Learner.loadMod(${i})">
+          <span class="mod-bullet" id="mod-bullet-${i}">${i + 1}</span>
+          <span>${esc(m.title)}</span>
+        </div>`).join('');
+      $$('ch-meta').textContent = esc(curCourse.title);
+      Learner.loadMod(0);
+    } catch(e) { Toast.err(e.message); }
   },
   loadMod(mi) {
-    curModIdx = mi; const mod = curCourse.mods[mi];
-    $$('mod-main').innerHTML = `<h2>${esc(mod.title)}</h2><div>${mod.content}</div><button class="btn btn-primary btn-lg" style="margin-top:24px;" onclick="Learner.startQuiz(${mi})">Start Competency Check</button>`;
+    curModIdx = mi;
+    const mod = curCourse.mods[mi];
+    // Update sidebar active state
+    curCourse.mods.forEach((_, i) => {
+      const item = $$(`mod-nav-${i}`);
+      if(item) item.classList.toggle('active', i === mi);
+    });
+    // Update progress bar
+    const pct = Math.round((mi / curCourse.mods.length) * 100);
+    if($$('ch-prog')) $$('ch-prog').style.width = pct + '%';
+    if($$('ch-label')) $$('ch-label').textContent = `Module ${mi + 1} of ${curCourse.mods.length}`;
+    const hasQuiz = mod.questions && mod.questions.length > 0;
+    $$('mod-main').innerHTML = `<div class="module-prose">
+      <h2>${esc(mod.title)}</h2>
+      <div>${mod.content}</div>
+      ${hasQuiz ? `<button class="btn btn-primary btn-lg" style="margin-top:var(--space-8);" onclick="Learner.startQuiz(${mi})">Start Competency Check →</button>` : `<button class="btn btn-primary btn-lg" style="margin-top:var(--space-8);" onclick="Learner.finishMod(${mi})">Continue →</button>`}
+    </div>`;
   },
   startQuiz(mi) { quizSt[mi] = { ans: [] }; Learner.renderQ(mi, 0); },
   renderQ(mi, qi) {
     const q = curCourse.mods[mi].questions[qi];
-    $$('mod-main').innerHTML = `<h3>Q${qi+1}</h3><p>${esc(q.q)}</p><div style="display:flex;flex-direction:column;gap:8px;">${q.opts.map((o,i)=>`<button class="btn btn-outline" onclick="Learner.answer(${mi},${qi},${i})">${esc(o)}</button>`).join('')}</div>`;
+    const total = curCourse.mods[mi].questions.length;
+    const letters = ['A','B','C','D'];
+    $$('mod-main').innerHTML = `<div class="quiz-wrap">
+      <div class="quiz-header">
+        <div class="quiz-step">Question ${qi + 1} of ${total}</div>
+        <div class="quiz-q">${esc(q.q)}</div>
+      </div>
+      <div class="quiz-options">
+        ${q.opts.filter(o => o).map((o, i) => `
+          <button class="quiz-opt" onclick="Learner.answer(${mi},${qi},${i})">
+            <span class="opt-letter">${letters[i]}</span>
+            ${esc(o)}
+          </button>`).join('')}
+      </div>
+    </div>`;
   },
   answer(mi, qi, sel) {
     const q = curCourse.mods[mi].questions[qi];
@@ -91,7 +130,12 @@ const Learner = {
     else Learner.finishMod(mi);
   },
   async finishMod(mi) {
-    if(mi+1 < curCourse.mods.length) Learner.loadMod(mi+1);
+    // Mark module done in sidebar
+    const item = $$(`mod-nav-${mi}`);
+    const bullet = $$(`mod-bullet-${mi}`);
+    if(item)   item.classList.add('done-pass');
+    if(bullet) bullet.textContent = '✓';
+    if(mi + 1 < curCourse.mods.length) Learner.loadMod(mi + 1);
     else Learner.completeCourse();
   },
   async completeCourse() {
