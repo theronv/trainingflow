@@ -2,6 +2,23 @@
 //  TRAINFLOW — Unified Application Proxy
 // ══════════════════════════════════════════════════════════
 
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1,3),16);
+  const g = parseInt(hex.slice(3,5),16);
+  const b = parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function darken(hex, percent) {
+  let r = parseInt(hex.slice(1,3),16);
+  let g = parseInt(hex.slice(3,5),16);
+  let b = parseInt(hex.slice(5,7),16);
+  r = Math.max(0, Math.floor(r * (1 - percent/100)));
+  g = Math.max(0, Math.floor(g * (1 - percent/100)));
+  b = Math.max(0, Math.floor(b * (1 - percent/100)));
+  return `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`;
+}
+
 const AppProxy = {
   // Navigation
   aNav: (p) => Admin.nav(p),
@@ -88,7 +105,15 @@ const AppProxy = {
       Toast.ok('Admin password updated.');
     } catch(e) { Toast.err(e.message); }
   },
-  previewBrand: () => applyBrand(),
+  previewBrand: () => {
+    const hex = $$('br-c1')?.value;
+    if (!hex) return;
+    document.documentElement.style.setProperty('--brand', hex);
+    document.documentElement.style.setProperty('--brand-dark', darken(hex, 15));
+    document.documentElement.style.setProperty('--brand-glow', hexToRgba(hex, 0.15));
+    document.documentElement.style.setProperty('--shadow-brand', `0 0 0 3px ${hexToRgba(hex, 0.2)}`);
+    applyBrand();
+  },
   resetBrand: () => { brandCache = { name: CONFIG.DEFAULT_BRAND_NAME, c1: CONFIG.DEFAULT_C1, c2: CONFIG.DEFAULT_C2, pass: CONFIG.DEFAULT_PASS }; applyBrand(); Admin.renderBranding(); },
   openTagsModal: () => { $$('tags-modal').classList.remove('hidden'); },
   closeTagsModal: () => $$('tags-modal').classList.add('hidden'),
@@ -194,6 +219,13 @@ const AppProxy = {
 
   // Global
   init: async () => {
+    const savedBrand = localStorage.getItem('trainflow_brand_color');
+    if (savedBrand) {
+      document.documentElement.style.setProperty('--brand', savedBrand);
+      document.documentElement.style.setProperty('--brand-dark', darken(savedBrand, 15));
+      document.documentElement.style.setProperty('--brand-glow', hexToRgba(savedBrand, 0.15));
+      document.documentElement.style.setProperty('--shadow-brand', `0 0 0 3px ${hexToRgba(savedBrand, 0.2)}`);
+    }
     await App.baseInit();
     if (getToken()) Admin.init();
     else if (getManagerToken()) Manager.init();

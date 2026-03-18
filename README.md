@@ -19,7 +19,7 @@ For **managers and admins**, the application provides powerful oversight and cre
 - **Build Tool:** Wrangler `v3.114.17`
 - **Language:** JavaScript (ES6+)
 - **Backend & DB:** Cloudflare Workers & Turso (using `@libsql/client` `v0.14.0`)
-- **Styling:** CSS3 (Custom "Premium Enterprise" Design System)
+- **CSS:** Custom design token system with runtime-brandable CSS variables (Dark Enterprise SaaS theme)
 - **Component Library:** Native HTML5 / Custom UI Components
 - **Data Fetching:** Native Fetch API
 - **Routing:** Hono (Backend) / State-based Screen Management (Frontend)
@@ -130,8 +130,37 @@ The backend logic is consolidated into a Hono application running on Cloudflare 
 | `/api/admin/teams` | `GET` | Retrieves all organizational units and member counts. | Yes (Admin) |
 | `/api/learners` | `GET` | Fetches filtered learner lists and progress data. | Yes (Manager) |
 
-## Design System
-TrainFlow features a "Premium Enterprise" design system built on Vanilla CSS. It uses a robust set of CSS variables (`--brand-1`, `--ink-1`, etc.) defined in `css/style.css` to manage typography, spacing, and elevation. The system is designed for high accessibility and responsiveness, utilizing CSS Grid and Flexbox for complex dashboard layouts without the overhead of external CSS frameworks.
+## 🎨 Design System
+
+**Theme:** Dark enterprise SaaS. Inspired by Linear, Vercel, and Rippling.
+
+**Fonts:**
+- UI & Body: Inter (300, 400, 500, 600) via Google Fonts
+- Monospace / Data: JetBrains Mono (400, 500) via Google Fonts
+
+**Design Tokens (css/style.css :root):**
+- Fixed structural tokens: `--bg`, `--bg-2`, `--surface`, `--surface-2`, `--border`, `--border-2`
+- Text tokens: `--ink-1` through `--ink-4`
+- Status tokens: `--success`, `--warning`, `--danger`
+- **Brandable tokens** (controlled via Admin → Branding panel, update entire UI live):
+  - `--brand` — primary accent color (buttons, active states, highlights)
+  - `--brand-dark` — computed darker variant (hover states)
+  - `--brand-glow` — computed ambient fill at 15% opacity
+  - `--shadow-brand` — computed focus ring at 20% opacity
+
+**Branding:**
+The Admin branding panel controls `--brand`. Changes are applied instantly via
+`document.documentElement.style.setProperty()` and persisted to:
+- `localStorage('trainflow_brand_color')` — survives page reload
+- Worker backend via `PUT /api/brand`
+
+On app load, the saved brand color is restored before first render.
+
+**Component patterns:**
+- Cards: `var(--surface)` background, 1px `var(--border)` border, `var(--radius-lg)`
+- Buttons: `.btn-primary` uses `var(--brand)`, `.btn-outline` uses `var(--border-2)`, etc.
+- Tables: monospace headers, `var(--border)` row dividers, hover highlight only
+- Badges/Chips: font-mono, uppercase, 11px, colored background at 10% opacity
 
 ## Configuration
 - **`wrangler.toml`:** Configures the Cloudflare Worker environment, including compatibility dates and service bindings.

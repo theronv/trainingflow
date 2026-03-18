@@ -329,6 +329,8 @@ const Admin = {
     try {
       const body = { org_name: $$('br-name').value, pass_threshold: parseInt($$('br-pass').value) };
       await api('/api/brand', { method:'PUT', body:JSON.stringify(body) });
+      const hex = $$('br-c1')?.value;
+      if (hex) localStorage.setItem('trainflow_brand_color', hex);
       Toast.ok('Brand saved.');
     } catch(e) { Toast.err(e.message); }
   },
