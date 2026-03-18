@@ -326,14 +326,20 @@ const Learner = {
     confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
     
     // Fully populate certificate
-    $$('c-org').textContent    = brandCache.name || 'TrainFlow';
-    $$('c-name').textContent   = curLearner.name;
-    $$('c-course').textContent = curCourse.title;
+    const b = typeof brandCache !== 'undefined' ? brandCache : { name: 'TrainFlow' };
+    const l = typeof curLearner !== 'undefined' && curLearner ? curLearner : { name: 'Learner' };
+    const c = typeof curCourse !== 'undefined' && curCourse ? curCourse : { title: 'Course' };
+
+    $$('c-org').textContent    = b.name || 'TrainFlow';
+    $$('c-name').textContent   = l.name;
+    $$('c-course').textContent = c.title;
     $$('c-date').textContent   = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
     $$('c-score').textContent  = score + '%';
     $$('c-id').textContent     = res.cert_id;
     
-    $$('cert-overlay').classList.remove('hidden');
+    setTimeout(() => {
+      $$('cert-overlay').classList.remove('hidden');
+    }, 100);
   },
 
   viewCert(certId) { Toast.info('Generating PDF for ' + certId); }
