@@ -766,6 +766,7 @@ app.put('/api/courses/:id', requireAdmin, async (c) => {
   const cid = c.req.param('id')
   const body = await c.req.json()
   const db = getDb(c.env)
+  try {
   await setupSections(db)
   // Update course metadata
   await db.execute({
@@ -789,15 +790,32 @@ app.put('/api/courses/:id', requireAdmin, async (c) => {
       if (m.questions) {
         for (let j = 0; j < m.questions.length; j++) {
           const q = m.questions[j]
+          // Handle both raw DB format (question/option_a/correct_index)
+          // and normalized frontend format (q/opts/correct) from normCourse()
+          const opts = q.opts || q.options || []
           await db.execute({
             sql: 'INSERT INTO questions (id, module_id, question, option_a, option_b, option_c, option_d, correct_index, explanation, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            args: [uid(), mid, q.question, q.options?.[0]||q.option_a||'', q.options?.[1]||q.option_b||'', q.options?.[2]||q.option_c||'', q.options?.[3]||q.option_d||'', q.correct_index ?? 0, q.explanation || '', j]
+            args: [
+              uid(), mid,
+              q.question || q.q || '',
+              opts[0] || q.option_a || '',
+              opts[1] || q.option_b || '',
+              opts[2] || q.option_c || '',
+              opts[3] || q.option_d || '',
+              q.correct_index ?? q.correct ?? 0,
+              q.explanation || q.exp || '',
+              j
+            ]
           })
         }
       }
     }
   }
   return c.json({ ok: true })
+  } catch (e) {
+    console.error('PUT /api/courses/:id error:', e.message)
+    return c.json({ error: e.message || 'Failed to save course' }, 500)
+  }
 })
 
 app.post('/api/assignments', requireManager, async (c) => {
