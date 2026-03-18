@@ -108,6 +108,14 @@ const AppProxy = {
     } catch (e) { Toast.err(e.message); }
   },
 
+  // Learner CSV import
+  openCsvImport: () => Manager.openCsvImport(),
+  closeCsvImport: () => Manager.closeCsvImport(),
+  downloadLearnerTemplate: () => Manager.downloadLearnerTemplate(),
+  lCsvDrop: (e) => Manager.lCsvDrop(e),
+  lCsvSelected: (e) => Manager.lCsvSelected(e),
+  submitCsvImport: () => Manager.submitCsvImport(),
+
   // Navigation & screen switching
   exitCourse: () => { App.show('screen-learner'); if(curLearner) Learner.nav('courses'); },
   showLearner: () => { if(curLearner) { App.show('screen-learner'); Learner.nav('courses'); } else Toast.info('No active learner session.'); },

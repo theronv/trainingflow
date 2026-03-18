@@ -189,7 +189,10 @@
             <div class="page-eyebrow">Management</div>
             <div class="page-title">My Team</div>
           </div>
-          <button class="btn btn-primary" onclick="App.openAddLearner()">+ Add Learner</button>
+          <div style="display:flex;gap:var(--space-2);">
+            <button class="btn btn-outline" onclick="App.openCsvImport()">↑ Import CSV</button>
+            <button class="btn btn-primary" onclick="App.openAddLearner()">+ Add Learner</button>
+          </div>
         </div>
         <div class="table-wrap">
           <table><thead><tr><th>Name</th><th>Assignments</th><th>Completed</th><th>Pass Rate</th><th>Actions</th></tr></thead>
@@ -903,6 +906,37 @@
     <div class="modal-foot">
       <button class="btn btn-ghost" onclick="App.csvClose()">Cancel</button>
       <button class="btn btn-primary" id="csv-confirm" disabled onclick="App.csvConfirm()">Add to Course</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ MODAL: LEARNER CSV IMPORT ══════════ -->
+<div class="overlay hidden" id="learner-csv-overlay">
+  <div class="modal" style="max-width:600px;">
+    <div class="modal-head">
+      <div class="modal-title">Import Learners from CSV</div>
+      <div class="modal-sub" id="lcsv-sub">Upload a CSV file to add multiple learners at once.</div>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;gap:var(--space-3);margin-bottom:var(--space-5);">
+        <button class="btn btn-outline btn-sm" onclick="App.downloadLearnerTemplate()">↓ Download Template</button>
+        <span style="font-size:var(--text-sm);color:var(--ink-4);align-self:center;">Columns: <code>name, password</code></span>
+      </div>
+      <div class="upload-zone" id="lcsv-drop-zone"
+        onclick="document.getElementById('lcsv-file-input').click()"
+        ondragover="event.preventDefault();this.classList.add('drag-active')"
+        ondragleave="this.classList.remove('drag-active')"
+        ondrop="App.lCsvDrop(event)">
+        <div class="upload-icon">⬆</div>
+        <div class="upload-text">Drop CSV here or click to browse</div>
+        <div class="upload-hint">Supports .csv</div>
+      </div>
+      <input type="file" id="lcsv-file-input" accept=".csv" class="hidden" onchange="App.lCsvSelected(event)">
+      <div id="lcsv-preview" class="hidden" style="margin-top:var(--space-5);"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="App.closeCsvImport()">Cancel</button>
+      <button class="btn btn-primary" id="lcsv-import-btn" disabled onclick="App.submitCsvImport()">Import Learners</button>
     </div>
   </div>
 </div>

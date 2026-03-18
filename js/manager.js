@@ -105,6 +105,126 @@ const Manager = {
     $$('assign-overlay').classList.add('hidden');
   },
 
+  // ─── CSV IMPORT ───
+  _csvRows: null,
+
+  openCsvImport() {
+    Manager._csvRows = null;
+    $$('lcsv-preview').classList.add('hidden');
+    $$('lcsv-preview').innerHTML = '';
+    $$('lcsv-import-btn').disabled = true;
+    $$('lcsv-import-btn').textContent = 'Import Learners';
+    $$('lcsv-sub').textContent = 'Upload a CSV file to add multiple learners at once.';
+    $$('lcsv-file-input').value = '';
+    $$('learner-csv-overlay').classList.remove('hidden');
+  },
+
+  closeCsvImport() {
+    $$('learner-csv-overlay').classList.add('hidden');
+  },
+
+  downloadLearnerTemplate() {
+    const csv = 'name,password\nJane Smith,welcome123\nJohn Doe,securepass';
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+    a.download = 'trainflow-learners-template.csv';
+    a.click();
+  },
+
+  lCsvDrop(e) {
+    e.preventDefault();
+    $$('lcsv-drop-zone').classList.remove('drag-active');
+    const f = e.dataTransfer.files[0];
+    if(f) Manager._handleCsvFile(f);
+  },
+
+  lCsvSelected(e) {
+    const f = e.target.files[0];
+    if(f) Manager._handleCsvFile(f);
+    e.target.value = '';
+  },
+
+  _parseCsv(text) {
+    const lines = text.trim().split('\n').filter(l => l.trim());
+    if(lines.length < 2) return [];
+    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, '').toLowerCase());
+    return lines.slice(1).map(line => {
+      const vals = [];
+      let cur = '', inQ = false;
+      for(const ch of line + ',') {
+        if(ch === '"') { inQ = !inQ; }
+        else if(ch === ',' && !inQ) { vals.push(cur.trim().replace(/^"|"$/g, '')); cur = ''; }
+        else { cur += ch; }
+      }
+      return Object.fromEntries(headers.map((h, i) => [h, (vals[i] || '').trim()]));
+    }).filter(r => r.name || r.password);
+  },
+
+  _handleCsvFile(file) {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const rows = Manager._parseCsv(ev.target.result);
+      if(!rows.length) { Toast.err('No data rows found. Check the file format.'); return; }
+      Manager._csvRows = rows;
+
+      // Validate and build preview
+      const valid = [], invalid = [];
+      rows.forEach(r => {
+        if(!r.name) invalid.push({ ...r, _err: 'Missing name' });
+        else if(!r.password || r.password.length < 8) invalid.push({ ...r, _err: 'Password missing or < 8 chars' });
+        else valid.push(r);
+      });
+
+      const previewEl = $$('lcsv-preview');
+      previewEl.classList.remove('hidden');
+      previewEl.innerHTML = `
+        <div style="margin-bottom:var(--space-3);font-size:var(--text-sm);">
+          <span class="chip chip-green">${valid.length} valid</span>
+          ${invalid.length ? `<span class="chip chip-red" style="margin-left:4px;">${invalid.length} error${invalid.length > 1 ? 's' : ''}</span>` : ''}
+        </div>
+        <div class="table-wrap" style="max-height:260px;overflow-y:auto;">
+          <table>
+            <thead><tr><th>Name</th><th>Password</th><th>Status</th></tr></thead>
+            <tbody>
+              ${rows.map(r => {
+                const err = !r.name ? 'Missing name' : (!r.password || r.password.length < 8) ? 'Password < 8 chars' : null;
+                return `<tr>
+                  <td>${esc(r.name || '—')}</td>
+                  <td style="color:var(--ink-4);">${r.password ? '••••••••' : '—'}</td>
+                  <td>${err ? `<span class="chip chip-red" style="font-size:9px;">${esc(err)}</span>` : '<span class="chip chip-green" style="font-size:9px;">✓ OK</span>'}</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>`;
+
+      $$('lcsv-import-btn').disabled = valid.length === 0;
+      $$('lcsv-import-btn').textContent = valid.length ? `Import ${valid.length} Learner${valid.length > 1 ? 's' : ''}` : 'Import Learners';
+      $$('lcsv-sub').textContent = `${rows.length} row${rows.length > 1 ? 's' : ''} parsed from "${file.name}"`;
+    };
+    reader.readAsText(file);
+  },
+
+  async submitCsvImport() {
+    const validRows = (Manager._csvRows || []).filter(r => r.name && r.password && r.password.length >= 8);
+    if(!validRows.length) return;
+    const btn = $$('lcsv-import-btn');
+    btn.disabled = true; btn.textContent = 'Importing…';
+    try {
+      const res = await managerApi('/api/learners/bulk', {
+        method: 'POST',
+        body: JSON.stringify({ learners: validRows, team_id: curManager.team_id })
+      });
+      Manager.closeCsvImport();
+      Toast.ok(`${res.created} learner${res.created !== 1 ? 's' : ''} imported${res.errors.length ? `, ${res.errors.length} skipped` : ''}.`);
+      Manager.renderTeam();
+    } catch(e) {
+      Toast.err(e.message);
+      btn.disabled = false;
+      btn.textContent = `Import ${validRows.length} Learners`;
+    }
+  },
+
   // ─── COMPLETIONS ───
   async renderComps() {
     const res = await managerApi('/api/admin/completions');

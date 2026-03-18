@@ -282,6 +282,30 @@ app.put('/api/learners/:id/password', requireAdmin, async (c) => {
   return c.json({ ok: true })
 })
 
+app.post('/api/learners/bulk', requireManager, async (c) => {
+  const user = c.get('user')
+  const body = await c.req.json()
+  const teamId = user.scopedToTeam || body.team_id || null
+  const db = getDb(c.env)
+  const created = [], errors = []
+
+  for (const row of (body.learners || [])) {
+    const name = (row.name || '').trim()
+    const password = row.password || ''
+    if (!name || !password) { errors.push({ name: name || '(blank)', error: 'Name and password are required' }); continue }
+    if (password.length < 8)  { errors.push({ name, error: 'Password must be at least 8 characters' }); continue }
+    try {
+      const hash = await pbkdf2Hash(password)
+      const id = uid()
+      await db.execute({ sql: 'INSERT INTO users (id, name, password_hash, role, team_id) VALUES (?, ?, ?, ?, ?)', args: [id, name, hash, 'learner', teamId] })
+      created.push({ id, name })
+    } catch(e) {
+      errors.push({ name, error: e.message.includes('UNIQUE') ? 'Name already exists' : e.message })
+    }
+  }
+  return c.json({ created: created.length, errors }, 201)
+})
+
 app.post('/api/learners', requireManager, async (c) => {
   const body = await c.req.json()
   if (!body.name || !body.password) return c.json({ error: 'Name and password are required' }, 400)
