@@ -818,6 +818,21 @@ app.put('/api/courses/:id', requireAdmin, async (c) => {
   }
 })
 
+app.delete('/api/courses/:id', requireAdmin, async (c) => {
+  const db = getDb(c.env)
+  const cid = c.req.param('id')
+  const mods = await db.execute({ sql: 'SELECT id FROM modules WHERE course_id = ?', args: [cid] })
+  for (const mod of mods.rows) {
+    await db.execute({ sql: 'DELETE FROM questions WHERE module_id = ?', args: [mod.id] })
+  }
+  await db.execute({ sql: 'DELETE FROM modules WHERE course_id = ?', args: [cid] })
+  await db.execute({ sql: 'DELETE FROM assignments WHERE course_id = ?', args: [cid] })
+  await db.execute({ sql: 'DELETE FROM course_progress WHERE course_id = ?', args: [cid] })
+  await db.execute({ sql: 'DELETE FROM completions WHERE course_id = ?', args: [cid] })
+  await db.execute({ sql: 'DELETE FROM courses WHERE id = ?', args: [cid] })
+  return c.json({ ok: true })
+})
+
 app.post('/api/assignments', requireManager, async (c) => {
   const body = await c.req.json()
   const db = getDb(c.env)

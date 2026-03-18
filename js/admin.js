@@ -431,6 +431,7 @@ const Admin = {
       <div style="display:flex;gap:4px;margin-top:12px;">
         <button class="btn btn-outline btn-sm" onclick="App.openBuilder('${c.id}')">Edit</button>
         <button class="btn btn-primary btn-sm w-full" onclick="App.openAssign('${c.id}','${esc(c.title)}')">👤 Assign</button>
+        <button class="btn btn-outline btn-sm" style="color:var(--fail);border-color:var(--fail);" onclick="Admin.deleteCourse('${c.id}','${esc(c.title)}')">Delete</button>
       </div>
     </div>`;
   },
@@ -438,6 +439,14 @@ const Admin = {
   async setCourseSection(courseId, sectionId) {
     try {
       await api(`/api/courses/${courseId}`, { method:'PATCH', body:JSON.stringify({ section_id: sectionId || null }) });
+      Admin.renderCourses();
+    } catch(e) { Toast.err(e.message); }
+  },
+
+  async deleteCourse(courseId, title) {
+    if (!confirm(`Delete "${title}"? This will remove all modules, questions, assignments, and completion records for this course.`)) return;
+    try {
+      await api(`/api/courses/${courseId}`, { method:'DELETE' });
       Admin.renderCourses();
     } catch(e) { Toast.err(e.message); }
   },
