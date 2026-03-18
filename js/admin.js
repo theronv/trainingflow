@@ -471,82 +471,71 @@ const Admin = {
 
   async startGeneration() {
     if (Admin.isGenerating) return;
-    const apiKey = prompt('Enter Google Gemini API Key:');
-    if (!apiKey) return Toast.err('API Key required.');
-    
+    const claudeKey = $$('claude-api-key')?.value.trim();
+    const geminiKey = $$('gemini-api-key')?.value.trim();
+    if (!claudeKey && !geminiKey) return Toast.err('Enter a Claude or Gemini API key in the AI Settings card.');
+
     Admin.isGenerating = true;
+    if($$('gen-pass-label')) $$('gen-pass-label').textContent = 'Generating…';
     Admin.goPhase(3);
+
+    const qCount   = parseInt($$('q-per-mod')?.value   || '5');
+    const difficulty = $$('q-difficulty')?.value || 'applied';
+    const focus      = $$('q-focus')?.value      || 'general';
     const total = Admin.parsedModules.length;
+
     if($$('gen-progress-label')) $$('gen-progress-label').textContent = `0 of ${total}`;
     if($$('gen-prog-bar')) $$('gen-prog-bar').style.width = '0%';
     const listEl = $$('gen-module-list'); if(!listEl) return;
     listEl.innerHTML = Admin.parsedModules.map((m, i) => `
-      <div id="genrow-${i}" style="padding:8px 0;border-bottom:1px solid var(--rule-2);">
+      <div style="padding:8px 0;border-bottom:1px solid var(--rule-2);">
         <div style="display:flex;align-items:center;gap:12px;">
-          <div id="gendot-${i}" class="gen-dot" style="background:var(--ink-4);width:8px;height:8px;border-radius:50%;"></div>
+          <div id="gendot-${i}" style="background:var(--ink-4);width:8px;height:8px;border-radius:50%;flex-shrink:0;"></div>
           <span style="font-weight:500;">${esc(m.title)}</span>
-          <span id="genstatus-${i}" style="font-size:11px;color:var(--ink-4);margin-left:auto;">Waiting...</span>
+          <span id="genstatus-${i}" style="font-size:11px;color:var(--ink-4);margin-left:auto;">Waiting…</span>
         </div>
       </div>`).join('');
 
     const generatedModules = [];
     for (let i = 0; i < total; i++) {
       const mod = Admin.parsedModules[i];
-      const dot = $$(`gendot-${i}`);
+      const dot    = $$(`gendot-${i}`);
       const status = $$(`genstatus-${i}`);
       if(dot) dot.style.background = 'var(--brand-1)';
-      if(status) status.textContent = 'Generating...';
-      
+      if(status) status.textContent = 'Generating…';
       try {
-        const res = await Admin.callGemini(mod, apiKey);
+        const res = await api('/api/ai/generate', {
+          method: 'POST',
+          body: JSON.stringify({
+            title: mod.title, content: mod.content,
+            q_count: qCount, difficulty, focus,
+            claude_key: claudeKey || undefined,
+            gemini_key: geminiKey || undefined
+          })
+        });
         generatedModules.push({ ...mod, ...res });
         if(dot) dot.style.background = 'var(--pass)';
-        if(status) status.textContent = '✓ Ready';
-      } catch (err) {
-        console.error(err);
+        if(status) status.textContent = `✓ ${res._provider || 'AI'} · ${res.questions?.length || 0}q`;
+      } catch(err) {
         if(dot) dot.style.background = 'var(--fail)';
-        if(status) status.textContent = '✗ Failed';
-        generatedModules.push({ ...mod, questions: [], summary: 'Generation failed for this module.', failed: true });
+        if(status) status.textContent = `✗ ${(err.message || 'Failed').slice(0, 50)}`;
+        generatedModules.push({ ...mod, questions: [], summary: '', failed: true });
       }
       const p = Math.round(((i + 1) / total) * 100);
       if($$('gen-prog-bar')) $$('gen-prog-bar').style.width = p + '%';
       if($$('gen-progress-label')) $$('gen-progress-label').textContent = `${i + 1} of ${total}`;
     }
 
+    if($$('gen-pass-label')) $$('gen-pass-label').textContent = 'Generation complete!';
     Admin.generatedCourse = {
       title: $$('ai-course-title').value.trim(),
-      icon: $$('ai-course-icon').value || '📋',
+      icon:  $$('ai-course-icon').value || '📋',
       description: $$('ai-course-desc').value.trim(),
       modules: generatedModules
     };
     Admin.renderReview();
     Admin.goPhase(4);
     Admin.isGenerating = false;
-  },
-
-  async callGemini(mod, key) {
-    const promptText = `Generate a JSON object for a training module.
-    Title: ${mod.title}
-    Content: ${mod.content.slice(0, 4000)}
-    
-    Return EXACTLY this JSON format:
-    {
-      "summary": "A brief overview...",
-      "questions": [
-        { "question": "...", "options": ["A","B","C","D"], "correct_index": 0, "explanation": "..." }
-      ]
-    }`;
-    
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
-    const res = await fetch(url, {
-      method: 'POST',
-      body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
-    });
-    if(!res.ok) throw new Error(`Gemini API Error: ${res.status}`);
-    const data = await res.json();
-    const text = data.candidates[0].content.parts[0].text;
-    const jsonStr = text.match(/\{[\s\S]*\}/)[0];
-    return JSON.parse(jsonStr);
   },
 
   renderReview() {

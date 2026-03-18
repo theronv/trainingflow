@@ -562,6 +562,93 @@ app.get('/api/assignments/me', requireLearner, async (c) => {
   return c.json(toObjs(res))
 })
 
+// ── AI Generation ─────────────────────────────────────────────────────────────
+
+function buildAiPrompt(title, content, qCount, difficulty, focus) {
+  return `Generate a JSON object for a training module.
+Title: ${title}
+Difficulty: ${difficulty}
+Focus: ${focus}
+Content:
+${content.slice(0, 5000)}
+
+Return ONLY valid JSON with no markdown fences or extra text:
+{
+  "summary": "2-3 sentence overview of this module",
+  "questions": [
+    {
+      "question": "Question text",
+      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "correct_index": 0,
+      "explanation": "Why this answer is correct"
+    }
+  ]
+}
+
+Generate exactly ${qCount} questions. correct_index is 0-based.`
+}
+
+function extractJson(text) {
+  const match = text.match(/\{[\s\S]*\}/)
+  if (!match) throw new Error('No JSON found in AI response')
+  return JSON.parse(match[0])
+}
+
+async function callClaude(title, content, qCount, difficulty, focus, apiKey) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'content-type': 'application/json'
+    },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 2048,
+      messages: [{ role: 'user', content: buildAiPrompt(title, content, qCount, difficulty, focus) }]
+    })
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.error?.message || `Claude API error ${res.status}`)
+  }
+  const data = await res.json()
+  return { ...extractJson(data.content[0].text), _provider: 'Claude' }
+}
+
+async function callGemini(title, content, qCount, difficulty, focus, apiKey) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ contents: [{ parts: [{ text: buildAiPrompt(title, content, qCount, difficulty, focus) }] }] })
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.error?.message || `Gemini API error ${res.status}`)
+  }
+  const data = await res.json()
+  return { ...extractJson(data.candidates[0].content.parts[0].text), _provider: 'Gemini' }
+}
+
+app.post('/api/ai/generate', requireAdmin, async (c) => {
+  const body = await c.req.json()
+  const { title, content, q_count = 5, difficulty = 'applied', focus = 'general', claude_key, gemini_key } = body
+  if (!title || !content) return c.json({ error: 'title and content are required' }, 400)
+  if (!claude_key && !gemini_key) return c.json({ error: 'Provide a Claude or Gemini API key' }, 400)
+
+  let lastError = null
+  if (claude_key) {
+    try { return c.json(await callClaude(title, content, q_count, difficulty, focus, claude_key)) }
+    catch (e) { lastError = e; console.error('Claude failed:', e.message) }
+  }
+  if (gemini_key) {
+    try { return c.json(await callGemini(title, content, q_count, difficulty, focus, gemini_key)) }
+    catch (e) { lastError = e; console.error('Gemini failed:', e.message) }
+  }
+  return c.json({ error: lastError?.message || 'All AI providers failed' }, 502)
+})
+
 // ── NEW ROUTES ──────────────────────────────────────────────────────────────
 
 app.post('/api/courses', requireAdmin, async (c) => {

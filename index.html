@@ -468,6 +468,14 @@
             <div class="card">
               <div class="card-title">AI Settings</div>
               <div class="field">
+                <label>Claude API Key <span style="font-size:10px;color:var(--pass);font-weight:600;">Primary</span></label>
+                <input type="password" id="claude-api-key" placeholder="sk-ant-api03-…" autocomplete="off">
+              </div>
+              <div class="field">
+                <label>Gemini API Key <span style="font-size:10px;color:var(--ink-4);">Fallback</span></label>
+                <input type="password" id="gemini-api-key" placeholder="AIza…" autocomplete="off">
+              </div>
+              <div class="field">
                 <label>Questions per module</label>
                 <select id="q-per-mod">
                   <option value="3">3 questions</option>
