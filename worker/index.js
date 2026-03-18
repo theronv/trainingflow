@@ -198,6 +198,25 @@ app.post('/api/admin/teams', requireAdmin, async (c) => {
   return c.json({ ok: true }, 201)
 })
 
+app.get('/api/admin/invites', requireAdmin, async (c) => {
+  const db = getDb(c.env)
+  try {
+    const res = await db.execute(`
+      SELECT ic.*, t.name AS team_name
+      FROM invite_codes ic
+      LEFT JOIN teams t ON ic.team_id = t.id
+      ORDER BY ic.created_at DESC
+    `)
+    return c.json(toObjs(res))
+  } catch { return c.json([]) }
+})
+
+app.delete('/api/admin/invites/:id', requireAdmin, async (c) => {
+  const db = getDb(c.env)
+  await db.execute({ sql: 'DELETE FROM invite_codes WHERE id = ? AND used = 0', args: [c.req.param('id')] })
+  return c.json({ ok: true })
+})
+
 app.post('/api/admin/invites', requireAdmin, async (c) => {
   const body = await c.req.json()
   const db = getDb(c.env)
@@ -248,14 +267,45 @@ app.put('/api/learners/:id/password', requireAdmin, async (c) => {
 
 app.post('/api/learners', requireManager, async (c) => {
   const body = await c.req.json()
+  if (!body.name || !body.password) return c.json({ error: 'Name and password are required' }, 400)
+  if (body.password.length < 8) return c.json({ error: 'Password must be at least 8 characters' }, 400)
+  const role = body.role === 'manager' ? 'manager' : 'learner'
   const db = getDb(c.env)
   const hash = await pbkdf2Hash(body.password)
   const id = uid()
   await db.execute({
-    sql: "INSERT INTO users (id, name, password_hash, role, team_id) VALUES (?, ?, ?, 'learner', ?)",
-    args: [id, body.name, hash, body.team_id || null]
+    sql: 'INSERT INTO users (id, name, password_hash, role, team_id) VALUES (?, ?, ?, ?, ?)',
+    args: [id, body.name, hash, role, body.team_id || null]
   })
   return c.json({ id }, 201)
+})
+
+app.get('/api/learners/:id', requireManager, async (c) => {
+  const db = getDb(c.env)
+  const res = await db.execute({ sql: 'SELECT * FROM users WHERE id = ?', args: [c.req.param('id')] })
+  const user = toObj(res)
+  if (!user) return c.json({ error: 'Not found' }, 404)
+  return c.json(user)
+})
+
+app.patch('/api/learners/:id', requireAdmin, async (c) => {
+  const body = await c.req.json()
+  const db = getDb(c.env)
+  const fields = []
+  const args = []
+  if (body.name !== undefined)    { fields.push('name = ?');    args.push(body.name.trim()) }
+  if (body.team_id !== undefined) { fields.push('team_id = ?'); args.push(body.team_id || null) }
+  if (body.role !== undefined)    { fields.push('role = ?');    args.push(body.role === 'manager' ? 'manager' : 'learner') }
+  if (!fields.length) return c.json({ error: 'Nothing to update' }, 400)
+  args.push(c.req.param('id'))
+  await db.execute({ sql: `UPDATE users SET ${fields.join(', ')} WHERE id = ?`, args })
+  return c.json({ ok: true })
+})
+
+app.delete('/api/learners/:id', requireAdmin, async (c) => {
+  const db = getDb(c.env)
+  await db.execute({ sql: 'DELETE FROM users WHERE id = ?', args: [c.req.param('id')] })
+  return c.json({ ok: true })
 })
 
 app.post('/api/auth/manager/register', async (c) => {

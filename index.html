@@ -730,21 +730,30 @@
 <div class="overlay hidden" id="add-learner-overlay">
   <div class="modal">
     <div class="modal-head">
-      <div class="modal-title">Add Learner</div>
-      <div class="modal-sub">The learner will use these credentials to sign in.</div>
+      <div class="modal-title" id="al-modal-title">Add User</div>
+      <div class="modal-sub" id="al-modal-sub">Set credentials for login.</div>
     </div>
     <div class="modal-body">
+      <div class="field">
+        <label>Role</label>
+        <select id="al-role">
+          <option value="learner">Learner</option>
+          <option value="manager">Manager</option>
+        </select>
+      </div>
       <div class="field"><label>Name</label><input type="text" id="al-name" placeholder="Full name…" autocomplete="off"></div>
       <div class="field">
         <label>Team (Optional)</label>
         <select id="al-team"></select>
       </div>
-      <div class="field"><label>Password</label><input type="password" id="al-pw1" placeholder="Password (8+ characters)…"></div>
-      <div class="field"><label>Confirm Password</label><input type="password" id="al-pw2" placeholder="Confirm…"></div>
+      <div id="al-pw-section">
+        <div class="field"><label>Password</label><input type="password" id="al-pw1" placeholder="Password (8+ characters)…"></div>
+        <div class="field"><label>Confirm Password</label><input type="password" id="al-pw2" placeholder="Confirm…"></div>
+      </div>
     </div>
     <div class="modal-foot">
       <button class="btn btn-ghost" onclick="App.closeAddLearner()">Cancel</button>
-      <button class="btn btn-primary" onclick="App.submitAddLearner()">Create Account</button>
+      <button class="btn btn-primary" id="al-submit-btn" onclick="App._alSubmitFn && App._alSubmitFn()">Create Account</button>
     </div>
   </div>
 </div>
@@ -815,7 +824,7 @@
 <div class="overlay hidden" id="confirm-delete-overlay">
   <div class="modal">
     <div class="modal-head">
-      <div class="modal-title">Delete Learner</div>
+      <div class="modal-title" id="confirm-delete-title">Delete User</div>
     </div>
     <div class="modal-body">
       <p id="confirm-delete-msg" style="color:var(--fail);"></p>

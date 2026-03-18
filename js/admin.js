@@ -86,16 +86,19 @@ const Admin = {
     try {
       const teams = await api('/api/admin/teams'); teamsCache = teams || [];
       const grid = $$('teams-grid'); if(!grid) return;
-      if (!teams.length) { grid.innerHTML = '<div class="empty">No teams created yet.</div>'; return; }
-      grid.innerHTML = teams.map(t => `<div class="card">
-        <div style="display:flex;justify-content:space-between;font-weight:700;">${esc(t.name)} <button class="btn btn-ghost btn-sm" onclick="Admin.openRenameTeam('${t.id}','${esc(t.name)}')">⋮</button></div>
-        <div style="font-size:11px;color:var(--ink-meta);margin-bottom:12px;">${t.learner_count || 0} members</div>
-        <div style="display:flex;gap:var(--s-2);">
-          <button class="btn btn-outline btn-sm" onclick="Admin.toggleTeamMembers('${t.id}')">View Team</button>
-          <button class="btn btn-outline btn-sm" onclick="Admin.openGenerateInvite('${t.id}','${esc(t.name)}')">Invite</button>
-        </div>
-        <div id="team-members-${t.id}" class="hidden" style="margin-top:12px;padding-top:8px;border-top:1px solid var(--rule);"></div>
-      </div>`).join('');
+      if (!teams.length) { grid.innerHTML = '<div class="empty">No teams created yet.</div>'; }
+      else {
+        grid.innerHTML = teams.map(t => `<div class="card">
+          <div style="display:flex;justify-content:space-between;font-weight:700;">${esc(t.name)} <button class="btn btn-ghost btn-sm" onclick="Admin.openRenameTeam('${t.id}','${esc(t.name)}')">⋮</button></div>
+          <div style="font-size:11px;color:var(--ink-meta);margin-bottom:12px;">${t.learner_count || 0} learner${t.learner_count !== 1 ? 's' : ''} · ${t.manager_count || 0} manager${t.manager_count !== 1 ? 's' : ''}</div>
+          <div style="display:flex;gap:var(--s-2);">
+            <button class="btn btn-outline btn-sm" onclick="Admin.toggleTeamMembers('${t.id}')">View Members</button>
+            <button class="btn btn-outline btn-sm" onclick="Admin.openGenerateInvite('${t.id}','${esc(t.name)}')">+ Invite</button>
+          </div>
+          <div id="team-members-${t.id}" class="hidden" style="margin-top:12px;padding-top:8px;border-top:1px solid var(--rule);"></div>
+        </div>`).join('');
+      }
+      Admin.renderInviteCodes();
     } catch(e) { }
   },
   async toggleTeamMembers(tid) {
@@ -139,6 +142,40 @@ const Admin = {
   },
   async deleteTeam(id) { if(confirm('Delete team?')){ try { await api(`/api/admin/teams/${id}`, { method:'DELETE' }); Admin.renderTeams(); } catch(e){ Toast.err(e.message); } } },
 
+  async renderInviteCodes() {
+    const tbody = $$('invites-tbody'); if(!tbody) return;
+    try {
+      const invites = await api('/api/admin/invites');
+      if (!invites.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--ink-4);">No invite codes yet. Use "+ Invite" on a team card to generate one.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = invites.map(inv => {
+        const statusChip = inv.used
+          ? `<span class="chip chip-amber" style="font-size:9px;">Used</span>`
+          : `<span class="chip chip-blue"  style="font-size:9px;">Active</span>`;
+        const created = inv.created_at ? new Date(inv.created_at).toLocaleDateString() : '—';
+        const expires = inv.expires_at  ? new Date(inv.expires_at).toLocaleDateString()  : '—';
+        return `<tr>
+          <td style="font-family:monospace;letter-spacing:0.08em;font-weight:600;">${esc(inv.code)}</td>
+          <td>${inv.team_name ? esc(inv.team_name) : '<span style="color:var(--ink-4);">—</span>'}</td>
+          <td>${statusChip}</td>
+          <td>${created}</td>
+          <td>${expires}</td>
+          <td>${!inv.used ? `<button class="btn btn-ghost btn-sm" style="color:var(--fail)" onclick="Admin.revokeInvite(${inv.id})">Revoke</button>` : '—'}</td>
+        </tr>`;
+      }).join('');
+    } catch(e) { if(tbody) tbody.innerHTML = `<tr><td colspan="6" style="color:var(--fail);">${esc(e.message)}</td></tr>`; }
+  },
+  async revokeInvite(id) {
+    if(!confirm('Revoke this invite code?')) return;
+    try {
+      await api(`/api/admin/invites/${id}`, { method:'DELETE' });
+      Toast.ok('Invite revoked.');
+      Admin.renderInviteCodes();
+    } catch(e) { Toast.err(e.message); }
+  },
+
   // ─── LEARNERS ───
   async renderLearners() {
     const tbody = $$('learners-tbody'); if(!tbody) return;
@@ -167,20 +204,102 @@ const Admin = {
       const team = (teamsCache||[]).find(t => t.id === l.team_id);
       const teamHtml = team ? esc(team.name) : '<span class="chip chip-amber" style="font-size:9px;">Unassigned</span>';
       const tagsHtml = (l.tags||[]).map(t => `<span class="chip chip-blue" style="font-size:9px;">${esc(t.name)}</span>`).join(' ');
+      const roleChip = l.role === 'manager' ? '<span class="chip chip-blue" style="font-size:9px;">Mgr</span> ' : '';
       return `<tr>
-        <td>${esc(l.name || 'Unnamed')} ${l.overdue_count ? `<span class="chip chip-red" style="font-size:9px;">⚠️ ${l.overdue_count}</span>` : ''}</td>
-        <td><button class="btn btn-ghost btn-sm" onclick="App.moveLearner('${l.id}')">${teamHtml}</button></td>
+        <td>${roleChip}${esc(l.name || 'Unnamed')} ${l.overdue_count ? `<span class="chip chip-red" style="font-size:9px;">⚠️ ${l.overdue_count}</span>` : ''}</td>
+        <td><button class="btn btn-ghost btn-sm" onclick="App.openEditLearner('${l.id}','${esc(l.name)}','${l.team_id||''}','${l.role||'learner'}')">${teamHtml}</button></td>
         <td>${tagsHtml}</td>
         <td>${l.last_login_at ? new Date(l.last_login_at*1000).toLocaleDateString() : '—'}</td>
         <td>${l.completion_count || 0}</td>
-        <td><button class="btn btn-ghost btn-sm" onclick="App.openResetPw('${l.id}','${esc(l.name)}')">PW</button></td>
+        <td style="white-space:nowrap;">
+          <button class="btn btn-ghost btn-sm" title="Reset password" onclick="App.openResetPw('${l.id}','${esc(l.name)}')">🔑</button>
+          <button class="btn btn-ghost btn-sm" title="Edit user" onclick="App.openEditLearner('${l.id}','${esc(l.name)}','${l.team_id||''}','${l.role||'learner'}')">✏️</button>
+          <button class="btn btn-ghost btn-sm" title="Delete user" style="color:var(--fail)" onclick="App.openDeleteLearner('${l.id}','${esc(l.name)}','${l.role||'learner'}')">✕</button>
+        </td>
       </tr>`;
     }).join('');
   },
-  async moveLearner(lid) { const tid = prompt('Target Team ID:'); if(tid!==null) { try { await api(`/api/admin/learners/${lid}/team`, { method:'PATCH', body:JSON.stringify({ team_id: tid || null }) }); Admin.renderLearners(); } catch(e){ Toast.err(e.message); } } },
-  openAddLearner() { $$('al-name').value=''; $$('al-pw1').value=''; $$('al-pw2').value=''; const sel = $$('al-team'); if(sel) sel.innerHTML = '<option value="">Unassigned</option>' + (teamsCache||[]).map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join(''); $$('add-learner-overlay').classList.remove('hidden'); },
-  closeAddLearner() { $$('add-learner-overlay').classList.add('hidden'); },
-  async submitAddLearner() { try { await api('/api/learners', { method:'POST', body:JSON.stringify({ name: $$('al-name').value.trim(), password: $$('al-pw1').value, team_id: $$('al-team')?.value || null }) }); Admin.closeAddLearner(); Admin.renderLearners(); } catch(e){ Toast.err(e.message); } },
+  async moveLearner(lid) {
+    let learner = _allLearners.find(l => l.id === lid);
+    if (!learner) {
+      try { learner = await api(`/api/learners/${lid}`); } catch(e) { Toast.err(e.message); return; }
+    }
+    Admin.openEditLearner(learner.id, learner.name, learner.team_id, learner.role);
+  },
+  openAddLearner() {
+    App._editLearnerId = null;
+    $$('al-modal-title').textContent = 'Add User';
+    $$('al-modal-sub').textContent = 'Set credentials for login.';
+    $$('al-name').value = ''; $$('al-pw1').value = ''; $$('al-pw2').value = '';
+    $$('al-role').value = 'learner';
+    const sel = $$('al-team');
+    if(sel) sel.innerHTML = '<option value="">Unassigned</option>' + (teamsCache||[]).map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join('');
+    $$('al-pw-section').classList.remove('hidden');
+    $$('al-submit-btn').textContent = 'Create Account';
+    App._alSubmitFn = Admin.submitAddLearner;
+    $$('add-learner-overlay').classList.remove('hidden');
+    setTimeout(() => $$('al-name').focus(), CONFIG.FOCUS_DELAY);
+  },
+  closeAddLearner() { $$('add-learner-overlay').classList.add('hidden'); App._alSubmitFn = null; },
+  async submitAddLearner() {
+    const name = $$('al-name').value.trim();
+    const pw1  = $$('al-pw1').value;
+    const pw2  = $$('al-pw2').value;
+    const role = $$('al-role').value;
+    const teamId = $$('al-team').value || null;
+    if (!name) return Toast.err('Name is required.');
+    if (pw1.length < CONFIG.MIN_PW_LEN) return Toast.err(`Password must be at least ${CONFIG.MIN_PW_LEN} characters.`);
+    if (pw1 !== pw2) return Toast.err('Passwords do not match.');
+    try {
+      await api('/api/learners', { method:'POST', body:JSON.stringify({ name, password: pw1, role, team_id: teamId }) });
+      Admin.closeAddLearner();
+      Toast.ok('Account created.');
+      Admin.renderLearners();
+    } catch(e) { Toast.err(e.message); }
+  },
+  openEditLearner(id, name, teamId, role) {
+    App._editLearnerId = id;
+    $$('al-modal-title').textContent = 'Edit User';
+    $$('al-modal-sub').textContent = 'Update name, team, or role. Password is unchanged.';
+    $$('al-name').value = name;
+    $$('al-role').value = role || 'learner';
+    const sel = $$('al-team');
+    if(sel) {
+      sel.innerHTML = '<option value="">Unassigned</option>' + (teamsCache||[]).map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join('');
+      sel.value = teamId || '';
+    }
+    $$('al-pw-section').classList.add('hidden');
+    $$('al-submit-btn').textContent = 'Save Changes';
+    App._alSubmitFn = Admin.submitEditLearner;
+    $$('add-learner-overlay').classList.remove('hidden');
+  },
+  async submitEditLearner() {
+    const name   = $$('al-name').value.trim();
+    const role   = $$('al-role').value;
+    const teamId = $$('al-team').value || null;
+    if (!name) return Toast.err('Name is required.');
+    try {
+      await api(`/api/learners/${App._editLearnerId}`, { method:'PATCH', body:JSON.stringify({ name, role, team_id: teamId }) });
+      Admin.closeAddLearner();
+      Toast.ok('User updated.');
+      Admin.renderLearners();
+    } catch(e) { Toast.err(e.message); }
+  },
+  openDeleteLearner(id, name, role) {
+    const label = role === 'manager' ? 'Manager' : 'Learner';
+    $$('confirm-delete-title').textContent = `Delete ${label}`;
+    $$('confirm-delete-msg').textContent = `Permanently delete "${name}"? This cannot be undone.`;
+    $$('confirm-delete-btn').onclick = () => Admin.submitDeleteLearner(id);
+    $$('confirm-delete-overlay').classList.remove('hidden');
+  },
+  async submitDeleteLearner(id) {
+    try {
+      await api(`/api/learners/${id}`, { method:'DELETE' });
+      $$('confirm-delete-overlay').classList.add('hidden');
+      Toast.ok('User deleted.');
+      Admin.renderLearners();
+    } catch(e) { Toast.err(e.message); }
+  },
 
   // ─── BRANDING ───
   async renderBranding() {
