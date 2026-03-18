@@ -126,11 +126,72 @@ const Learner = {
     const q = curCourse.mods[mi].questions[qi];
     const ok = sel === q.correct;
     quizSt[mi].ans.push({ question_id: q.id, ok });
-    if(qi+1 < curCourse.mods[mi].questions.length) Learner.renderQ(mi, qi+1);
-    else Learner.finishMod(mi);
+    const total = curCourse.mods[mi].questions.length;
+
+    // Mark all option buttons
+    $$('mod-main').querySelectorAll('.quiz-opt').forEach((btn, i) => {
+      btn.disabled = true;
+      const letter = btn.querySelector('.opt-letter');
+      if(i === sel) {
+        btn.classList.add(ok ? 'correct' : 'wrong');
+        if(letter) letter.classList.add(ok ? 'correct' : 'wrong');
+      }
+      if(i === q.correct && !ok) {
+        btn.classList.add('correct');
+        if(letter) letter.classList.add('correct');
+      }
+    });
+
+    // Inject feedback panel + next button
+    const wrap = $$('mod-main').querySelector('.quiz-wrap');
+    if(wrap) {
+      const isLast = qi + 1 >= total;
+      const nextLabel = isLast ? 'See Results' : `Next Question →`;
+      const nextFn = isLast
+        ? `Learner.showModResults(${mi})`
+        : `Learner.renderQ(${mi},${qi+1})`;
+      const fb = document.createElement('div');
+      fb.className = `quiz-feedback ${ok ? 'fb-pass' : 'fb-fail'}`;
+      fb.innerHTML = `
+        <div class="fb-icon">${ok ? '✓' : '✗'}</div>
+        <div class="fb-body">
+          <div class="fb-verdict">${ok ? 'Correct!' : 'Incorrect'}</div>
+          ${q.exp ? `<div class="fb-exp">${esc(q.exp)}</div>` : ''}
+        </div>
+        <button class="btn btn-primary fb-next" onclick="${nextFn}">${nextLabel}</button>`;
+      wrap.appendChild(fb);
+    }
+  },
+  showModResults(mi) {
+    const answers = quizSt[mi].ans;
+    const correct = answers.filter(a => a.ok).length;
+    const total = answers.length;
+    const pct = Math.round((correct / total) * 100);
+    const passed = pct >= 70;
+
+    // Update sidebar bullet
+    const item = $$(`mod-nav-${mi}`);
+    const bullet = $$(`mod-bullet-${mi}`);
+    if(item)   item.classList.add(passed ? 'done-pass' : 'done-fail');
+    if(bullet) bullet.textContent = passed ? '✓' : '✗';
+
+    const nextMod = mi + 1 < curCourse.mods.length;
+    $$('mod-main').innerHTML = `<div class="quiz-results">
+      <div class="qr-score ${passed ? 'qr-pass' : 'qr-fail'}">${pct}%</div>
+      <div class="qr-label">${correct} of ${total} correct</div>
+      <div class="qr-verdict">${passed ? '🎉 Module Passed!' : '❌ Not quite — review the material and try again.'}</div>
+      ${nextMod
+        ? `<button class="btn btn-primary btn-lg" style="margin-top:var(--space-8);" onclick="Learner.loadMod(${mi+1})">Next Module →</button>`
+        : `<button class="btn btn-primary btn-lg" style="margin-top:var(--space-8);" onclick="Learner.completeCourse()">Finish Course 🎓</button>`}
+      ${!passed ? `<button class="btn btn-outline btn-lg" style="margin-top:var(--space-4);" onclick="Learner.retryMod(${mi})">Retry Module</button>` : ''}
+    </div>`;
+  },
+  retryMod(mi) {
+    quizSt[mi] = { ans: [] };
+    Learner.renderQ(mi, 0);
   },
   async finishMod(mi) {
-    // Mark module done in sidebar
+    // Mark non-quiz modules done in sidebar (quiz modules are handled by showModResults)
     const item = $$(`mod-nav-${mi}`);
     const bullet = $$(`mod-bullet-${mi}`);
     if(item)   item.classList.add('done-pass');
@@ -139,7 +200,11 @@ const Learner = {
     else Learner.completeCourse();
   },
   async completeCourse() {
-    const res = await learnerApi('/api/completions', { method:'POST', body: JSON.stringify({ course_id: curCourse.id, score: 100, passed: true }) });
+    // Calculate real score across all modules with quiz answers
+    const allAns = Object.values(quizSt).flatMap(m => m.ans);
+    const score = allAns.length > 0 ? Math.round(allAns.filter(a => a.ok).length / allAns.length * 100) : 100;
+    const passed = score >= 70;
+    const res = await learnerApi('/api/completions', { method:'POST', body: JSON.stringify({ course_id: curCourse.id, score, passed }) });
     confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
     $$('c-name').textContent = curLearner.name;
     $$('c-id').textContent = res.cert_id;
