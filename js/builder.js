@@ -40,9 +40,36 @@ const Builder = {
         </div>
         <div class="field"><label>Title</label><input type="text" value="${esc(m.title)}" oninput="cbState.mods[${i}].title=this.value" placeholder="e.g. Introduction"></div>
         <div class="field"><label>Content (Markdown)</label><textarea style="min-height:120px;" oninput="cbState.mods[${i}].content=this.value" placeholder="Module text here...">${m.content}</textarea></div>
+        <div style="margin-top:var(--space-4);">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3);">
+            <div style="font-weight:600;font-size:var(--text-sm);">Questions (${m.questions.length})</div>
+            <button class="btn btn-outline btn-sm" onclick="Builder.addQuestion(${i})">+ Question</button>
+          </div>
+          ${m.questions.map((q, j) => `
+            <div style="border:1px solid var(--rule);border-radius:var(--radius);padding:var(--space-3);margin-bottom:var(--space-3);">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-2);">
+                <div style="font-weight:600;font-size:var(--text-sm);color:var(--ink-3);">Q${j+1}</div>
+                <button class="btn btn-ghost btn-sm" style="color:var(--fail);" onclick="Builder.delQuestion(${i},${j})">✕ Remove</button>
+              </div>
+              <div class="field"><label>Question</label><input type="text" value="${esc(q.q||'')}" oninput="cbState.mods[${i}].questions[${j}].q=this.value" placeholder="Question text"></div>
+              <label style="font-size:var(--text-sm);font-weight:500;color:var(--ink-2);margin-bottom:var(--space-2);display:block;">Options <span style="font-weight:400;color:var(--ink-4);">(select the correct answer)</span></label>
+              ${['A','B','C','D'].map((letter, k) => `
+                <div style="display:flex;align-items:center;gap:var(--space-2);margin-bottom:var(--space-2);">
+                  <input type="radio" name="q-correct-${i}-${j}" value="${k}" ${q.correct===k?'checked':''} onchange="cbState.mods[${i}].questions[${j}].correct=${k}" title="Mark as correct answer">
+                  <span style="font-size:var(--text-sm);font-weight:600;min-width:16px;">${letter}</span>
+                  <input type="text" value="${esc((q.opts||[])[k]||'')}" oninput="cbState.mods[${i}].questions[${j}].opts[${k}]=this.value" placeholder="Option ${letter}" style="flex:1;">
+                </div>`).join('')}
+              <div class="field" style="margin-top:var(--space-2);margin-bottom:0;"><label>Explanation</label><input type="text" value="${esc(q.exp||'')}" oninput="cbState.mods[${i}].questions[${j}].exp=this.value" placeholder="Why this answer is correct (shown after attempt)"></div>
+            </div>`).join('')}
+        </div>
       </div>`).join('');
   },
   delMod(i) { cbState.mods.splice(i, 1); Builder.renderBuilderMods(); },
+  addQuestion(i) {
+    cbState.mods[i].questions.push({ id: uid(), q: '', opts: ['', '', '', ''], correct: 0, exp: '' });
+    Builder.renderBuilderMods();
+  },
+  delQuestion(i, j) { cbState.mods[i].questions.splice(j, 1); Builder.renderBuilderMods(); },
   async saveCourse() {
     const title = $$('cb-title').value.trim();
     if(!title) return Toast.err('Title required.');
