@@ -73,7 +73,19 @@ const AppProxy = {
   },
 
   // Missing Mappings
-  changePw: () => Admin.openResetPw('default', 'Admin'),
+  changePw: async () => {
+    const cur = $$('np0')?.value || '';
+    const p1  = $$('np1')?.value || '';
+    const p2  = $$('np2')?.value || '';
+    if (!cur) return Toast.err('Enter your current password.');
+    if (p1.length < 8) return Toast.err('New password must be at least 8 characters.');
+    if (p1 !== p2) return Toast.err('Passwords do not match.');
+    try {
+      await api('/api/admin/password', { method: 'PUT', body: JSON.stringify({ current_password: cur, new_password: p1 }) });
+      $$('np0').value = ''; $$('np1').value = ''; $$('np2').value = '';
+      Toast.ok('Admin password updated.');
+    } catch(e) { Toast.err(e.message); }
+  },
   previewBrand: () => applyBrand(),
   resetBrand: () => { brandCache = { name: CONFIG.DEFAULT_BRAND_NAME, c1: CONFIG.DEFAULT_C1, c2: CONFIG.DEFAULT_C2, pass: CONFIG.DEFAULT_PASS }; applyBrand(); Admin.renderBranding(); },
   openTagsModal: () => { $$('tags-modal').classList.remove('hidden'); },

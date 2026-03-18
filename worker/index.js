@@ -257,6 +257,23 @@ app.put('/api/brand', requireAdmin, async (c) => {
   return c.json({ ok: true })
 })
 
+app.put('/api/admin/password', requireAdmin, async (c) => {
+  const body = await c.req.json()
+  const db = getDb(c.env)
+  if (!body.new_password || body.new_password.length < 8)
+    return c.json({ error: 'Password must be at least 8 characters' }, 400)
+  if (body.current_password) {
+    const stored = await getStoredHash(db, c.env)
+    if (stored && stored !== 'MOCK_HASH') {
+      const ok = await pbkdf2Verify(body.current_password, stored)
+      if (!ok) return c.json({ error: 'Current password is incorrect' }, 400)
+    }
+  }
+  const hash = await pbkdf2Hash(body.new_password)
+  await db.execute({ sql: 'INSERT OR REPLACE INTO admin (id, password_hash) VALUES (?, ?)', args: ['default', hash] })
+  return c.json({ ok: true })
+})
+
 app.put('/api/learners/:id/password', requireAdmin, async (c) => {
   const body = await c.req.json()
   const db = getDb(c.env)

@@ -668,11 +668,12 @@
         </div>
         <div style="max-width:480px;display:flex;flex-direction:column;gap:var(--space-4);">
           <div class="card">
-            <div class="card-title">Change Password</div>
+            <div class="card-title">Change Admin Password</div>
             <div class="divider"></div>
-            <div class="field"><label>New Password</label><input type="password" id="np1" placeholder="New password…"></div>
-            <div class="field"><label>Confirm</label><input type="password" id="np2" placeholder="Confirm…"></div>
-            <button class="btn btn-primary" onclick="App.changePw()">Update</button>
+            <div class="field"><label>Current Password</label><input type="password" id="np0" placeholder="Current password…" autocomplete="current-password"></div>
+            <div class="field"><label>New Password</label><input type="password" id="np1" placeholder="New password (8+ characters)…" autocomplete="new-password"></div>
+            <div class="field"><label>Confirm New Password</label><input type="password" id="np2" placeholder="Confirm new password…" autocomplete="new-password"></div>
+            <button class="btn btn-primary" onclick="App.changePw()">Update Password</button>
           </div>
           <div class="card">
             <div class="card-title">Data</div>
