@@ -89,12 +89,14 @@ const Admin = {
       if (!teams.length) { grid.innerHTML = '<div class="empty">No teams created yet.</div>'; }
       else {
         grid.innerHTML = teams.map(t => `<div class="card">
-          <div style="display:flex;justify-content:space-between;font-weight:700;">${esc(t.name)} <button class="btn btn-ghost btn-sm" onclick="Admin.openRenameTeam('${t.id}','${esc(t.name)}')">⋮</button></div>
+          <div style="font-weight:700;margin-bottom:4px;">${esc(t.name)}</div>
           <div style="font-size:11px;color:var(--ink-meta);margin-bottom:12px;">${t.learner_count || 0} learner${t.learner_count !== 1 ? 's' : ''} · ${t.manager_count || 0} manager${t.manager_count !== 1 ? 's' : ''}</div>
           <div style="display:flex;gap:var(--s-2);flex-wrap:wrap;">
             <button class="btn btn-outline btn-sm" onclick="Admin.toggleTeamMembers('${t.id}')">View Members</button>
             <button class="btn btn-outline btn-sm" onclick="Admin.openAddManager('${t.id}','${esc(t.name)}')">+ Manager</button>
             <button class="btn btn-outline btn-sm" onclick="Admin.openGenerateInvite('${t.id}','${esc(t.name)}')">+ Invite</button>
+            <button class="btn btn-outline btn-sm" onclick="Admin.openRenameTeam('${t.id}','${esc(t.name)}')">Rename</button>
+            <button class="btn btn-outline btn-sm" style="color:var(--fail);border-color:var(--fail);" onclick="Admin.deleteTeam('${t.id}')">Delete</button>
           </div>
           <div id="team-members-${t.id}" class="hidden" style="margin-top:12px;padding-top:8px;border-top:1px solid var(--rule);"></div>
         </div>`).join('');

@@ -236,7 +236,10 @@ app.patch('/api/admin/teams/:id', requireAdmin, async (c) => {
 
 app.delete('/api/admin/teams/:id', requireAdmin, async (c) => {
   const db = getDb(c.env)
-  await db.execute({ sql: 'DELETE FROM teams WHERE id = ?', args: [c.req.param('id')] })
+  const tid = c.req.param('id')
+  await db.execute({ sql: 'UPDATE learners SET team_id = NULL WHERE team_id = ?', args: [tid] })
+  await db.execute({ sql: 'UPDATE managers SET team_id = NULL WHERE team_id = ?', args: [tid] })
+  await db.execute({ sql: 'DELETE FROM teams WHERE id = ?', args: [tid] })
   return c.json({ ok: true })
 })
 
