@@ -13,7 +13,8 @@ const Learner = {
   nav(p) {
     ['courses','progress','certs','account'].forEach(k => {
       if($$(`ln-${k}`)) $$(`ln-${k}`).classList.toggle('active', k===p);
-      if($$(`lp-${k}`)) $$(`lp-${k}`).classList.toggle('hidden', k!==p);
+      const lp = $$(`lp-${k}`);
+      if(lp) { lp.classList.toggle('hidden', k!==p); lp.classList.toggle('active', k===p); }
     });
     if(p==='courses') Learner.renderCourses();
     if(p==='progress') Learner.renderProgress();

@@ -51,7 +51,7 @@ const Auth = {
     const name = $$('learner-name-input').value.trim(), password = $$('learner-pw-input').value;
     try {
       const data = await api('/api/learners/login', { method: 'POST', body: JSON.stringify({ name, password }) });
-      setLearnerToken(data.token); curLearner = { id: data.id, name: data.name };
+      setLearnerToken(data.token); curLearner = { id: data.user.id, name: data.user.name };
       Learner.init();
     } catch(e) { $$('l-login-error').textContent = e.message; $$('l-login-error').style.display='block'; }
   },

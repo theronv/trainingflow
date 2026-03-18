@@ -13,7 +13,7 @@ const Admin = {
     ['dashboard','courses','importer','learners','teams','completions','branding','settings'].forEach(k => {
       const btn = $$(`an-${k}`), pg = $$(`ap-${k}`);
       if(btn) btn.classList.toggle('active', k===p);
-      if(pg) pg.classList.toggle('hidden', k!==p);
+      if(pg) { pg.classList.toggle('hidden', k!==p); pg.classList.toggle('active', k===p); }
     });
     if(p==='dashboard') Admin.renderDash();
     if(p==='courses')   Admin.renderCourses();
@@ -108,8 +108,35 @@ const Admin = {
       el.innerHTML = `<div class="table-wrap"><table><tbody>${rows.map(l=>`<tr><td>${esc(l.name)}</td><td><button class="btn btn-ghost btn-sm" onclick="Admin.moveLearner('${l.id}')">Move</button></td></tr>`).join('')}</tbody></table></div>`;
     } catch(e) { el.innerHTML = `<div style="color:var(--fail);font-size:11px;">${esc(e.message)}</div>`; }
   },
-  openCreateTeam() { $$('team-modal-title').textContent = 'New Team'; $$('team-name-input').value = ''; $$('team-modal').classList.remove('hidden'); },
+  openCreateTeam() {
+    $$('team-modal-title').textContent = 'New Team';
+    $$('team-name-input').value = '';
+    $$('team-modal-btn').textContent = 'Create Team';
+    $$('team-modal-btn').onclick = Admin.submitCreateTeam;
+    $$('team-modal').classList.remove('hidden');
+  },
   async submitCreateTeam() { try { await api('/api/admin/teams', { method:'POST', body:JSON.stringify({ name: $$('team-name-input').value.trim() }) }); $$('team-modal').classList.add('hidden'); Admin.renderTeams(); } catch(e){ Toast.err(e.message); } },
+  openRenameTeam(id, name) {
+    $$('team-modal-title').textContent = 'Rename Team';
+    $$('team-name-input').value = name;
+    $$('team-modal-btn').textContent = 'Save';
+    $$('team-modal-btn').onclick = () => Admin.submitRenameTeam(id);
+    $$('team-modal').classList.remove('hidden');
+  },
+  async submitRenameTeam(id) {
+    try {
+      await api(`/api/admin/teams/${id}`, { method:'PATCH', body:JSON.stringify({ name: $$('team-name-input').value.trim() }) });
+      $$('team-modal').classList.add('hidden');
+      Admin.renderTeams();
+    } catch(e){ Toast.err(e.message); }
+  },
+  openGenerateInvite(teamId, teamName) {
+    App._inviteTeamId = teamId;
+    $$('invite-subtitle').textContent = `For team: ${esc(teamName)}`;
+    $$('invite-form').classList.remove('hidden');
+    $$('invite-result').classList.add('hidden');
+    $$('invite-modal').classList.remove('hidden');
+  },
   async deleteTeam(id) { if(confirm('Delete team?')){ try { await api(`/api/admin/teams/${id}`, { method:'DELETE' }); Admin.renderTeams(); } catch(e){ Toast.err(e.message); } } },
 
   // ─── LEARNERS ───

@@ -12,7 +12,8 @@ const Manager = {
   nav(p) {
     ['dashboard','courses','team','completions','account'].forEach(k => {
       if($$(`mn-${k}`)) $$(`mn-${k}`).classList.toggle('active', k===p);
-      if($$(`mp-${k}`)) $$(`mp-${k}`).classList.toggle('hidden', k!==p);
+      const mp = $$(`mp-${k}`);
+      if(mp) { mp.classList.toggle('hidden', k!==p); mp.classList.toggle('active', k===p); }
     });
     if(p==='dashboard') Manager.renderDash();
     if(p==='courses')   Manager.renderCourses();
