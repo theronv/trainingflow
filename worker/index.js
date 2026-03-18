@@ -485,6 +485,46 @@ app.get('/api/admin/completions', requireManager, async (c) => {
   }
 })
 
+const PROGRESS_DDL = `CREATE TABLE IF NOT EXISTS course_progress (
+  learner_id TEXT NOT NULL,
+  course_id  TEXT NOT NULL,
+  module_idx INTEGER NOT NULL DEFAULT 0,
+  modules    TEXT NOT NULL DEFAULT '[]',
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY (learner_id, course_id)
+)`
+
+app.get('/api/progress/me', requireLearner, async (c) => {
+  const user = c.get('user')
+  const db = getDb(c.env)
+  try {
+    await db.execute(PROGRESS_DDL)
+    const res = await db.execute({ sql: 'SELECT * FROM course_progress WHERE learner_id = ?', args: [user.id] })
+    return c.json(toObjs(res).map(r => ({ ...r, modules: JSON.parse(r.modules || '[]') })))
+  } catch { return c.json([]) }
+})
+
+app.post('/api/progress', requireLearner, async (c) => {
+  const user = c.get('user')
+  const body = await c.req.json()
+  const db = getDb(c.env)
+  await db.execute(PROGRESS_DDL)
+  await db.execute({
+    sql: `INSERT OR REPLACE INTO course_progress (learner_id, course_id, module_idx, modules, updated_at) VALUES (?, ?, ?, ?, ?)`,
+    args: [user.id, body.course_id, body.module_idx, JSON.stringify(body.modules || []), Math.floor(Date.now() / 1000)]
+  })
+  return c.json({ ok: true })
+})
+
+app.delete('/api/progress/:course_id', requireLearner, async (c) => {
+  const user = c.get('user')
+  const db = getDb(c.env)
+  try {
+    await db.execute({ sql: 'DELETE FROM course_progress WHERE learner_id = ? AND course_id = ?', args: [user.id, c.req.param('course_id')] })
+  } catch {}
+  return c.json({ ok: true })
+})
+
 app.get('/api/completions/me', requireLearner, async (c) => {
   const user = c.get('user')
   const db = getDb(c.env)

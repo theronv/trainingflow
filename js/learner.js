@@ -3,6 +3,8 @@
 // ══════════════════════════════════════════════════════════
 
 const Learner = {
+  _prog: null, // { course_id, module_idx, modules: [{mi, passed, score}] }
+
   init() {
     App.show('screen-learner');
     $$('l-name-display').textContent = curLearner.name;
@@ -26,14 +28,15 @@ const Learner = {
     const grid = $$('l-courses-grid'); if(!grid) return;
     grid.innerHTML = '<div style="display:flex;justify-content:center;padding:40px;width:100%;"><div class="spinner"></div></div>';
     try {
-      const [apiCourses, apiRecs, apiAssigns] = await Promise.all([
+      const [apiCourses, apiRecs, apiAssigns, apiProgress] = await Promise.all([
         api('/api/courses'),
         learnerApi('/api/completions/me').catch(() => []),
-        learnerApi('/api/assignments/me').catch(() => [])
+        learnerApi('/api/assignments/me').catch(() => []),
+        learnerApi('/api/progress/me').catch(() => [])
       ]);
       const courses = apiCourses.map(normCourse);
       const recs = apiRecs.map(normRecord);
-      
+
       if (!courses.length) {
         grid.innerHTML = '<div class="card" style="grid-column:1/-1;text-align:center;padding:40px;color:var(--ink-4);">No courses available.</div>';
         return;
@@ -43,10 +46,18 @@ const Learner = {
         const assigned = apiAssigns.some(a => a.course_id === c.id);
         const best = recs.filter(r => r.cid === c.id).sort((a,z) => z.score - a.score)[0];
         const passed = best && best.passed;
-        
+        const prog = !passed && apiProgress.find(p => p.course_id === c.id);
+        const modsDone = prog ? prog.modules.length : 0;
+        const totalMods = c.mods ? c.mods.length : null;
+
+        let chip = '';
+        if (passed) chip = '<span class="chip chip-green">✓ Passed</span>';
+        else if (prog) chip = `<span class="chip chip-blue">▶ In Progress${totalMods ? ` (${modsDone}/${totalMods})` : ''}</span>`;
+        else if (assigned) chip = '<span class="chip chip-amber">Mandatory</span>';
+
         return `<div class="course-card" onclick="Learner.startCourse('${c.id}')">
           <div style="font-weight:700;">${esc(c.title)}</div>
-          <div style="margin-top:8px;">${passed ? '<span class="chip chip-green">✓ Passed</span>' : assigned ? '<span class="chip chip-amber">Mandatory</span>' : ''}</div>
+          <div style="margin-top:8px;">${chip}</div>
         </div>`;
       }).join('');
     } catch(e) {
@@ -70,9 +81,14 @@ const Learner = {
   // ─── QUIZ ENGINE ───
   async startCourse(cid) {
     try {
-      const res = await api(`/api/courses/${cid}`);
+      const [res, progList] = await Promise.all([
+        api(`/api/courses/${cid}`),
+        learnerApi('/api/progress/me').catch(() => [])
+      ]);
       curCourse = normCourse(res);
       quizSt = {};
+      Learner._prog = progList.find(p => p.course_id === cid) || { course_id: cid, module_idx: 0, modules: [] };
+
       App.show('screen-course');
       // Populate module sidebar
       $$('mod-nav-list').innerHTML = curCourse.mods.map((m, i) => `
@@ -81,9 +97,20 @@ const Learner = {
           <span>${esc(m.title)}</span>
         </div>`).join('');
       $$('ch-meta').textContent = esc(curCourse.title);
-      Learner.loadMod(0);
+
+      // Restore completed module state in sidebar
+      Learner._prog.modules.forEach(({ mi, passed }) => {
+        const item = $$(`mod-nav-${mi}`);
+        const bullet = $$(`mod-bullet-${mi}`);
+        if(item)   item.classList.add(passed ? 'done-pass' : 'done-fail');
+        if(bullet) bullet.textContent = passed ? '✓' : '✗';
+      });
+
+      // Resume from last saved module
+      Learner.loadMod(Learner._prog.module_idx);
     } catch(e) { Toast.err(e.message); }
   },
+
   loadMod(mi) {
     curModIdx = mi;
     const mod = curCourse.mods[mi];
@@ -103,7 +130,9 @@ const Learner = {
       ${hasQuiz ? `<button class="btn btn-primary btn-lg" style="margin-top:var(--space-8);" onclick="Learner.startQuiz(${mi})">Start Competency Check →</button>` : `<button class="btn btn-primary btn-lg" style="margin-top:var(--space-8);" onclick="Learner.finishMod(${mi})">Continue →</button>`}
     </div>`;
   },
+
   startQuiz(mi) { quizSt[mi] = { ans: [] }; Learner.renderQ(mi, 0); },
+
   renderQ(mi, qi) {
     const q = curCourse.mods[mi].questions[qi];
     const total = curCourse.mods[mi].questions.length;
@@ -122,6 +151,7 @@ const Learner = {
       </div>
     </div>`;
   },
+
   answer(mi, qi, sel) {
     const q = curCourse.mods[mi].questions[qi];
     const ok = sel === q.correct;
@@ -162,7 +192,8 @@ const Learner = {
       wrap.appendChild(fb);
     }
   },
-  showModResults(mi) {
+
+  async showModResults(mi) {
     const answers = quizSt[mi].ans;
     const correct = answers.filter(a => a.ok).length;
     const total = answers.length;
@@ -185,30 +216,74 @@ const Learner = {
         : `<button class="btn btn-primary btn-lg" style="margin-top:var(--space-8);" onclick="Learner.completeCourse()">Finish Course 🎓</button>`}
       ${!passed ? `<button class="btn btn-outline btn-lg" style="margin-top:var(--space-4);" onclick="Learner.retryMod(${mi})">Retry Module</button>` : ''}
     </div>`;
+
+    // Save progress after every quiz module (pass or fail)
+    await Learner._saveProgress(mi, passed, pct);
   },
+
   retryMod(mi) {
     quizSt[mi] = { ans: [] };
     Learner.renderQ(mi, 0);
   },
+
   async finishMod(mi) {
-    // Mark non-quiz modules done in sidebar (quiz modules are handled by showModResults)
+    // Mark non-quiz modules done in sidebar
     const item = $$(`mod-nav-${mi}`);
     const bullet = $$(`mod-bullet-${mi}`);
     if(item)   item.classList.add('done-pass');
     if(bullet) bullet.textContent = '✓';
+
+    await Learner._saveProgress(mi, true, 100);
+
     if(mi + 1 < curCourse.mods.length) Learner.loadMod(mi + 1);
     else Learner.completeCourse();
   },
+
+  async _saveProgress(mi, passed, score) {
+    if(!curLearner || !curCourse) return;
+    const prog = Learner._prog;
+    // Update or insert this module's record
+    const existing = prog.modules.findIndex(m => m.mi === mi);
+    if(existing >= 0) prog.modules[existing] = { mi, passed, score };
+    else prog.modules.push({ mi, passed, score });
+    // Advance the resume pointer to the next unfinished module
+    prog.module_idx = Math.max(prog.module_idx, mi + 1);
+    try {
+      await learnerApi('/api/progress', {
+        method: 'POST',
+        body: JSON.stringify({ course_id: curCourse.id, module_idx: prog.module_idx, modules: prog.modules })
+      });
+    } catch(e) { console.warn('Progress save failed:', e.message); }
+  },
+
   async completeCourse() {
-    // Calculate real score across all modules with quiz answers
-    const allAns = Object.values(quizSt).flatMap(m => m.ans);
-    const score = allAns.length > 0 ? Math.round(allAns.filter(a => a.ok).length / allAns.length * 100) : 100;
+    // Combine scores from progress (prior sessions) + current quizSt (this session)
+    const prog = Learner._prog || { modules: [] };
+    const allModScores = [...prog.modules];
+    // Override with fresh answers from this session
+    Object.entries(quizSt).forEach(([mi, st]) => {
+      const ans = st.ans;
+      const score = ans.length > 0 ? Math.round(ans.filter(a => a.ok).length / ans.length * 100) : 100;
+      const idx = allModScores.findIndex(m => m.mi === Number(mi));
+      if(idx >= 0) allModScores[idx].score = score;
+      else allModScores.push({ mi: Number(mi), score });
+    });
+    const quizScores = allModScores.filter(m => m.score !== undefined);
+    const score = quizScores.length > 0
+      ? Math.round(quizScores.reduce((s, m) => s + m.score, 0) / quizScores.length)
+      : 100;
     const passed = score >= 70;
+
     const res = await learnerApi('/api/completions', { method:'POST', body: JSON.stringify({ course_id: curCourse.id, score, passed }) });
+    // Clear progress record now that the course is done
+    learnerApi(`/api/progress/${curCourse.id}`, { method: 'DELETE' }).catch(() => {});
+    Learner._prog = null;
+
     confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
     $$('c-name').textContent = curLearner.name;
     $$('c-id').textContent = res.cert_id;
     $$('cert-overlay').classList.remove('hidden');
   },
+
   viewCert(certId) { Toast.info('Generating PDF for ' + certId); }
 };
