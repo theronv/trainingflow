@@ -37,38 +37,61 @@ const Learner = {
     const grid = $$('l-courses-grid'); if(!grid) return;
     grid.innerHTML = '<div style="display:flex;justify-content:center;padding:40px;width:100%;"><div class="spinner"></div></div>';
     try {
-      const [apiCourses, apiRecs, apiAssigns, apiProgress] = await Promise.all([
+      const [apiCourses, apiRecs, apiAssigns, apiProgress, apiSections] = await Promise.all([
         api('/api/courses'),
         learnerApi('/api/completions/me').catch(() => []),
         learnerApi('/api/assignments/me').catch(() => []),
-        learnerApi('/api/progress/me').catch(() => [])
+        learnerApi('/api/progress/me').catch(() => []),
+        api('/api/sections').catch(() => [])
       ]);
-      const courses = apiCourses.map(normCourse);
       const recs = apiRecs.map(normRecord);
+      const sections = apiSections || [];
 
-      if (!courses.length) {
+      if (!apiCourses.length) {
         grid.innerHTML = '<div class="card" style="grid-column:1/-1;text-align:center;padding:40px;color:var(--ink-4);">No courses available.</div>';
         return;
       }
 
-      grid.innerHTML = courses.map(c => {
-        const assigned = apiAssigns.some(a => a.course_id === c.id);
-        const best = recs.filter(r => r.cid === c.id).sort((a,z) => z.score - a.score)[0];
+      const renderCard = c => {
+        const nc = normCourse(c);
+        const assigned = apiAssigns.some(a => a.course_id === nc.id);
+        const best = recs.filter(r => r.cid === nc.id).sort((a,z) => z.score - a.score)[0];
         const passed = best && best.passed;
-        const prog = !passed && apiProgress.find(p => p.course_id === c.id);
+        const prog = !passed && apiProgress.find(p => p.course_id === nc.id);
         const modsDone = prog ? prog.modules.length : 0;
-        const totalMods = c.mods ? c.mods.length : null;
-
+        const totalMods = nc.mods ? nc.mods.length : null;
         let chip = '';
         if (passed) chip = '<span class="chip chip-green">✓ Passed</span>';
         else if (prog) chip = `<span class="chip chip-blue">▶ In Progress${totalMods ? ` (${modsDone}/${totalMods})` : ''}</span>`;
         else if (assigned) chip = '<span class="chip chip-amber">Mandatory</span>';
-
-        return `<div class="course-card" onclick="Learner.startCourse('${c.id}')">
-          <div style="font-weight:700;">${esc(c.title)}</div>
+        return `<div class="course-card" onclick="Learner.startCourse('${nc.id}')">
+          <div style="font-weight:700;">${esc(nc.title)}</div>
           <div style="margin-top:8px;">${chip}</div>
         </div>`;
-      }).join('');
+      };
+
+      let html = '';
+      if(sections.length) {
+        const bySec = {};
+        const unsec = [];
+        sections.forEach(s => { bySec[s.id] = []; });
+        apiCourses.forEach(c => {
+          if(c.section_id && bySec[c.section_id]) bySec[c.section_id].push(c);
+          else unsec.push(c);
+        });
+        sections.forEach(s => {
+          if(!bySec[s.id].length) return;
+          html += `<div class="section-header" style="grid-column:1/-1;">${esc(s.name)}</div>`;
+          html += bySec[s.id].map(renderCard).join('');
+        });
+        if(unsec.length) {
+          html += `<div class="section-header" style="grid-column:1/-1;">Other</div>`;
+          html += unsec.map(renderCard).join('');
+        }
+      } else {
+        html = apiCourses.map(renderCard).join('');
+      }
+      grid.innerHTML = html || '<div class="card" style="grid-column:1/-1;text-align:center;padding:40px;color:var(--ink-4);">No courses available.</div>';
     } catch(e) {
       grid.innerHTML = `<div class="card" style="grid-column:1/-1;color:var(--fail);">${esc(e.message)}</div>`;
     }

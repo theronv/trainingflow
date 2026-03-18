@@ -586,6 +586,57 @@ app.get('/api/assignments/me', requireLearner, async (c) => {
   return c.json(toObjs(res))
 })
 
+// ── Sections ──────────────────────────────────────────────────────────────────
+
+async function setupSections(db) {
+  await db.execute('CREATE TABLE IF NOT EXISTS sections (id TEXT PRIMARY KEY, name TEXT NOT NULL, sort_order INTEGER DEFAULT 0, created_at INTEGER)')
+  try { await db.execute('ALTER TABLE courses ADD COLUMN section_id TEXT') } catch {}
+}
+
+app.get('/api/sections', async (c) => {
+  const db = getDb(c.env)
+  await setupSections(db)
+  const res = await db.execute('SELECT * FROM sections ORDER BY sort_order, name')
+  return c.json(toObjs(res))
+})
+
+app.post('/api/sections', requireAdmin, async (c) => {
+  const body = await c.req.json()
+  if (!body.name?.trim()) return c.json({ error: 'Name required' }, 400)
+  const db = getDb(c.env)
+  await setupSections(db)
+  const id = uid()
+  await db.execute({ sql: 'INSERT INTO sections (id, name, sort_order, created_at) VALUES (?, ?, ?, ?)', args: [id, body.name.trim(), body.sort_order ?? 0, Math.floor(Date.now() / 1000)] })
+  return c.json({ id }, 201)
+})
+
+app.patch('/api/sections/:id', requireAdmin, async (c) => {
+  const body = await c.req.json()
+  if (!body.name?.trim()) return c.json({ error: 'Name required' }, 400)
+  const db = getDb(c.env)
+  await db.execute({ sql: 'UPDATE sections SET name = ? WHERE id = ?', args: [body.name.trim(), c.req.param('id')] })
+  return c.json({ ok: true })
+})
+
+app.delete('/api/sections/:id', requireAdmin, async (c) => {
+  const db = getDb(c.env)
+  try { await db.execute({ sql: 'UPDATE courses SET section_id = NULL WHERE section_id = ?', args: [c.req.param('id')] }) } catch {}
+  await db.execute({ sql: 'DELETE FROM sections WHERE id = ?', args: [c.req.param('id')] })
+  return c.json({ ok: true })
+})
+
+app.patch('/api/courses/:id', requireAdmin, async (c) => {
+  const body = await c.req.json()
+  const db = getDb(c.env)
+  const fields = [], args = []
+  if (body.section_id !== undefined) { fields.push('section_id = ?'); args.push(body.section_id || null) }
+  if (body.title !== undefined)      { fields.push('title = ?');      args.push(body.title.trim()) }
+  if (!fields.length) return c.json({ error: 'Nothing to update' }, 400)
+  args.push(c.req.param('id'))
+  await db.execute({ sql: `UPDATE courses SET ${fields.join(', ')} WHERE id = ?`, args })
+  return c.json({ ok: true })
+})
+
 // ── AI Generation ─────────────────────────────────────────────────────────────
 
 function buildAiPrompt(title, content, qCount, difficulty, focus) {

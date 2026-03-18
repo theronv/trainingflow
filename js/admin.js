@@ -344,17 +344,111 @@ const Admin = {
 
   async renderCourses() {
     const grid = $$('a-courses-grid'); if(!grid) return;
-    grid.innerHTML = '<div style="display:flex;justify-content:center;padding:40px;width:100%;"><div class="spinner"></div></div>';
+    grid.innerHTML = '<div style="display:flex;justify-content:center;padding:40px;width:100%;grid-column:1/-1"><div class="spinner"></div></div>';
     try {
-      const res = await api('/api/courses');
-      if (!res.length) {
+      const [courses, sections] = await Promise.all([api('/api/courses'), api('/api/sections').catch(() => [])]);
+      sectionsCache = sections || [];
+      Admin._renderSectionsBar(sections);
+
+      if (!courses.length) {
         grid.innerHTML = '<div class="card" style="grid-column:1/-1;text-align:center;padding:40px;color:var(--ink-4);">No courses created yet. Use the Importer or Builder to start.</div>';
         return;
       }
-      grid.innerHTML = (res||[]).map(normCourse).map(c => `<div class="card"><div style="font-weight:700;">${esc(c.title)}</div><div style="display:flex;gap:4px;margin-top:12px;"><button class="btn btn-primary btn-sm w-full" onclick="App.openAssign('${c.id}','${esc(c.title)}')">👤 Assign</button></div></div>`).join('');
-    } catch(e) { 
+
+      // Group courses by section
+      const bySec = {};
+      const unsec = [];
+      sections.forEach(s => { bySec[s.id] = []; });
+      courses.forEach(c => {
+        if(c.section_id && bySec[c.section_id]) bySec[c.section_id].push(c);
+        else unsec.push(c);
+      });
+
+      let html = '';
+      sections.forEach(s => {
+        html += `<div style="grid-column:1/-1;margin-top:var(--space-6);padding-bottom:var(--space-2);border-bottom:2px solid var(--rule);">
+          <div style="font-size:var(--text-xs);font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-4);">Section</div>
+          <div style="font-weight:700;font-size:var(--text-lg);">${esc(s.name)}</div>
+        </div>`;
+        if(!bySec[s.id].length) {
+          html += `<div style="grid-column:1/-1;color:var(--ink-4);font-size:var(--text-sm);padding:var(--space-3) 0;">No courses in this section yet.</div>`;
+        } else {
+          html += bySec[s.id].map(c => Admin._courseCard(c, sections)).join('');
+        }
+      });
+      if(unsec.length) {
+        if(sections.length) html += `<div style="grid-column:1/-1;margin-top:var(--space-6);padding-bottom:var(--space-2);border-bottom:2px solid var(--rule);"><div style="font-weight:700;font-size:var(--text-lg);color:var(--ink-3);">Unsectioned</div></div>`;
+        html += unsec.map(c => Admin._courseCard(c, sections)).join('');
+      }
+      grid.innerHTML = html;
+    } catch(e) {
       grid.innerHTML = `<div class="card" style="grid-column:1/-1;color:var(--fail);">${esc(e.message)}</div>`;
     }
+  },
+
+  _renderSectionsBar(sections) {
+    const bar = $$('a-sections-bar'); if(!bar) return;
+    if(!sections.length) { bar.innerHTML = '<span style="font-size:var(--text-sm);color:var(--ink-4);">No sections — click "+ New Section" to group your courses.</span>'; return; }
+    bar.innerHTML = sections.map(s => `
+      <span class="chip chip-blue" style="display:inline-flex;align-items:center;gap:4px;padding-right:4px;">
+        ${esc(s.name)}
+        <button onclick="Admin.openRenameSection('${s.id}','${esc(s.name)}')" style="background:none;border:none;cursor:pointer;padding:0 2px;font-size:11px;color:inherit;opacity:.7;">✏</button>
+        <button onclick="Admin.deleteSection('${s.id}')" style="background:none;border:none;cursor:pointer;padding:0 2px;font-size:11px;color:var(--fail);">✕</button>
+      </span>`).join('');
+  },
+
+  _courseCard(c, sections) {
+    const secOpts = sections.map(s => `<option value="${s.id}" ${c.section_id===s.id?'selected':''}>${esc(s.name)}</option>`).join('');
+    return `<div class="card">
+      <div style="font-weight:700;">${esc(c.title)}</div>
+      ${sections.length ? `<select class="btn btn-ghost btn-sm" style="width:100%;margin-top:8px;text-align:left;" onchange="Admin.setCourseSection('${c.id}',this.value)">
+        <option value="">No section</option>${secOpts}
+      </select>` : ''}
+      <div style="display:flex;gap:4px;margin-top:12px;">
+        <button class="btn btn-primary btn-sm w-full" onclick="App.openAssign('${c.id}','${esc(c.title)}')">👤 Assign</button>
+      </div>
+    </div>`;
+  },
+
+  async setCourseSection(courseId, sectionId) {
+    try {
+      await api(`/api/courses/${courseId}`, { method:'PATCH', body:JSON.stringify({ section_id: sectionId || null }) });
+      Admin.renderCourses();
+    } catch(e) { Toast.err(e.message); }
+  },
+
+  openCreateSection() {
+    $$('section-modal-title').textContent = 'New Section';
+    $$('section-name-input').value = '';
+    $$('section-modal-btn').textContent = 'Create Section';
+    $$('section-modal-btn').onclick = Admin.submitCreateSection;
+    $$('section-modal').classList.remove('hidden');
+    setTimeout(() => $$('section-name-input').focus(), 50);
+  },
+  openRenameSection(id, name) {
+    $$('section-modal-title').textContent = 'Rename Section';
+    $$('section-name-input').value = name;
+    $$('section-modal-btn').textContent = 'Save';
+    $$('section-modal-btn').onclick = () => Admin.submitRenameSection(id);
+    $$('section-modal').classList.remove('hidden');
+    setTimeout(() => $$('section-name-input').focus(), 50);
+  },
+  async submitCreateSection() {
+    const name = $$('section-name-input').value.trim();
+    if(!name) return Toast.err('Section name required.');
+    try { await api('/api/sections', { method:'POST', body:JSON.stringify({ name }) }); $$('section-modal').classList.add('hidden'); Admin.renderCourses(); }
+    catch(e) { Toast.err(e.message); }
+  },
+  async submitRenameSection(id) {
+    const name = $$('section-name-input').value.trim();
+    if(!name) return Toast.err('Section name required.');
+    try { await api(`/api/sections/${id}`, { method:'PATCH', body:JSON.stringify({ name }) }); $$('section-modal').classList.add('hidden'); Admin.renderCourses(); }
+    catch(e) { Toast.err(e.message); }
+  },
+  async deleteSection(id) {
+    if(!confirm('Delete this section? Courses will become unsectioned.')) return;
+    try { await api(`/api/sections/${id}`, { method:'DELETE' }); Admin.renderCourses(); }
+    catch(e) { Toast.err(e.message); }
   },
 
   openResetPw(id, name) { $$('reset-pw-subtitle').textContent = name; App._resetPwId = id; $$('reset-pw-overlay').classList.remove('hidden'); },

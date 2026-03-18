@@ -53,11 +53,28 @@ const Manager = {
   // ─── COURSES ───
   async renderCourses() {
     try {
-      const apiCourses = await managerApi('/api/courses');
-      $$('m-courses-grid').innerHTML = apiCourses.map(normCourse).map(c => `<div class="card">
-        <div style="font-weight:700;">${esc(c.title)}</div>
-        <button class="btn btn-primary btn-sm w-full" style="margin-top:12px;" onclick="Manager.openTeamAssign('${c.id}', '${esc(c.title)}')">Assign to Team</button>
-      </div>`).join('');
+      const [apiCourses, sections] = await Promise.all([managerApi('/api/courses'), api('/api/sections').catch(() => [])]);
+      const courseCard = c => {
+        const nc = normCourse(c);
+        return `<div class="card">
+          <div style="font-weight:700;">${esc(nc.title)}</div>
+          <button class="btn btn-primary btn-sm w-full" style="margin-top:12px;" onclick="Manager.openTeamAssign('${nc.id}', '${esc(nc.title)}')">Assign to Team</button>
+        </div>`;
+      };
+      let html = '';
+      if(sections.length) {
+        const bySec = {}, unsec = [];
+        sections.forEach(s => { bySec[s.id] = []; });
+        apiCourses.forEach(c => { if(c.section_id && bySec[c.section_id]) bySec[c.section_id].push(c); else unsec.push(c); });
+        sections.forEach(s => {
+          if(!bySec[s.id].length) return;
+          html += `<div class="section-header" style="grid-column:1/-1;">${esc(s.name)}</div>` + bySec[s.id].map(courseCard).join('');
+        });
+        if(unsec.length) html += `<div class="section-header" style="grid-column:1/-1;">Other</div>` + unsec.map(courseCard).join('');
+      } else {
+        html = apiCourses.map(courseCard).join('');
+      }
+      $$('m-courses-grid').innerHTML = html;
     } catch(e) { }
   },
 

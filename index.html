@@ -543,8 +543,12 @@
             <div class="page-eyebrow">Content</div>
             <div class="page-title">Courses</div>
           </div>
-          <button class="btn btn-primary" onclick="App.openBuilder()">+ New Course</button>
+          <div style="display:flex;gap:var(--space-2);">
+            <button class="btn btn-outline" onclick="App.openCreateSection()">+ New Section</button>
+            <button class="btn btn-primary" onclick="App.openBuilder()">+ New Course</button>
+          </div>
         </div>
+        <div id="a-sections-bar" style="display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2);margin-bottom:var(--space-4);min-height:28px;"></div>
         <div class="courses-grid" id="a-courses-grid"></div>
       </div>
       <div class="page hidden" id="ap-learners">
@@ -906,6 +910,22 @@
     <div class="modal-foot">
       <button class="btn btn-ghost" onclick="App.csvClose()">Cancel</button>
       <button class="btn btn-primary" id="csv-confirm" disabled onclick="App.csvConfirm()">Add to Course</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ MODAL: SECTION ══════════ -->
+<div class="overlay hidden" id="section-modal">
+  <div class="modal modal-sm">
+    <div class="modal-head">
+      <div class="modal-title" id="section-modal-title">New Section</div>
+    </div>
+    <div class="modal-body">
+      <div class="field"><label>Section Name</label><input type="text" id="section-name-input" placeholder="e.g. Onboarding" onkeydown="if(event.key==='Enter')$$('section-modal-btn').click()"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="$$('section-modal').classList.add('hidden')">Cancel</button>
+      <button class="btn btn-primary" id="section-modal-btn">Create</button>
     </div>
   </div>
 </div>
