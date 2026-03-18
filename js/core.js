@@ -200,7 +200,7 @@ const App = {
       Toast.err('Unauthorized: Manager access required.');
       return App.show('screen-manager-login');
     }
-    if (id === 'screen-course' && !getLearnerToken() && !isDemo) {
+    if (id === 'screen-course' && !getLearnerToken() && !isDemo && !window._adminPreview) {
       Toast.err('Please sign in to view courses.');
       return App.show('screen-landing');
     }

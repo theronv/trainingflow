@@ -314,6 +314,7 @@ const Learner = {
       : 100;
     const passed = score >= 70;
 
+    if (window._adminPreview) { App.exitCourse(); return; }
     const res = await learnerApi('/api/completions', { method:'POST', body: JSON.stringify({ course_id: curCourse.id, score, passed }) });
     // Clear progress record now that the course is done
     learnerApi(`/api/progress/${curCourse.id}`, { method: 'DELETE' }).catch(() => {});

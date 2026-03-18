@@ -128,7 +128,10 @@ const AppProxy = {
   submitCsvImport: () => Manager.submitCsvImport(),
 
   // Navigation & screen switching
-  exitCourse: () => { App.show('screen-learner'); if(curLearner) Learner.nav('courses'); },
+  exitCourse: () => {
+    if (window._adminPreview) { window._adminPreview = false; App.show('screen-admin'); }
+    else { App.show('screen-learner'); if(curLearner) Learner.nav('courses'); }
+  },
   showLearner: () => { if(curLearner) { App.show('screen-learner'); Learner.nav('courses'); } else Toast.info('No active learner session.'); },
   moveLearner: (id) => Admin.moveLearner(id),
 

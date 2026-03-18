@@ -430,6 +430,7 @@ const Admin = {
       </select>` : ''}
       <div style="display:flex;gap:4px;margin-top:12px;">
         <button class="btn btn-outline btn-sm" onclick="App.openBuilder('${c.id}')">Edit</button>
+        <button class="btn btn-outline btn-sm" onclick="Admin.previewCourse('${c.id}')">Preview</button>
         <button class="btn btn-primary btn-sm w-full" onclick="App.openAssign('${c.id}','${esc(c.title)}')">👤 Assign</button>
         <button class="btn btn-outline btn-sm" style="color:var(--fail);border-color:var(--fail);" onclick="Admin.deleteCourse('${c.id}','${esc(c.title)}')">Delete</button>
       </div>
@@ -441,6 +442,13 @@ const Admin = {
       await api(`/api/courses/${courseId}`, { method:'PATCH', body:JSON.stringify({ section_id: sectionId || null }) });
       Admin.renderCourses();
     } catch(e) { Toast.err(e.message); }
+  },
+
+  async previewCourse(cid) {
+    try {
+      window._adminPreview = true;
+      await Learner.startCourse(cid);
+    } catch(e) { window._adminPreview = false; Toast.err(e.message); }
   },
 
   async deleteCourse(courseId, title) {

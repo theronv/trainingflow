@@ -869,6 +869,10 @@
       <div class="modal-sub">Build training modules with questions and content.</div>
     </div>
     <div class="modal-body">
+      <div style="display:flex;justify-content:flex-end;gap:var(--space-2);margin-bottom:var(--space-4);">
+        <button class="btn btn-ghost" onclick="App.closeBuilder()">Cancel</button>
+        <button class="btn btn-primary" onclick="App.saveCourse()">Save Course</button>
+      </div>
       <div class="field-row">
         <div class="field"><label>Title</label><input type="text" id="cb-title" placeholder="e.g. Q2 Compliance Training"></div>
         <div class="field"><label>Icon</label><input type="text" id="cb-icon" placeholder="📋" maxlength="4"></div>
