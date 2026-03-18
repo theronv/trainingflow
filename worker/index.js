@@ -827,7 +827,7 @@ app.delete('/api/courses/:id', requireAdmin, async (c) => {
   }
   await db.execute({ sql: 'DELETE FROM modules WHERE course_id = ?', args: [cid] })
   await db.execute({ sql: 'DELETE FROM assignments WHERE course_id = ?', args: [cid] })
-  await db.execute({ sql: 'DELETE FROM course_progress WHERE course_id = ?', args: [cid] })
+  try { await db.execute({ sql: 'DELETE FROM course_progress WHERE course_id = ?', args: [cid] }) } catch {}
   await db.execute({ sql: 'DELETE FROM completions WHERE course_id = ?', args: [cid] })
   await db.execute({ sql: 'DELETE FROM courses WHERE id = ?', args: [cid] })
   return c.json({ ok: true })
