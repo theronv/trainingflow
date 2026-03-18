@@ -446,8 +446,19 @@ const Admin = {
 
   async previewCourse(cid) {
     try {
+      const res = await api(`/api/courses/${cid}`);
+      curCourse = normCourse(res);
+      quizSt = {};
+      Learner._prog = { course_id: cid, module_idx: 0, modules: [] };
       window._adminPreview = true;
-      await Learner.startCourse(cid);
+      App.show('screen-course');
+      $$('mod-nav-list').innerHTML = curCourse.mods.map((m, i) => `
+        <div class="mod-item" id="mod-nav-${i}" onclick="Learner.loadMod(${i})">
+          <span class="mod-bullet" id="mod-bullet-${i}">${i + 1}</span>
+          <span>${esc(m.title)}</span>
+        </div>`).join('');
+      $$('ch-meta').textContent = esc(curCourse.title);
+      Learner.loadMod(0);
     } catch(e) { window._adminPreview = false; Toast.err(e.message); }
   },
 
