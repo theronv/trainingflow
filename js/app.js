@@ -65,12 +65,22 @@ const AppProxy = {
   // Learner Extra
   closeCert: () => $$('cert-overlay').classList.add('hidden'),
   downloadCertPDF: () => {
-    const { jsPDF } = window.jspdf;
+    const jspdf = window.jspdf;
+    if (!jspdf) { Toast.err('PDF library not loaded.'); return; }
+    const { jsPDF } = jspdf;
     const doc = new jsPDF('l', 'mm', 'a4');
-    html2canvas($$('cert-sheet'), { scale: 2 }).then(canvas => {
+    const sheet = $$('cert-sheet');
+    if (!sheet) { Toast.err('Certificate sheet not found.'); return; }
+    
+    Toast.info('Generating PDF...');
+    html2canvas(sheet, { scale: 2 }).then(canvas => {
       const img = canvas.toDataURL('image/png');
       doc.addImage(img, 'PNG', 0, 0, 297, 210);
       doc.save('certificate.pdf');
+      Toast.ok('Certificate downloaded.');
+    }).catch(e => {
+      console.error('PDF Error:', e);
+      Toast.err('Failed to generate PDF.');
     });
   },
 

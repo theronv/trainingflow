@@ -104,10 +104,15 @@ const Learner = {
   },
 
   // ─── CERTS ───
+  _certsCache: [],
   async renderCerts() {
-    const res = await learnerApi('/api/completions/me');
-    const passed = res.filter(r => r.passed);
-    $$('l-certs-content').innerHTML = passed.map(r => `<div class="card">📜 ${esc(r.course_title)} <button class="btn btn-outline btn-sm" onclick="Learner.viewCert('${r.cert_id}')">Download</button></div>`).join('');
+    try {
+      const res = await learnerApi('/api/completions/me');
+      Learner._certsCache = (res || []).filter(r => r.passed);
+      $$('l-certs-content').innerHTML = Learner._certsCache.length 
+        ? Learner._certsCache.map(r => `<div class="card">📜 ${esc(r.course_title)} <button class="btn btn-outline btn-sm" onclick="Learner.viewCert('${r.cert_id}')">Download</button></div>`).join('')
+        : '<div class="card" style="color:var(--ink-4);text-align:center;">No certificates earned yet. Complete a course to earn one!</div>';
+    } catch(e) { $$('l-certs-content').innerHTML = `<div class="card" style="color:var(--fail);">${esc(e.message)}</div>`; }
   },
 
   // ─── QUIZ ENGINE ───
@@ -342,5 +347,37 @@ const Learner = {
     }, 100);
   },
 
-  viewCert(certId) { Toast.info('Generating PDF for ' + certId); }
+  viewCert(certId) {
+    const r = Learner._certsCache.find(c => c.cert_id === certId);
+    if (!r) return Toast.err('Certificate data not found locally.');
+    
+    // Fully populate certificate template
+    const b = typeof brandCache !== 'undefined' ? brandCache : { name: 'TrainFlow' };
+    const l = typeof curLearner !== 'undefined' && curLearner ? curLearner : { name: r.learner_name || 'Learner' };
+
+    $$('c-org').textContent    = b.name || 'TrainFlow';
+    $$('c-name').textContent   = l.name;
+    $$('c-course').textContent = r.course_title || 'Course';
+    $$('c-date').textContent   = new Date(r.completed_at * 1000).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    $$('c-score').textContent  = (r.score || 0) + '%';
+    $$('c-id').textContent     = r.cert_id;
+
+    // Trigger download (without showing overlay necessarily, but we need the elements to be in DOM)
+    // The downloadCertPDF uses html2canvas on #cert-sheet.
+    // If it's hidden, html2canvas might struggle depending on implementation.
+    // Let's ensure it's at least not display:none during the capture.
+    const wasHidden = $$('cert-overlay').classList.contains('hidden');
+    if (wasHidden) {
+       $$('cert-overlay').style.visibility = 'hidden';
+       $$('cert-overlay').classList.remove('hidden');
+    }
+
+    setTimeout(() => {
+      App.downloadCertPDF();
+      if (wasHidden) {
+        $$('cert-overlay').classList.add('hidden');
+        $$('cert-overlay').style.visibility = '';
+      }
+    }, 150);
+  }
 };
