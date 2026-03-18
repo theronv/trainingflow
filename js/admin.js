@@ -540,19 +540,63 @@ const Admin = {
 
   renderReview() {
     const el = $$('review-modules'); if(!el) return;
-    el.innerHTML = Admin.generatedCourse.modules.map((m, i) => `
-      <div class="card" style="margin-bottom:var(--space-4);">
-        <div style="font-weight:700;">${esc(m.title)}</div>
-        <div style="font-size:var(--text-sm);color:var(--ink-3);margin-top:8px;">${esc(m.summary || '')}</div>
-        <div style="font-size:11px;color:var(--brand-1);margin-top:4px;">${m.questions?.length || 0} questions generated</div>
-      </div>`).join('');
+    const c = Admin.generatedCourse;
+    const letters = ['A','B','C','D'];
+
+    // Course header summary
+    const header = `<div class="card" style="margin-bottom:var(--space-5);background:var(--accent-lt);border:1px solid var(--rule);">
+      <div style="font-size:var(--text-xs);font-weight:700;color:var(--ink-4);text-transform:uppercase;letter-spacing:.06em;">Course</div>
+      <div style="font-size:var(--text-lg);font-weight:700;margin-top:2px;">${esc(c.icon || '📋')} ${esc(c.title || 'Untitled')}</div>
+      ${c.description ? `<div style="font-size:var(--text-sm);color:var(--ink-3);margin-top:4px;">${esc(c.description)}</div>` : ''}
+      <div style="font-size:11px;color:var(--ink-4);margin-top:var(--space-3);">${c.modules.length} module${c.modules.length !== 1 ? 's' : ''} · ${c.modules.reduce((s,m) => s + (m.questions?.length || 0), 0)} questions total</div>
+    </div>`;
+
+    const modulesHtml = c.modules.map((m, mi) => {
+      const qCount = m.questions?.length || 0;
+      const failed = m.failed;
+
+      const questionsHtml = qCount ? m.questions.map((q, qi) => `
+        <div style="margin-top:var(--space-4);padding-top:var(--space-3);border-top:1px solid var(--rule-2);">
+          <div style="font-weight:600;font-size:var(--text-sm);margin-bottom:var(--space-2);">Q${qi + 1}. ${esc(q.question)}</div>
+          ${(q.options || []).map((opt, oi) => opt ? `
+            <div style="font-size:var(--text-sm);padding:4px 10px;border-radius:4px;margin-bottom:2px;${oi === q.correct_index ? 'background:var(--pass-lt);color:var(--pass);font-weight:600;' : 'color:var(--ink-3);'}">
+              ${letters[oi]}. ${esc(opt)}
+            </div>` : '').join('')}
+          ${q.explanation ? `<div style="font-size:11px;color:var(--ink-4);margin-top:var(--space-2);font-style:italic;">💡 ${esc(q.explanation)}</div>` : ''}
+        </div>`).join('') : '';
+
+      return `<div class="card" style="margin-bottom:var(--space-4);">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-3);">
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:var(--text-xs);font-weight:700;color:var(--ink-4);text-transform:uppercase;letter-spacing:.06em;">Module ${mi + 1}</div>
+            <div style="font-weight:700;margin-top:2px;">${esc(m.title)}</div>
+            ${m.summary ? `<div style="font-size:var(--text-sm);color:var(--ink-3);margin-top:4px;">${esc(m.summary)}</div>` : ''}
+          </div>
+          <div style="flex-shrink:0;">
+            ${failed
+              ? '<span class="chip chip-red">✗ Failed</span>'
+              : `<span class="chip chip-green">✓ ${qCount}q</span> <span class="chip" style="background:var(--accent-lt);color:var(--brand-1);font-size:9px;">${esc(m._provider || 'AI')}</span>`}
+          </div>
+        </div>
+        ${questionsHtml}
+      </div>`;
+    }).join('');
+
+    el.innerHTML = header + modulesHtml;
   },
 
   async saveAiCourse() {
+    const btn = document.querySelector('[onclick="App.saveAiCourse()"]');
+    if(btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
     try {
       await api('/api/courses', { method: 'POST', body: JSON.stringify(Admin.generatedCourse) });
-      Toast.ok('AI Course saved to database!');
+      Toast.ok('Course saved!');
+      // Reset importer state
+      Admin.fileModules = []; Admin.parsedModules = []; Admin.generatedCourse = null; Admin.isGenerating = false;
       Admin.nav('courses');
-    } catch (e) { Toast.err(e.message); }
+    } catch(e) {
+      Toast.err(e.message);
+      if(btn) { btn.disabled = false; btn.textContent = 'Save to Database'; }
+    }
   }
 };
