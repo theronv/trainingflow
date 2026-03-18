@@ -9,10 +9,20 @@ const Builder = {
     $$('cb-title').value = '';
     $$('cb-icon').value = '';
     $$('cb-desc').value = '';
+    $$('cb-ref-url').value = '';
     $$('mods-builder').innerHTML = '';
+    $$('builder-title').textContent = editId ? 'Edit Course' : 'New Course';
     $$('builder-overlay').classList.remove('hidden');
-    if(editId) { 
-      // Load existing logic to be implemented
+    if(editId) {
+      api(`/api/courses/${editId}`).then(c => {
+        const nc = normCourse(c);
+        $$('cb-title').value = nc.title;
+        $$('cb-icon').value = nc.icon;
+        $$('cb-desc').value = nc.desc;
+        $$('cb-ref-url').value = nc.refUrl;
+        cbState.mods = nc.mods.map(m => ({ id: m.id, title: m.title, content: m.content, questions: m.questions }));
+        Builder.renderBuilderMods();
+      }).catch(() => {});
     }
   },
   closeBuilder() { $$('builder-overlay').classList.add('hidden'); },
@@ -36,11 +46,12 @@ const Builder = {
   async saveCourse() {
     const title = $$('cb-title').value.trim();
     if(!title) return Toast.err('Title required.');
-    const body = { 
-      title, 
+    const body = {
+      title,
       icon: $$('cb-icon').value || '📋',
       description: $$('cb-desc').value,
-      modules: cbState.mods 
+      reference_url: $$('cb-ref-url').value.trim() || null,
+      modules: cbState.mods
     };
     try {
       if(cbState.editId) await api(`/api/courses/${cbState.editId}`, { method: 'PUT', body: JSON.stringify(body) });

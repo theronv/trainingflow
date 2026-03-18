@@ -591,6 +591,7 @@ app.get('/api/assignments/me', requireLearner, async (c) => {
 async function setupSections(db) {
   await db.execute('CREATE TABLE IF NOT EXISTS sections (id TEXT PRIMARY KEY, name TEXT NOT NULL, sort_order INTEGER DEFAULT 0, created_at INTEGER)')
   try { await db.execute('ALTER TABLE courses ADD COLUMN section_id TEXT') } catch {}
+  try { await db.execute('ALTER TABLE courses ADD COLUMN reference_url TEXT') } catch {}
 }
 
 app.get('/api/sections', async (c) => {
@@ -628,9 +629,11 @@ app.delete('/api/sections/:id', requireAdmin, async (c) => {
 app.patch('/api/courses/:id', requireAdmin, async (c) => {
   const body = await c.req.json()
   const db = getDb(c.env)
+  await setupSections(db)
   const fields = [], args = []
-  if (body.section_id !== undefined) { fields.push('section_id = ?'); args.push(body.section_id || null) }
-  if (body.title !== undefined)      { fields.push('title = ?');      args.push(body.title.trim()) }
+  if (body.section_id !== undefined)    { fields.push('section_id = ?');    args.push(body.section_id || null) }
+  if (body.title !== undefined)         { fields.push('title = ?');         args.push(body.title.trim()) }
+  if (body.reference_url !== undefined) { fields.push('reference_url = ?'); args.push(body.reference_url || null) }
   if (!fields.length) return c.json({ error: 'Nothing to update' }, 400)
   args.push(c.req.param('id'))
   await db.execute({ sql: `UPDATE courses SET ${fields.join(', ')} WHERE id = ?`, args })
@@ -731,9 +734,10 @@ app.post('/api/courses', requireAdmin, async (c) => {
   const db = getDb(c.env)
   const cid = uid()
   
+  await setupSections(db)
   await db.execute({
-    sql: 'INSERT INTO courses (id, title, icon, description) VALUES (?, ?, ?, ?)',
-    args: [cid, body.title, body.icon || '📋', body.description || '']
+    sql: 'INSERT INTO courses (id, title, icon, description, reference_url) VALUES (?, ?, ?, ?, ?)',
+    args: [cid, body.title, body.icon || '📋', body.description || '', body.reference_url || null]
   })
   
   if (body.modules) {
@@ -756,6 +760,44 @@ app.post('/api/courses', requireAdmin, async (c) => {
     }
   }
   return c.json({ id: cid }, 201)
+})
+
+app.put('/api/courses/:id', requireAdmin, async (c) => {
+  const cid = c.req.param('id')
+  const body = await c.req.json()
+  const db = getDb(c.env)
+  await setupSections(db)
+  // Update course metadata
+  await db.execute({
+    sql: 'UPDATE courses SET title = ?, icon = ?, description = ?, reference_url = ? WHERE id = ?',
+    args: [body.title, body.icon || '📋', body.description || '', body.reference_url || null, cid]
+  })
+  // Replace all modules and questions
+  const oldMods = await db.execute({ sql: 'SELECT id FROM modules WHERE course_id = ?', args: [cid] })
+  for (const row of toObjs(oldMods)) {
+    await db.execute({ sql: 'DELETE FROM questions WHERE module_id = ?', args: [row.id] })
+  }
+  await db.execute({ sql: 'DELETE FROM modules WHERE course_id = ?', args: [cid] })
+  if (body.modules) {
+    for (let i = 0; i < body.modules.length; i++) {
+      const m = body.modules[i]
+      const mid = uid()
+      await db.execute({
+        sql: 'INSERT INTO modules (id, course_id, title, content, sort_order) VALUES (?, ?, ?, ?, ?)',
+        args: [mid, cid, m.title, m.content || '', i]
+      })
+      if (m.questions) {
+        for (let j = 0; j < m.questions.length; j++) {
+          const q = m.questions[j]
+          await db.execute({
+            sql: 'INSERT INTO questions (id, module_id, question, option_a, option_b, option_c, option_d, correct_index, explanation, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            args: [uid(), mid, q.question, q.options?.[0]||q.option_a||'', q.options?.[1]||q.option_b||'', q.options?.[2]||q.option_c||'', q.options?.[3]||q.option_d||'', q.correct_index ?? 0, q.explanation || '', j]
+          })
+        }
+      }
+    }
+  }
+  return c.json({ ok: true })
 })
 
 app.post('/api/assignments', requireManager, async (c) => {

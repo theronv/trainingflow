@@ -429,6 +429,7 @@ const Admin = {
         <option value="">No section</option>${secOpts}
       </select>` : ''}
       <div style="display:flex;gap:4px;margin-top:12px;">
+        <button class="btn btn-outline btn-sm" onclick="App.openBuilder('${c.id}')">Edit</button>
         <button class="btn btn-primary btn-sm w-full" onclick="App.openAssign('${c.id}','${esc(c.title)}')">👤 Assign</button>
       </div>
     </div>`;

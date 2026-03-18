@@ -156,10 +156,18 @@ const Learner = {
     if($$('ch-prog')) $$('ch-prog').style.width = pct + '%';
     if($$('ch-label')) $$('ch-label').textContent = `Module ${mi + 1} of ${curCourse.mods.length}`;
     const hasQuiz = mod.questions && mod.questions.length > 0;
+    const refUrl = curCourse.refUrl || '';
+    const refNotice = (hasQuiz && refUrl) ? `
+      <div class="ref-material-notice">
+        <span class="ref-icon">📎</span>
+        <span>Before starting the competency check, make sure you've reviewed the course material.</span>
+        <a href="${esc(refUrl)}" target="_blank" rel="noopener noreferrer" class="ref-link">View Material →</a>
+      </div>` : '';
     $$('mod-main').innerHTML = `<div class="module-prose">
       <h2>${esc(mod.title)}</h2>
       <div>${mod.content}</div>
-      ${hasQuiz ? `<button class="btn btn-primary btn-lg" style="margin-top:var(--space-8);" onclick="Learner.startQuiz(${mi})">Start Competency Check →</button>` : `<button class="btn btn-primary btn-lg" style="margin-top:var(--space-8);" onclick="Learner.finishMod(${mi})">Continue →</button>`}
+      ${refNotice}
+      ${hasQuiz ? `<button class="btn btn-primary btn-lg" style="margin-top:var(--space-4);" onclick="Learner.startQuiz(${mi})">Start Competency Check →</button>` : `<button class="btn btn-primary btn-lg" style="margin-top:var(--space-8);" onclick="Learner.finishMod(${mi})">Continue →</button>`}
     </div>`;
   },
 

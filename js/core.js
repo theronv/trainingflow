@@ -112,7 +112,7 @@ const Toast = {
 
 function normCourse(c) {
   return {
-    id: c.id, icon: c.icon || CONFIG.DEFAULT_ICON, title: c.title, desc: c.description || '',
+    id: c.id, icon: c.icon || CONFIG.DEFAULT_ICON, title: c.title, desc: c.description || '', refUrl: c.reference_url || '',
     mods: (c.modules || []).map(m => ({
       id: m.id, title: m.title, content: m.content || '',
       questions: (m.questions || []).map(q => ({

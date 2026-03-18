@@ -810,6 +810,35 @@ tbody tr:hover td { background: var(--surface); }
 .module-prose ul, .module-prose ol { color: var(--ink-2); padding-left: var(--space-6); margin-bottom: var(--space-4); line-height: 1.8; }
 .module-prose li { margin-bottom: 4px; }
 
+/* Reference material notice */
+.ref-material-notice {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-8);
+  padding: var(--space-4) var(--space-5);
+  background: var(--brand-glow);
+  border: 1px solid var(--brand);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+.ref-material-notice .ref-icon { font-size: 16px; flex-shrink: 0; }
+.ref-material-notice span { flex: 1; min-width: 180px; }
+.ref-link {
+  white-space: nowrap;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--brand);
+  text-decoration: none;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--brand);
+  border-radius: var(--radius-sm);
+  transition: background 0.15s;
+}
+.ref-link:hover { background: var(--brand-glow); }
+
 .quiz-wrap { max-width: 640px; margin: 0 auto; }
 .quiz-header { margin-bottom: var(--space-6); }
 .quiz-step { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--ink-3); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: var(--space-3); }
