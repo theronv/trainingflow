@@ -159,6 +159,8 @@ function applyBrand() {
 
   // Org name across all surfaces
   ['ldg-brand', 'l-brand', 'a-brand', 'm-brand'].forEach(id => { const el = $$(id); if(el) el.textContent = b.name; });
+  const certSig = $$('c-sig-dept');
+  if(certSig) certSig.textContent = b.name + ' Training Department';
 
   // Logo across all surfaces (topbars + landing)
   const logoSrc = b.logo || '';

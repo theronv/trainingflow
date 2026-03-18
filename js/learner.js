@@ -342,6 +342,15 @@ const Learner = {
     $$('c-score').textContent  = score + '%';
     $$('c-id').textContent     = res.cert_id;
     
+    // Logo and Signature Labels
+    const sigLabel = $$('c-sig-dept');
+    if (sigLabel) sigLabel.textContent = (b.name || 'TrainFlow') + ' Training Department';
+    const logoImg = $$('c-logo');
+    if (logoImg) {
+      if (b.logo) { logoImg.src = b.logo; $$('c-logo-wrap').classList.remove('hidden'); }
+      else { logoImg.src = ''; $$('c-logo-wrap').classList.add('hidden'); }
+    }
+    
     setTimeout(() => {
       $$('cert-overlay').classList.remove('hidden');
     }, 100);
@@ -361,6 +370,15 @@ const Learner = {
     $$('c-date').textContent   = new Date(r.completed_at * 1000).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
     $$('c-score').textContent  = (r.score || 0) + '%';
     $$('c-id').textContent     = r.cert_id;
+
+    // Logo and Signature Labels
+    const sigLabel = $$('c-sig-dept');
+    if (sigLabel) sigLabel.textContent = (b.name || 'TrainFlow') + ' Training Department';
+    const logoImg = $$('c-logo');
+    if (logoImg) {
+      if (b.logo) { logoImg.src = b.logo; $$('c-logo-wrap').classList.remove('hidden'); }
+      else { logoImg.src = ''; $$('c-logo-wrap').classList.add('hidden'); }
+    }
 
     // Trigger download (without showing overlay necessarily, but we need the elements to be in DOM)
     // The downloadCertPDF uses html2canvas on #cert-sheet.

@@ -73,10 +73,16 @@ const AppProxy = {
     if (!sheet) { Toast.err('Certificate sheet not found.'); return; }
     
     Toast.info('Generating PDF...');
-    html2canvas(sheet, { scale: 2 }).then(canvas => {
+    html2canvas(sheet, { scale: 2, useCORS: true, logging: false }).then(canvas => {
       const img = canvas.toDataURL('image/png');
       doc.addImage(img, 'PNG', 0, 0, 297, 210);
-      doc.save('certificate.pdf');
+      
+      // Official Filename: Certificate_CourseName_LearnerName.pdf
+      const cName = ($$('c-course')?.textContent || 'Course').replace(/[^a-z0-9]/gi, '_');
+      const lName = ($$('c-name')?.textContent || 'Learner').replace(/[^a-z0-9]/gi, '_');
+      const filename = `Certificate_${cName}_${lName}.pdf`;
+      
+      doc.save(filename);
       Toast.ok('Certificate downloaded.');
     }).catch(e => {
       console.error('PDF Error:', e);
