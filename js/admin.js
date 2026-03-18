@@ -320,17 +320,39 @@ const Admin = {
   },
 
   // ─── BRANDING ───
-  async renderBranding() {
+  renderBranding() {
     if(!brandCache) return;
-    if($$('br-name')) $$('br-name').value = brandCache.name || '';
-    if($$('br-pass')) $$('br-pass').value = brandCache.pass || 80;
+    const b = brandCache;
+    if($$('br-name'))     $$('br-name').value     = b.name || '';
+    if($$('br-tag'))      $$('br-tag').value       = b.tagline || '';
+    if($$('br-pass'))     $$('br-pass').value      = b.pass || 80;
+    if($$('br-logo-url')) $$('br-logo-url').value  = b.logo && !b.logo.startsWith('data:') ? b.logo : '';
+    // Color pickers + hex inputs
+    const hex = b.c1 || CONFIG.DEFAULT_C1;
+    if($$('br-c1'))     $$('br-c1').value     = hex;
+    if($$('br-c1-hex')) $$('br-c1-hex').value = hex;
+    const hex2 = b.c2 || CONFIG.DEFAULT_C2;
+    if($$('br-c2'))     $$('br-c2').value     = hex2;
+    if($$('br-c2-hex')) $$('br-c2-hex').value = hex2;
+    // Live preview
+    const pn = $$('br-prev-name'); if (pn) pn.textContent = b.name;
+    const pl = $$('br-prev-logo');
+    if (pl) { pl.src = b.logo || ''; pl.style.display = b.logo ? 'block' : 'none'; }
   },
   async saveBrand() {
     try {
-      const body = { org_name: $$('br-name').value, pass_threshold: parseInt($$('br-pass').value) };
+      const hex = $$('br-c1')?.value || CONFIG.DEFAULT_C1;
+      const body = {
+        org_name: $$('br-name').value,
+        pass_threshold: parseInt($$('br-pass').value),
+        primary_color: hex,
+        secondary_color: $$('br-c2')?.value || CONFIG.DEFAULT_C2,
+        logo_url: brandCache.logo && !brandCache.logo.startsWith('data:') ? brandCache.logo : ($$('br-logo-url')?.value || ''),
+      };
       await api('/api/brand', { method:'PUT', body:JSON.stringify(body) });
-      const hex = $$('br-c1')?.value;
-      if (hex) localStorage.setItem('trainflow_brand_color', hex);
+      if (/^#[0-9a-fA-F]{6}$/.test(hex)) localStorage.setItem('trainflow_brand_color', hex);
+      brandCache = { ...brandCache, name: body.org_name, c1: hex, c2: body.secondary_color, pass: body.pass_threshold };
+      applyBrand();
       Toast.ok('Brand saved.');
     } catch(e) { Toast.err(e.message); }
   },

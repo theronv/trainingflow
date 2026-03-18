@@ -125,12 +125,54 @@ function normCourse(c) {
 function normRecord(r) { return { cid: r.course_id, learner: r.learner_name, score: r.score, passed: Boolean(r.passed), date: (r.completed_at || 0) * 1000, cid2: r.cert_id || '', }; }
 function normBrand(b) { return { name: b.org_name || CONFIG.DEFAULT_BRAND_NAME, tagline: b.tagline || CONFIG.DEFAULT_TAGLINE, logo: b.logo_url || '', c1: b.primary_color || CONFIG.DEFAULT_C1, c2: b.secondary_color || CONFIG.DEFAULT_C2, pass: b.pass_threshold ?? CONFIG.DEFAULT_PASS, }; }
 
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1,3),16);
+  const g = parseInt(hex.slice(3,5),16);
+  const b = parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+function darken(hex, percent) {
+  let r = parseInt(hex.slice(1,3),16);
+  let g = parseInt(hex.slice(3,5),16);
+  let b = parseInt(hex.slice(5,7),16);
+  r = Math.max(0, Math.floor(r * (1 - percent/100)));
+  g = Math.max(0, Math.floor(g * (1 - percent/100)));
+  b = Math.max(0, Math.floor(b * (1 - percent/100)));
+  return `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`;
+}
+
 function applyBrand() {
   const b = brandCache;
-  document.documentElement.style.setProperty('--brand-1', b.c1);
-  document.documentElement.style.setProperty('--brand-2', b.c2);
+  const hex = (b.c1 && /^#[0-9a-fA-F]{6}$/.test(b.c1)) ? b.c1 : CONFIG.DEFAULT_C1;
+
+  // Apply all brand CSS tokens
+  document.documentElement.style.setProperty('--brand',        hex);
+  document.documentElement.style.setProperty('--brand-dark',   darken(hex, 15));
+  document.documentElement.style.setProperty('--brand-glow',   hexToRgba(hex, 0.15));
+  document.documentElement.style.setProperty('--shadow-brand', `0 0 0 3px ${hexToRgba(hex, 0.2)}`);
+  // Legacy aliases
+  document.documentElement.style.setProperty('--brand-1', hex);
+  document.documentElement.style.setProperty('--brand-2', b.c2 || CONFIG.DEFAULT_C2);
+
+  // Org name across all surfaces
   ['ldg-brand', 'l-brand', 'a-brand', 'm-brand'].forEach(id => { const el = $$(id); if(el) el.textContent = b.name; });
-  ['l-logo', 'a-logo', 'm-logo'].forEach(id => { const img = $$(id); if(!img) return; if(b.logo) { img.src=b.logo; img.classList.remove('hidden'); } else { img.src=''; img.classList.add('hidden'); } });
+
+  // Logo across all surfaces (topbars + landing)
+  const logoSrc = b.logo || '';
+  ['l-logo', 'a-logo', 'm-logo', 'ldg-logo'].forEach(id => {
+    const img = $$(id); if(!img) return;
+    if(logoSrc) { img.src = logoSrc; img.classList.remove('hidden'); }
+    else { img.src = ''; img.classList.add('hidden'); }
+  });
+
+  // Hide/show the diamond accent on topbar brand when logo is present
+  document.querySelectorAll('.brand').forEach(el => el.classList.toggle('has-logo', !!logoSrc));
+
+  // Landing: show logo image + name together, or just name
+  const ldgWrap = $$('ldg-logo-wrap');
+  if (ldgWrap) ldgWrap.classList.toggle('hidden', !logoSrc);
+  const ldgBrand = $$('ldg-brand');
+  if (ldgBrand) ldgBrand.style.display = ''; // always show name
 }
 
 function showPage(id) { 

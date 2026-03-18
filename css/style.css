@@ -314,7 +314,8 @@ textarea { resize: vertical; min-height: 90px; line-height: 1.6; }
   border-radius: 2px;
   flex-shrink: 0;
 }
-.brand-logo { height: 24px; width: auto; }
+.brand.has-logo::before { display: none; }
+.brand-logo { height: 28px; width: auto; border-radius: var(--radius-sm); object-fit: contain; }
 .topbar-right {
   display: flex;
   align-items: center;
@@ -642,6 +643,18 @@ tbody tr:hover td { background: var(--surface); }
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--ink-3);
+}
+.ldg-logo-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: var(--space-4);
+}
+.ldg-logo-img {
+  height: 56px;
+  width: auto;
+  max-width: 200px;
+  object-fit: contain;
+  border-radius: var(--radius-md);
 }
 .landing-logo {
   font-size: 28px;

@@ -2,23 +2,6 @@
 //  TRAINFLOW — Unified Application Proxy
 // ══════════════════════════════════════════════════════════
 
-function hexToRgba(hex, alpha) {
-  const r = parseInt(hex.slice(1,3),16);
-  const g = parseInt(hex.slice(3,5),16);
-  const b = parseInt(hex.slice(5,7),16);
-  return `rgba(${r},${g},${b},${alpha})`;
-}
-
-function darken(hex, percent) {
-  let r = parseInt(hex.slice(1,3),16);
-  let g = parseInt(hex.slice(3,5),16);
-  let b = parseInt(hex.slice(5,7),16);
-  r = Math.max(0, Math.floor(r * (1 - percent/100)));
-  g = Math.max(0, Math.floor(g * (1 - percent/100)));
-  b = Math.max(0, Math.floor(b * (1 - percent/100)));
-  return `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`;
-}
-
 const AppProxy = {
   // Navigation
   aNav: (p) => Admin.nav(p),
@@ -107,12 +90,14 @@ const AppProxy = {
   },
   previewBrand: () => {
     const hex = $$('br-c1')?.value;
-    if (!hex) return;
-    document.documentElement.style.setProperty('--brand', hex);
-    document.documentElement.style.setProperty('--brand-dark', darken(hex, 15));
-    document.documentElement.style.setProperty('--brand-glow', hexToRgba(hex, 0.15));
-    document.documentElement.style.setProperty('--shadow-brand', `0 0 0 3px ${hexToRgba(hex, 0.2)}`);
+    if (hex && /^#[0-9a-fA-F]{6}$/.test(hex)) brandCache.c1 = hex;
+    const name = $$('br-name')?.value; if (name) brandCache.name = name;
+    const logoUrl = $$('br-logo-url')?.value; if (logoUrl !== undefined) brandCache.logo = logoUrl;
     applyBrand();
+    // Update live branding panel preview
+    const pn = $$('br-prev-name'); if (pn) pn.textContent = brandCache.name;
+    const pl = $$('br-prev-logo');
+    if (pl) { pl.src = brandCache.logo || ''; pl.style.display = brandCache.logo ? 'block' : 'none'; }
   },
   resetBrand: () => { brandCache = { name: CONFIG.DEFAULT_BRAND_NAME, c1: CONFIG.DEFAULT_C1, c2: CONFIG.DEFAULT_C2, pass: CONFIG.DEFAULT_PASS }; applyBrand(); Admin.renderBranding(); },
   openTagsModal: () => { $$('tags-modal').classList.remove('hidden'); },
@@ -180,12 +165,17 @@ const AppProxy = {
   uploadLogo: (e) => {
     const file = e.target.files[0]; if(!file) return;
     const reader = new FileReader();
-    reader.onload = ev => { brandCache.logo = ev.target.result; applyBrand(); };
+    reader.onload = ev => {
+      brandCache.logo = ev.target.result;
+      const urlInput = $$('br-logo-url'); if (urlInput) urlInput.value = '';
+      applyBrand();
+      const pl = $$('br-prev-logo'); if (pl) { pl.src = brandCache.logo; pl.style.display = 'block'; }
+    };
     reader.readAsDataURL(file);
   },
   syncHex: (colorId, hexId) => {
     const hex = $$(hexId).value;
-    if(/^#[0-9a-fA-F]{6}$/.test(hex)) { $$(colorId).value = hex; applyBrand(); }
+    if(/^#[0-9a-fA-F]{6}$/.test(hex)) { $$(colorId).value = hex; App.previewBrand(); }
   },
 
   // Settings backup
@@ -242,12 +232,11 @@ const AppProxy = {
         btn.title = 'Switch to dark mode';
       });
     }
+    // Pre-apply saved brand color before API loads to prevent flash
     const savedBrand = localStorage.getItem('trainflow_brand_color');
-    if (savedBrand) {
-      document.documentElement.style.setProperty('--brand', savedBrand);
-      document.documentElement.style.setProperty('--brand-dark', darken(savedBrand, 15));
-      document.documentElement.style.setProperty('--brand-glow', hexToRgba(savedBrand, 0.15));
-      document.documentElement.style.setProperty('--shadow-brand', `0 0 0 3px ${hexToRgba(savedBrand, 0.2)}`);
+    if (savedBrand && /^#[0-9a-fA-F]{6}$/.test(savedBrand)) {
+      brandCache.c1 = savedBrand;
+      applyBrand();
     }
     await App.baseInit();
     if (getToken()) Admin.init();
