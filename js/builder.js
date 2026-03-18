@@ -51,22 +51,22 @@ const Builder = {
                 <div style="font-weight:600;font-size:var(--text-sm);color:var(--ink-3);">Q${j+1}</div>
                 <button class="btn btn-ghost btn-sm" style="color:var(--fail);" onclick="Builder.delQuestion(${i},${j})">✕ Remove</button>
               </div>
-              <div class="field"><label>Question</label><input type="text" value="${esc(q.q||'')}" oninput="cbState.mods[${i}].questions[${j}].q=this.value" placeholder="Question text"></div>
+              <div class="field"><label>Question</label><input type="text" value="${esc(q.question||'')}" oninput="cbState.mods[${i}].questions[${j}].question=this.value" placeholder="Question text"></div>
               <label style="font-size:var(--text-sm);font-weight:500;color:var(--ink-2);margin-bottom:var(--space-2);display:block;">Options <span style="font-weight:400;color:var(--ink-4);">(select the correct answer)</span></label>
               ${['A','B','C','D'].map((letter, k) => `
                 <div style="display:flex;align-items:center;gap:var(--space-2);margin-bottom:var(--space-2);">
-                  <input type="radio" name="q-correct-${i}-${j}" value="${k}" ${q.correct===k?'checked':''} onchange="cbState.mods[${i}].questions[${j}].correct=${k}" title="Mark as correct answer">
+                  <input type="radio" name="q-correct-${i}-${j}" value="${k}" ${q.correct_index===k?'checked':''} onchange="cbState.mods[${i}].questions[${j}].correct_index=${k}" title="Mark as correct answer">
                   <span style="font-size:var(--text-sm);font-weight:600;min-width:16px;">${letter}</span>
-                  <input type="text" value="${esc((q.opts||[])[k]||'')}" oninput="cbState.mods[${i}].questions[${j}].opts[${k}]=this.value" placeholder="Option ${letter}" style="flex:1;">
+                  <input type="text" value="${esc((q.options||[])[k]||'')}" oninput="cbState.mods[${i}].questions[${j}].options[${k}]=this.value" placeholder="Option ${letter}" style="flex:1;">
                 </div>`).join('')}
-              <div class="field" style="margin-top:var(--space-2);margin-bottom:0;"><label>Explanation</label><input type="text" value="${esc(q.exp||'')}" oninput="cbState.mods[${i}].questions[${j}].exp=this.value" placeholder="Why this answer is correct (shown after attempt)"></div>
+              <div class="field" style="margin-top:var(--space-2);margin-bottom:0;"><label>Explanation</label><input type="text" value="${esc(q.explanation||'')}" oninput="cbState.mods[${i}].questions[${j}].explanation=this.value" placeholder="Why this answer is correct (shown after attempt)"></div>
             </div>`).join('')}
         </div>
       </div>`).join('');
   },
   delMod(i) { cbState.mods.splice(i, 1); Builder.renderBuilderMods(); },
   addQuestion(i) {
-    cbState.mods[i].questions.push({ id: uid(), q: '', opts: ['', '', '', ''], correct: 0, exp: '' });
+    cbState.mods[i].questions.push({ id: uid(), question: '', options: ['', '', '', ''], correct_index: 0, explanation: '' });
     Builder.renderBuilderMods();
   },
   delQuestion(i, j) { cbState.mods[i].questions.splice(j, 1); Builder.renderBuilderMods(); },

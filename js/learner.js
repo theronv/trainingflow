@@ -180,10 +180,10 @@ const Learner = {
     $$('mod-main').innerHTML = `<div class="quiz-wrap">
       <div class="quiz-header">
         <div class="quiz-step">Question ${qi + 1} of ${total}</div>
-        <div class="quiz-q">${esc(q.q)}</div>
+        <div class="quiz-q">${esc(q.question)}</div>
       </div>
       <div class="quiz-options">
-        ${q.opts.filter(o => o).map((o, i) => `
+        ${q.options.filter(o => o).map((o, i) => `
           <button class="quiz-opt" onclick="Learner.answer(${mi},${qi},${i})">
             <span class="opt-letter">${letters[i]}</span>
             ${esc(o)}
@@ -194,7 +194,7 @@ const Learner = {
 
   answer(mi, qi, sel) {
     const q = curCourse.mods[mi].questions[qi];
-    const ok = sel === q.correct;
+    const ok = sel === q.correct_index;
     quizSt[mi].ans.push({ question_id: q.id, ok });
     const total = curCourse.mods[mi].questions.length;
 
@@ -237,8 +237,8 @@ const Learner = {
     const answers = quizSt[mi].ans;
     const correct = answers.filter(a => a.ok).length;
     const total = answers.length;
-    const pct = Math.round((correct / total) * 100);
-    const passed = pct >= 70;
+    const pct = total > 0 ? Math.round((correct / total) * 100) : 100;
+    const passed = pct >= (brandCache.pass || 80);
 
     // Update sidebar bullet
     const item = $$(`mod-nav-${mi}`);
@@ -308,21 +308,31 @@ const Learner = {
       if(idx >= 0) allModScores[idx].score = score;
       else allModScores.push({ mi: Number(mi), score });
     });
+    
+    // Calculate final score across all modules
     const quizScores = allModScores.filter(m => m.score !== undefined);
     const score = quizScores.length > 0
       ? Math.round(quizScores.reduce((s, m) => s + m.score, 0) / quizScores.length)
       : 100;
-    const passed = score >= 70;
+    const passed = score >= (brandCache.pass || 80);
 
     if (window._adminPreview) { App.exitCourse(); return; }
     const res = await learnerApi('/api/completions', { method:'POST', body: JSON.stringify({ course_id: curCourse.id, score, passed }) });
+    
     // Clear progress record now that the course is done
     learnerApi(`/api/progress/${curCourse.id}`, { method: 'DELETE' }).catch(() => {});
     Learner._prog = null;
 
     confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
-    $$('c-name').textContent = curLearner.name;
-    $$('c-id').textContent = res.cert_id;
+    
+    // Fully populate certificate
+    $$('c-org').textContent    = brandCache.name || 'TrainFlow';
+    $$('c-name').textContent   = curLearner.name;
+    $$('c-course').textContent = curCourse.title;
+    $$('c-date').textContent   = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    $$('c-score').textContent  = score + '%';
+    $$('c-id').textContent     = res.cert_id;
+    
     $$('cert-overlay').classList.remove('hidden');
   },
 

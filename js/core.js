@@ -116,8 +116,11 @@ function normCourse(c) {
     mods: (c.modules || []).map(m => ({
       id: m.id, title: m.title, content: m.content || '',
       questions: (m.questions || []).map(q => ({
-        id: q.id, q: q.question, opts: [q.option_a, q.option_b, q.option_c, q.option_d],
-        correct: q.correct_index, exp: q.explanation || '',
+        id: q.id,
+        question: q.question,
+        options: [q.option_a, q.option_b, q.option_c, q.option_d],
+        correct_index: q.correct_index,
+        explanation: q.explanation || '',
       }))
     }))
   };

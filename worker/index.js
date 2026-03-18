@@ -754,9 +754,21 @@ app.post('/api/courses', requireAdmin, async (c) => {
       if (m.questions) {
         for (let j = 0; j < m.questions.length; j++) {
           const q = m.questions[j]
+          const opts = q.options || q.opts || []
           await db.execute({
             sql: 'INSERT INTO questions (id, module_id, question, option_a, option_b, option_c, option_d, correct_index, explanation, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            args: [uid(), mid, q.question, q.options[0]||'', q.options[1]||'', q.options[2]||'', q.options[3]||'', q.correct_index||0, q.explanation||'', j]
+            args: [
+              uid(), 
+              mid, 
+              q.question || q.q || '', 
+              opts[0] || q.option_a || '', 
+              opts[1] || q.option_b || '', 
+              opts[2] || q.option_c || '', 
+              opts[3] || q.option_d || '', 
+              q.correct_index ?? q.correct ?? 0, 
+              q.explanation || q.exp || '', 
+              j
+            ]
           })
         }
       }

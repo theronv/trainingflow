@@ -71,6 +71,24 @@
 - **Description:** No way to assign specific courses to specific learners; all users saw all courses.
 - **Resolution:** Built a full Assignment engine, including a new DB table, Worker endpoints, and a Manager UI for targeted course assignments.
 
+### H13 - `js/learner.js`: Hardcoded Passing Threshold Discrepancy
+- **File:** `js/learner.js`
+- **Severity:** HIGH (Resolved)
+- **Description:** Both module (`showModResults`) and course (`completeCourse`) completion logic hardcode a 70% passing threshold.
+- **Resolution:** Replaced hardcoded values with `brandCache.pass` (defaulting to 80%).
+
+### H14 - `js/builder.js` vs `worker/index.js`: Question Property Mismatch
+- **File:** `js/builder.js`, `worker/index.js`, `js/core.js`
+- **Severity:** HIGH (Resolved)
+- **Description:** Mismatched property names between frontend and backend caused question loss.
+- **Resolution:** Standardized on long names (`question`, `options`, `correct_index`, `explanation`) across the frontend, and added robust fallback mapping in the backend.
+
+### H15 - `js/learner.js`: Incomplete Certificate UI Population
+- **File:** `js/learner.js`
+- **Severity:** HIGH (Resolved)
+- **Description:** `completeCourse()` only populated `c-name` and `c-id` on the certificate overlay.
+- **Resolution:** Updated logic to fully populate organization name, course title, date, and score from session state.
+
 ---
 
 ## 🟡 MEDIUM PRIORITY BUGS
