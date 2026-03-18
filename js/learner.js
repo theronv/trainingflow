@@ -7,8 +7,17 @@ const Learner = {
 
   init() {
     App.show('screen-learner');
+    // Hide the sign-in panel and reveal the user pill
+    const loginPanel = $$('lp-name');
+    if(loginPanel) { loginPanel.classList.add('hidden'); loginPanel.classList.remove('active'); }
+    const pill = $$('l-user-pill');
+    if(pill) pill.style.display = '';
     $$('l-name-display').textContent = curLearner.name;
     $$('l-avatar').textContent = curLearner.name[0];
+    // Clear any leftover login error / fields
+    const err = $$('l-login-error'); if(err) { err.style.display = 'none'; err.textContent = ''; }
+    const ni = $$('learner-name-input'); if(ni) ni.value = '';
+    const pi = $$('learner-pw-input'); if(pi) pi.value = '';
     Learner.nav('courses');
   },
 
