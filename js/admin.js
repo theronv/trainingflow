@@ -91,8 +91,9 @@ const Admin = {
         grid.innerHTML = teams.map(t => `<div class="card">
           <div style="display:flex;justify-content:space-between;font-weight:700;">${esc(t.name)} <button class="btn btn-ghost btn-sm" onclick="Admin.openRenameTeam('${t.id}','${esc(t.name)}')">⋮</button></div>
           <div style="font-size:11px;color:var(--ink-meta);margin-bottom:12px;">${t.learner_count || 0} learner${t.learner_count !== 1 ? 's' : ''} · ${t.manager_count || 0} manager${t.manager_count !== 1 ? 's' : ''}</div>
-          <div style="display:flex;gap:var(--s-2);">
+          <div style="display:flex;gap:var(--s-2);flex-wrap:wrap;">
             <button class="btn btn-outline btn-sm" onclick="Admin.toggleTeamMembers('${t.id}')">View Members</button>
+            <button class="btn btn-outline btn-sm" onclick="Admin.openAddManager('${t.id}','${esc(t.name)}')">+ Manager</button>
             <button class="btn btn-outline btn-sm" onclick="Admin.openGenerateInvite('${t.id}','${esc(t.name)}')">+ Invite</button>
           </div>
           <div id="team-members-${t.id}" class="hidden" style="margin-top:12px;padding-top:8px;border-top:1px solid var(--rule);"></div>
@@ -139,6 +140,23 @@ const Admin = {
     $$('invite-form').classList.remove('hidden');
     $$('invite-result').classList.add('hidden');
     $$('invite-modal').classList.remove('hidden');
+  },
+  openAddManager(teamId, teamName) {
+    App._editLearnerId = null;
+    $$('al-modal-title').textContent = 'Add Manager';
+    $$('al-modal-sub').textContent = `Create a manager account for team: ${esc(teamName)}`;
+    $$('al-name').value = ''; $$('al-pw1').value = ''; $$('al-pw2').value = '';
+    $$('al-role').value = 'manager';
+    const sel = $$('al-team');
+    if(sel) {
+      sel.innerHTML = '<option value="">Unassigned</option>' + (teamsCache||[]).map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join('');
+      sel.value = teamId;
+    }
+    $$('al-pw-section').classList.remove('hidden');
+    $$('al-submit-btn').textContent = 'Create Manager';
+    App._alSubmitFn = async () => { await Admin.submitAddLearner(); if(!$$('add-learner-overlay').classList.contains('hidden')) return; Admin.renderTeams(); };
+    $$('add-learner-overlay').classList.remove('hidden');
+    setTimeout(() => $$('al-name').focus(), CONFIG.FOCUS_DELAY);
   },
   async deleteTeam(id) { if(confirm('Delete team?')){ try { await api(`/api/admin/teams/${id}`, { method:'DELETE' }); Admin.renderTeams(); } catch(e){ Toast.err(e.message); } } },
 

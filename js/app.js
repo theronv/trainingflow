@@ -44,6 +44,7 @@ const AppProxy = {
   submitEditLearner: () => Admin.submitEditLearner(),
   openDeleteLearner: (id, name, role) => Admin.openDeleteLearner(id, name, role),
   submitDeleteLearner: (id) => Admin.submitDeleteLearner(id),
+  openAddManager: (teamId, teamName) => Admin.openAddManager(teamId, teamName),
   openCreateTeam: () => Admin.openCreateTeam(),
   renderComps: (cid) => Admin.renderComps(cid),
   saveBrand: () => Admin.saveBrand(),
