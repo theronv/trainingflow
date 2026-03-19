@@ -20,7 +20,7 @@ const Builder = {
         $$('cb-icon').value = nc.icon;
         $$('cb-desc').value = nc.desc;
         $$('cb-ref-url').value = nc.refUrl;
-        cbState.mods = nc.mods.map(m => ({ id: m.id, title: m.title, content: m.content, questions: m.questions }));
+        cbState.mods = nc.mods.map(m => ({ id: m.id, title: m.title, content: m.content, summary: m.summary || '', reference_url: m.refUrl || '', learning_objectives: m.objectives || [], questions: m.questions }));
         Builder.renderBuilderMods();
       }).catch(() => {});
     }
@@ -28,7 +28,7 @@ const Builder = {
   closeBuilder() { $$('builder-overlay').classList.add('hidden'); },
   addMod() {
     const mi = cbState.mods.length;
-    cbState.mods.push({ id: uid(), title: '', content: '', questions: [] });
+    cbState.mods.push({ id: uid(), title: '', content: '', summary: '', reference_url: '', learning_objectives: [], questions: [] });
     Builder.renderBuilderMods();
   },
   renderBuilderMods() {
@@ -39,7 +39,24 @@ const Builder = {
           <button class="btn btn-ghost btn-sm" style="color:var(--fail);" onclick="Builder.delMod(${i})">Remove</button>
         </div>
         <div class="field"><label>Title</label><input type="text" value="${esc(m.title)}" oninput="cbState.mods[${i}].title=this.value" placeholder="e.g. Introduction"></div>
-        <div class="field"><label>Content (Markdown)</label><textarea style="min-height:120px;" oninput="cbState.mods[${i}].content=this.value" placeholder="Module text here...">${m.content}</textarea></div>
+        <div class="field"><label>Content (Markdown)</label><textarea style="min-height:120px;" oninput="cbState.mods[${i}].content=this.value" placeholder="Module text here...">${esc(m.content)}</textarea></div>
+        <details style="margin-bottom:var(--space-3);">
+          <summary style="cursor:pointer;font-size:var(--text-sm);font-weight:600;color:var(--ink-3);padding:var(--space-2) 0;user-select:none;">Module Metadata (summary, source URL, objectives)</summary>
+          <div style="padding-top:var(--space-3);border-top:1px solid var(--border);margin-top:var(--space-2);">
+            <div class="field">
+              <label>Summary <span style="font-weight:400;color:var(--ink-4);">(shown to learners before content)</span></label>
+              <textarea style="min-height:60px;" oninput="cbState.mods[${i}].summary=this.value" placeholder="Brief overview of what this module covers...">${esc(m.summary || '')}</textarea>
+            </div>
+            <div class="field">
+              <label>Source URL <span style="font-weight:400;color:var(--ink-4);">(shown as "Read This First" banner)</span></label>
+              <input type="url" value="${esc(m.reference_url || '')}" oninput="cbState.mods[${i}].reference_url=this.value" placeholder="https://docs.example.com/page">
+            </div>
+            <div class="field">
+              <label>Learning Objectives <span style="font-weight:400;color:var(--ink-4);">(one per line)</span></label>
+              <textarea style="min-height:80px;" oninput="cbState.mods[${i}].learning_objectives=this.value.split('\\n').filter(l=>l.trim())" placeholder="Understand how authentication works&#10;Apply token-based access patterns&#10;Identify common API errors">${esc((m.learning_objectives || []).join('\n'))}</textarea>
+            </div>
+          </div>
+        </details>
         <div style="margin-top:var(--space-4);">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3);">
             <div style="font-weight:600;font-size:var(--text-sm);">Questions (${m.questions.length})</div>

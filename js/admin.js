@@ -457,7 +457,10 @@ const Admin = {
       $$('mod-nav-list').innerHTML = curCourse.mods.map((m, i) => `
         <div class="mod-item" id="mod-nav-${i}" onclick="Learner.loadMod(${i})">
           <span class="mod-bullet" id="mod-bullet-${i}">${i + 1}</span>
-          <span>${esc(m.title)}</span>
+          <div class="mod-item-body">
+            <div class="mod-item-title">${esc(m.title)}</div>
+            ${m.summary ? `<div class="mod-item-summary">${esc(m.summary.length > 65 ? m.summary.slice(0, 65) + '…' : m.summary)}</div>` : ''}
+          </div>
         </div>`).join('');
       $$('ch-meta').textContent = esc(curCourse.title);
       Learner.loadMod(0);
@@ -762,7 +765,16 @@ const Admin = {
       docDesc: docDesc.trim(),
       docIcon: docIcon,
       docUrl: docUrl,
-      modules: modules.map(m => ({ title: m.title, content: m.rawLines.join('\n') }))
+      modules: modules.map(m => {
+        // Extract a URL Source line embedded within this section's content
+        let sectionUrl = '';
+        const filteredLines = m.rawLines.filter(line => {
+          const um = line.match(/^URL Source:\s*(.+)/i);
+          if (um) { sectionUrl = um[1].trim(); return false; }
+          return true;
+        });
+        return { title: m.title, content: filteredLines.join('\n'), reference_url: sectionUrl || docUrl };
+      })
     };
   },
   renderFileModuleList() {
@@ -786,7 +798,7 @@ const Admin = {
   proceedFromUpload() {
     if (!Admin.fileModules.length) return Toast.err('Add at least one file first.');
     Admin.parsedModules = [];
-    Admin.fileModules.forEach(fm => fm.subModules.forEach(sm => Admin.parsedModules.push({ ...sm, reference_url: fm.sourceUrl || '' })));
+    Admin.fileModules.forEach(fm => fm.subModules.forEach(sm => Admin.parsedModules.push({ ...sm, reference_url: sm.reference_url || fm.sourceUrl || '' })));
 
     const first = Admin.fileModules[0];
     $$('ai-course-title').value = first.name;
