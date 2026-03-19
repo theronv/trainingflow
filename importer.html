@@ -192,22 +192,45 @@ tbody tr:hover td{background:var(--rule-2)}
     <div class="page-title">Build your course modules</div>
     <div class="page-sub">Add one or more Markdown files. Each file becomes a module in your course. Name them, reorder them, then generate — all questions export as a single CSV.</div>
 
-    <!-- API Key -->
-    <div class="card" style="margin-bottom:var(--space-6);border-bottom:2px solid var(--rule-2)" id="api-key-section">
-      <div style="font-weight:700;font-size:var(--text-base);margin-bottom:var(--space-1);display:flex;align-items:center;gap:6px">🔒 Anthropic API Key</div>
-      <div style="font-size:var(--text-sm);color:var(--ink-3);margin-bottom:var(--space-4)">Required to generate quiz questions. Stored in your browser session only — never sent anywhere except Anthropic's API.</div>
-      <div style="display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap">
-        <input type="password" id="api-key-input" placeholder="sk-ant-..."
-          style="flex:1;min-width:240px;max-width:420px"
-          oninput="handleApiKeyInput(this.value)"
-          autocomplete="off" spellcheck="false">
-        <div id="api-key-status" class="hidden" style="font-size:var(--text-sm);font-weight:600;color:var(--pass)">
-          <span>✓</span><span>Key saved</span>
+    <!-- AI Settings Card -->
+    <div class="card" style="margin-bottom:var(--space-6);border-bottom:2px solid var(--rule-2)" id="ai-settings-section">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-4)">
+        <div style="font-weight:700;font-size:var(--text-md);display:flex;align-items:center;gap:8px">⚙️ AI Settings</div>
+        <button id="btn-edit-keys" class="btn btn-ghost btn-sm hidden" onclick="toggleEditKeys(true)">✎ Change keys</button>
+      </div>
+
+      <div id="ai-keys-display" class="hidden" style="background:var(--canvas);border-radius:var(--r);padding:var(--space-4);margin-bottom:var(--space-2)">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-6)">
+          <div>
+            <div style="font-size:var(--text-xs);font-weight:700;color:var(--ink-4);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">Claude API Key (Primary)</div>
+            <div id="claude-key-masked" style="font-family:monospace;font-size:var(--text-sm);color:var(--pass)">••••••••••••••••••••••••</div>
+          </div>
+          <div>
+            <div style="font-size:var(--text-xs);font-weight:700;color:var(--ink-4);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">Gemini API Key (Fallback)</div>
+            <div id="gemini-key-masked" style="font-family:monospace;font-size:var(--text-sm);color:var(--ink-4)">Not set</div>
+          </div>
         </div>
       </div>
-      <div id="api-key-invalid-msg" class="hidden" style="font-size:var(--text-xs);color:var(--fail);margin-top:6px;font-weight:600">Key must start with sk-ant-</div>
-      <div style="font-size:var(--text-xs);color:var(--ink-4);margin-top:var(--space-2)">
-        Get a key at <strong>console.anthropic.com</strong> → API Keys
+
+      <div id="ai-keys-edit">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4);margin-bottom:var(--space-4)">
+          <div class="field" style="margin-bottom:0">
+            <label style="display:flex;align-items:center;justify-content:space-between">
+              Claude Key <span class="chip chip-blue" style="font-size:9px;padding:1px 5px">PRIMARY</span>
+            </label>
+            <input type="password" id="claude-key-input" placeholder="sk-ant-..." oninput="validateKeys()" autocomplete="off">
+          </div>
+          <div class="field" style="margin-bottom:0">
+            <label style="display:flex;align-items:center;justify-content:space-between">
+              Gemini Key <span class="chip chip-gray" style="font-size:9px;padding:1px 5px">FALLBACK</span>
+            </label>
+            <input type="password" id="gemini-key-input" placeholder="Alza..." oninput="validateKeys()" autocomplete="off">
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:var(--space-3)">
+          <div style="font-size:var(--text-xs);color:var(--ink-4)">Keys are stored locally in your browser only.</div>
+          <button id="btn-save-keys" class="btn btn-primary btn-sm" onclick="saveKeys()" disabled>Save Settings</button>
+        </div>
       </div>
     </div>
 
@@ -281,7 +304,10 @@ tbody tr:hover td{background:var(--rule-2)}
 
     <div class="two-col">
       <div class="card">
-        <div style="font-weight:700;font-size:var(--text-md);margin-bottom:var(--space-1);">Course details</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-1)">
+          <div style="font-weight:700;font-size:var(--text-md);">Course details</div>
+          <button id="btn-autofill-course" class="btn btn-ghost btn-sm" onclick="autofillCourseDetails()" style="color:var(--brand-1)">✨ Auto-fill with AI</button>
+        </div>
         <div style="font-size:var(--text-sm);color:var(--ink-3);margin-bottom:var(--space-5);">This will appear in TrainFlow.</div>
         <div class="field"><label>Course Title</label><input type="text" id="course-title" placeholder="e.g. Product Support Certification"></div>
         <div class="field"><label>Icon (emoji)</label><input type="text" id="course-icon" placeholder="📋" maxlength="4" style="max-width:80px"></div>
@@ -530,17 +556,72 @@ Document the most frequent tickets...</pre>
 
 <script>
 const CLAUDE_API = 'https://api.anthropic.com/v1/messages';
-const MODEL = 'claude-sonnet-4-20250514';
+const GEMINI_API = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+const MODEL = 'claude-3-5-sonnet-20240620';
+const GEMINI_MODEL = 'gemini-1.5-flash';
 const CHAR_LIMIT_QUESTIONS = 3000;
 const CHAR_LIMIT_SUMMARY = 4000;
 
-// fileModules: array of { id, name, content(HTML), source }
+// fileModules: array of { id, name, content(HTML), source, description, icon, urlSource }
 // parsedModules: flattened array sent to generation (same shape as before)
 let fileModules = [];   // one entry per uploaded file (or pasted block)
 let parsedModules = []; // flattened for generation
 let generatedCourse = null;
 let isGenerating = false;
 let reviewExpanded = false;
+
+// ── AI Settings & API Key Management ──────────────────────────────────────────
+
+function validateKeys() {
+  const claude = document.getElementById('claude-key-input').value.trim();
+  const gemini = document.getElementById('gemini-key-input').value.trim();
+  const btn = document.getElementById('btn-save-keys');
+  
+  // Need at least one valid key
+  const hasClaude = claude.startsWith('sk-ant-') && claude.length > 20;
+  const hasGemini = gemini.length > 10;
+  
+  btn.disabled = !(hasClaude || hasGemini);
+}
+
+function saveKeys() {
+  const claude = document.getElementById('claude-key-input').value.trim();
+  const gemini = document.getElementById('gemini-key-input').value.trim();
+  
+  if (claude) localStorage.setItem('trainflow_claude_key', claude);
+  if (gemini) localStorage.setItem('trainflow_gemini_key', gemini);
+  
+  toggleEditKeys(false);
+  toast('AI Settings saved locally', 'success');
+}
+
+function toggleEditKeys(show) {
+  document.getElementById('ai-keys-edit').classList.toggle('hidden', !show);
+  document.getElementById('ai-keys-display').classList.toggle('hidden', show);
+  document.getElementById('btn-edit-keys').classList.toggle('hidden', show);
+  
+  if (!show) {
+    const claude = localStorage.getItem('trainflow_claude_key');
+    const gemini = localStorage.getItem('trainflow_gemini_key');
+    
+    document.getElementById('claude-key-masked').textContent = claude ? '••••••••••••••••••••••••' : 'Not set';
+    document.getElementById('claude-key-masked').style.color = claude ? 'var(--pass)' : 'var(--ink-4)';
+    
+    document.getElementById('gemini-key-masked').textContent = gemini ? '••••••••••••••••••••••••' : 'Not set';
+    document.getElementById('gemini-key-masked').style.color = gemini ? 'var(--pass)' : 'var(--ink-4)';
+  }
+}
+
+function loadSavedKeys() {
+  const claude = localStorage.getItem('trainflow_claude_key');
+  const gemini = localStorage.getItem('trainflow_gemini_key');
+  
+  if (claude || gemini) {
+    if (claude) document.getElementById('claude-key-input').value = claude;
+    if (gemini) document.getElementById('gemini-key-input').value = gemini;
+    toggleEditKeys(false);
+  }
+}
 
 function showHelp() {
   const m = document.getElementById('help-modal');
@@ -553,19 +634,8 @@ function hideHelp() {
   m.classList.remove('modal-visible');
 }
 
-function showApiKeyStatus() {
-  const el = document.getElementById('api-key-status');
-  el.classList.remove('hidden');
-  el.classList.add('api-key-status-visible');
-}
-function hideApiKeyStatus() {
-  const el = document.getElementById('api-key-status');
-  el.classList.add('hidden');
-  el.classList.remove('api-key-status-visible');
-}
-
 function startOver() {
-  if (!confirm('Start over? This will clear all uploaded files and generated content. Your API key will be kept.')) return;
+  if (!confirm('Start over? This will clear all uploaded files and generated content. Your AI Settings will be kept.')) return;
   fileModules = [];
   parsedModules = [];
   generatedCourse = null;
@@ -763,7 +833,8 @@ function addFileModule(rawMd, defaultName) {
     subModules: result.modules, 
     source: defaultName,
     description: result.docDesc,
-    icon: result.docIcon
+    icon: result.docIcon,
+    urlSource: result.docUrl
   });
   renderFileModuleList();
 }
@@ -824,6 +895,7 @@ function renderFileModuleList() {
             onblur="this.style.borderColor='transparent';this.style.background='transparent'">
           <div style="font-size:var(--text-xs);color:var(--ink-4);margin-top:2px;padding-left:8px">
             ${fm.subModules.length} section${fm.subModules.length !== 1 ? 's' : ''} · ${fm.subModules.reduce((s,m) => s + wordCount(m.content), 0)} words
+            ${fm.urlSource ? ` · <a href="${fm.urlSource}" target="_blank" style="color:inherit">Link ↗</a>` : ''}
           </div>
         </div>
         <div style="display:flex;gap:6px;flex-shrink:0">
@@ -862,7 +934,11 @@ function proceedFromUpload() {
   // Flatten all sub-modules across all files into parsedModules
   parsedModules = [];
   fileModules.forEach(fm => {
-    fm.subModules.forEach(sm => parsedModules.push({ title: sm.title, content: sm.content }));
+    fm.subModules.forEach(sm => parsedModules.push({ 
+      title: sm.title, 
+      content: sm.content,
+      urlSource: sm.urlSource || fm.urlSource
+    }));
   });
   if (!parsedModules.length) { toast('No content found in uploaded files.', 'error'); return; }
   populateConfigurePhase();
@@ -878,6 +954,7 @@ function parseMdToModules(raw, defaultTitle) {
   let docTitle = defaultTitle;
   let docDesc = '';
   let docIcon = '';
+  let docUrl = '';
 
   // 1. Extract metadata from the top (Title:, Description:, Icon:, etc.)
   let i = 0;
@@ -888,6 +965,7 @@ function parseMdToModules(raw, defaultTitle) {
     const titleMatch = line.match(/^(Title|Course Title):\s*(.+)/i);
     const descMatch = line.match(/^(Description):\s*(.+)/i);
     const iconMatch = line.match(/^(Icon):\s*(.+)/i);
+    const urlMatch = line.match(/^(URL|URL Source):\s*(.+)/i);
     const markdownContentMatch = line.match(/^Markdown Content:/i);
 
     if (titleMatch) {
@@ -899,9 +977,13 @@ function parseMdToModules(raw, defaultTitle) {
     } else if (iconMatch) {
       docIcon = iconMatch[2].trim();
       lines[i] = '';
+    } else if (urlMatch) {
+      docUrl = urlMatch[2].trim();
+      lines[i] = '';
     } else if (markdownContentMatch) {
       lines[i] = '';
     } else if (line.toLowerCase().startsWith('url source:')) {
+      docUrl = line.split(/url source:\s*/i)[1]?.trim() || '';
       lines[i] = '';
     } else if (line === '---' || line === '***' || line === '* * *') {
       // skip dividers at the very top
@@ -931,7 +1013,7 @@ function parseMdToModules(raw, defaultTitle) {
         if (!docTitle || docTitle === defaultTitle) docTitle = h1[1].trim();
       } else if (h2) {
         if (cur) modules.push(cur);
-        cur = { title: cleanTitle(h2[1].trim()), rawLines: [] };
+        cur = { title: cleanTitle(h2[1].trim()), rawLines: [], urlSource: docUrl };
       } else if (cur) {
         cur.rawLines.push(line);
       } else if (line.trim() !== '') {
@@ -941,14 +1023,14 @@ function parseMdToModules(raw, defaultTitle) {
     }
   } else if (hasHR) {
     // Split by HR
-    cur = { title: cleanTitle(docTitle), rawLines: [] };
+    cur = { title: cleanTitle(docTitle), rawLines: [], urlSource: docUrl };
     let sectionIdx = 1;
     for (const line of cleanLines) {
       if (/^([-* ]){3,}$/.test(line.trim())) {
         if (cur.rawLines.some(l => l.trim() !== '')) {
           modules.push(cur);
           sectionIdx++;
-          cur = { title: `${cleanTitle(docTitle)} - Part ${sectionIdx}`, rawLines: [] };
+          cur = { title: `${cleanTitle(docTitle)} - Part ${sectionIdx}`, rawLines: [], urlSource: docUrl };
         }
       } else {
         cur.rawLines.push(line);
@@ -961,7 +1043,7 @@ function parseMdToModules(raw, defaultTitle) {
   }
 
   if (modules.length === 0) {
-    modules.push({ title: cleanTitle(docTitle), rawLines: cleanLines });
+    modules.push({ title: cleanTitle(docTitle), rawLines: cleanLines, urlSource: docUrl });
   }
 
   // Final cleanup of docDesc
@@ -992,9 +1074,11 @@ function parseMdToModules(raw, defaultTitle) {
     docTitle: cleanTitle(docTitle),
     docDesc: docDesc,
     docIcon: docIcon,
+    docUrl: docUrl,
     modules: modules.map(m => ({
       title: m.title,
-      content: mdToHtml(m.rawLines.join('\n'))
+      content: mdToHtml(m.rawLines.join('\n')),
+      urlSource: m.urlSource
     }))
   };
 }
@@ -1133,21 +1217,119 @@ function goBackToUpload() {
   goPhase(1);
 }
 
+async function callAI(prompt, systemPrompt = '', maxTokens = 1000) {
+  const claudeKey = localStorage.getItem('trainflow_claude_key');
+  const geminiKey = localStorage.getItem('trainflow_gemini_key');
+
+  if (!claudeKey && !geminiKey) {
+    throw new Error('Please configure at least one API key in Step 1.');
+  }
+
+  // Try Claude first if available
+  if (claudeKey) {
+    try {
+      const response = await fetch(CLAUDE_API, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': claudeKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+          model: MODEL,
+          max_tokens: maxTokens,
+          system: systemPrompt,
+          messages: [{ role: 'user', content: prompt }]
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return data.content?.find(b => b.type === 'text')?.text || '';
+      }
+      console.warn(`Claude API failed (${response.status}), trying fallback...`);
+    } catch (e) {
+      console.warn('Claude API error, trying fallback...', e);
+    }
+  }
+
+  // Fallback to Gemini
+  if (geminiKey) {
+    try {
+      const response = await fetch(`${GEMINI_API}?key=${geminiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: (systemPrompt ? systemPrompt + "\n\n" : "") + prompt }] }],
+          generationConfig: { maxOutputTokens: maxTokens }
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      }
+      throw new Error(`Gemini API failed (${response.status})`);
+    } catch (e) {
+      throw new Error(`AI Generation failed: ${e.message}`);
+    }
+  }
+
+  throw new Error('Primary AI (Claude) failed and no fallback (Gemini) key is configured.');
+}
+
+async function autofillCourseDetails() {
+  const btn = document.getElementById('btn-autofill-course');
+  const orig = btn.innerHTML;
+  btn.innerHTML = '<span class="spinner" style="width:12px;height:12px"></span> Generating...';
+  btn.disabled = true;
+
+  try {
+    const combinedContent = parsedModules.slice(0, 3).map(m => m.content.replace(/<[^>]*>/g, '')).join('\n\n').slice(0, 4000);
+    const prompt = `Based on the following course content, suggest a professional Course Title, a short Description (max 150 chars), and a single relevant emoji.
+    
+    CONTENT:
+    ${combinedContent}
+    
+    Respond in JSON format: {"title": "...", "description": "...", "icon": "..."}`;
+
+    const raw = await callAI(prompt, "You are a senior instructional designer. Return JSON only.");
+    const text = raw.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+    const result = JSON.parse(text);
+
+    if (result.title) document.getElementById('course-title').value = result.title;
+    if (result.description) document.getElementById('course-desc').value = result.description;
+    if (result.icon) document.getElementById('course-icon').value = result.icon;
+    
+    toast('Course details updated', 'success');
+  } catch (e) {
+    toast(`Autofill failed: ${e.message}`, 'error');
+  } finally {
+    btn.innerHTML = orig;
+    btn.disabled = false;
+  }
+}
+
 async function startGeneration(skipEmpty = false) {
   // Re-sync parsedModules from fileModules so any edits in configure phase are captured
   if (fileModules.length) {
     parsedModules = [];
-    fileModules.forEach(fm => fm.subModules.forEach(sm => parsedModules.push({ title: sm.title, content: sm.content })));
+    fileModules.forEach(fm => fm.subModules.forEach(sm => parsedModules.push({ 
+      title: sm.title, 
+      content: sm.content,
+      urlSource: sm.urlSource || fm.urlSource
+    })));
   }
   if (!parsedModules.length) { toast('No modules to generate questions for.', 'error'); return; }
   if (isGenerating) return;
 
-  // Reset error state from any previous attempt (Bug 7)
+  // Reset error state from any previous attempt
   document.getElementById('gen-error').classList.add('hidden');
   genErrorIs401 = false;
   document.getElementById('gen-error-back').textContent = '← Back to Configure';
 
-  // Check for empty modules (Bug 1)
+  // Check for empty modules
   document.getElementById('empty-mod-warning').classList.add('hidden');
   const emptyMods = parsedModules.filter(m => wordCount(m.content) === 0);
   if (emptyMods.length && !skipEmpty) {
@@ -1160,15 +1342,18 @@ async function startGeneration(skipEmpty = false) {
   const title = document.getElementById('course-title').value.trim();
   if (!title) { toast('Please enter a course title first.', 'error'); document.getElementById('course-title').focus(); return; }
 
-  const apiKey = sessionStorage.getItem('trainflow_api_key');
-  if (!apiKey || !apiKey.startsWith('sk-ant-') || apiKey.length <= 20) {
-    toast('API key required. Please enter your Anthropic API key above.', 'error');
+  const claudeKey = localStorage.getItem('trainflow_claude_key');
+  const geminiKey = localStorage.getItem('trainflow_gemini_key');
+  if (!claudeKey && !geminiKey) {
+    toast('API key required. Please configure AI Settings in Step 1.', 'error');
     goPhase(1);
     return;
   }
 
   isGenerating = true;
   goPhase(3);
+
+  // ... (rest of startGeneration is similar, but calling generateQuestions and generateSummary)
 
   // Elapsed timer
   const genStartTime = Date.now();
@@ -1245,9 +1430,8 @@ async function startGeneration(skipEmpty = false) {
         // Bug 7: surface 401 specifically
         if (err.status === 401) {
           genErrorIs401 = true;
-          sessionStorage.removeItem('trainflow_api_key');
-          hideApiKeyStatus();
-          document.getElementById('gen-error-back').textContent = '← Fix API Key (Phase 1)';
+          // Don't remove keys automatically, let user edit them
+          document.getElementById('gen-error-back').textContent = '← Fix AI Settings (Phase 1)';
         }
         document.getElementById('gen-error').classList.remove('hidden');
         document.getElementById('gen-error-msg').textContent = err.message;
@@ -1284,9 +1468,7 @@ async function startGeneration(skipEmpty = false) {
           setDotState(dotEl, 'fail');
           sStatus.innerHTML = `<span style="color:var(--fail)">✗ API key rejected</span>`;
           genErrorIs401 = true;
-          sessionStorage.removeItem('trainflow_api_key');
-          hideApiKeyStatus();
-          document.getElementById('gen-error-back').textContent = '← Fix API Key (Phase 1)';
+          document.getElementById('gen-error-back').textContent = '← Fix AI Settings (Phase 1)';
           document.getElementById('gen-error').classList.remove('hidden');
           document.getElementById('gen-error-msg').textContent = err.message;
           return;
@@ -1418,33 +1600,15 @@ Respond with a JSON array only. No markdown, no wrapper object, no explanation. 
   }
 ]`;
 
-  const response = await fetch(CLAUDE_API, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': sessionStorage.getItem('trainflow_api_key') || '',
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true'
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: CHAR_LIMIT_QUESTIONS,
-      messages: [{ role: 'user', content: prompt }]
-    })
-  });
-
-  if (!response.ok) {
-    const errBody = await response.json().catch(() => ({}));
-    const msg = response.status === 401
-      ? 'API key rejected (401). Check your key in Phase 1 and try again.'
-      : (errBody.error?.message || `API error ${response.status}`);
-    const error = new Error(msg);
-    error.status = response.status;
-    throw error;
+  let raw;
+  try {
+    raw = await callAI(prompt, "You are an expert quiz generator. Return JSON only.", CHAR_LIMIT_QUESTIONS);
+  } catch (err) {
+    if (err.message.includes('401')) {
+      err.status = 401; // Marker for genErrorBack
+    }
+    throw err;
   }
-
-  const data = await response.json();
-  const raw = data.content?.find(b => b.type === 'text')?.text || '';
 
   // Strip markdown fences
   let text = raw.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
@@ -1540,9 +1704,12 @@ function renderReview() {
       <div class="mod-head" onclick="toggleReview(${mi})">
         <span style="font-size:var(--text-xs);font-weight:700;color:var(--ink-4);letter-spacing:0.08em">MODULE ${mi+1}</span>
         <span style="flex:1;font-weight:600;font-size:var(--text-sm)">${esc(m.title)}</span>
-        <span class="chip chip-blue" style="font-size:10px">${m.questions.length} questions</span>
-        ${hasSummary ? '<span class="chip chip-green" style="font-size:10px;margin-left:4px">summary</span>' : m.summary?.failed ? '<span class="chip chip-gray" style="font-size:10px;margin-left:4px">no summary</span>' : '<span class="chip chip-gray" style="font-size:10px;margin-left:4px">no summary</span>'}
-        ${wasTruncated ? '<span class="chip chip-amber" style="font-size:10px;margin-left:4px" title="Content was truncated — questions cover only the first ~3,000 chars">⚠ truncated</span>' : ''}
+        <div style="display:flex;gap:4px">
+          ${m.urlSource ? `<a href="${m.urlSource}" target="_blank" onclick="event.stopPropagation()" class="chip chip-gray" style="font-size:10px;text-decoration:none" title="Original material">Source ↗</a>` : ''}
+          <span class="chip chip-blue" style="font-size:10px">${m.questions.length} questions</span>
+          ${hasSummary ? '<span class="chip chip-green" style="font-size:10px">summary</span>' : m.summary?.failed ? '<span class="chip chip-gray" style="font-size:10px">no summary</span>' : '<span class="chip chip-gray" style="font-size:10px">no summary</span>'}
+          ${wasTruncated ? '<span class="chip chip-amber" style="font-size:10px" title="Content was truncated — questions cover only the first ~3,000 chars">⚠ truncated</span>' : ''}
+        </div>
         <span style="color:var(--ink-4);font-size:12px;margin-left:var(--space-2)">▾</span>
       </div>
       <div class="mod-body" id="review-body-${mi}">
@@ -1583,10 +1750,13 @@ function exportStudyGuide() {
     // Quality Fix 3: escape user-controlled strings; m.content is intentional HTML from mdToHtml()
     const summaryHtml = m.summary && (m.summary.intro || m.summary.bullets?.length) ? `
       <div class="summary-box">
-        <div class="summary-label">Key Takeaways</div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div class="summary-label">Key Takeaways</div>
+          ${m.urlSource ? `<a href="${m.urlSource}" class="source-link" target="_blank">Original Material ↗</a>` : ''}
+        </div>
         ${m.summary.intro ? `<p class="summary-intro">${esc(m.summary.intro)}</p>` : ''}
         ${m.summary.bullets?.length ? `<ul class="summary-bullets">${m.summary.bullets.map(b => `<li>${esc(b)}</li>`).join('')}</ul>` : ''}
-      </div>` : '';
+      </div>` : (m.urlSource ? `<div style="margin-bottom:24px;text-align:right"><a href="${m.urlSource}" class="source-link" target="_blank">Original Material ↗</a></div>` : '');
 
     const contentHtml = m.content || '';
 
@@ -1657,6 +1827,8 @@ function exportStudyGuide() {
     margin-bottom: 14px; font-weight: 500; }
   .summary-bullets { padding-left: 20px; }
   .summary-bullets li { font-size: 14px; color: #44403c; line-height: 1.8; }
+  .source-link { font-size: 12px; color: #2563eb; text-decoration: none; font-weight: 600; }
+  .source-link:hover { text-decoration: underline; }
 
   .module-content { font-size: 15px; color: #44403c; }
   .module-content p { margin-bottom: 16px; }
@@ -1777,40 +1949,6 @@ function esc(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// ── API key management ────────────────────────────────────────────────────────
-
-function handleApiKeyInput(val) {
-  const valid = val.startsWith('sk-ant-') && val.length > 20;
-  const invalidMsg = document.getElementById('api-key-invalid-msg');
-  if (valid) {
-    sessionStorage.setItem('trainflow_api_key', val);
-    showApiKeyStatus();
-    if (invalidMsg) invalidMsg.classList.add('hidden');
-  } else {
-    sessionStorage.removeItem('trainflow_api_key');
-    hideApiKeyStatus();
-    // Show shake + red helper only when user has typed something non-empty that looks wrong
-    if (val.length > 3 && !val.startsWith('sk-ant-')) {
-      const inp = document.getElementById('api-key-input');
-      if (invalidMsg) invalidMsg.classList.remove('hidden');
-      inp.classList.remove('shake');
-      void inp.offsetWidth; // reflow to restart animation
-      inp.classList.add('shake');
-      setTimeout(() => inp.classList.remove('shake'), 400);
-    } else {
-      if (invalidMsg) invalidMsg.classList.add('hidden');
-    }
-  }
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  const stored = sessionStorage.getItem('trainflow_api_key');
-  if (stored) {
-    document.getElementById('api-key-input').value = stored;
-    showApiKeyStatus();
-  }
-});
-
 async function generateSummary(mod) {
   const contentText = mod.content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, CHAR_LIMIT_SUMMARY);
 
@@ -1838,34 +1976,17 @@ Rules:
 - Use plain ASCII only — no apostrophes (write "its" not "it's"), no smart quotes, no em dashes
 - Do not include any quotation marks inside the text values`;
 
-  const response = await fetch(CLAUDE_API, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': sessionStorage.getItem('trainflow_api_key') || '',
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true'
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: 800,
-      messages: [{ role: 'user', content: prompt }]
-    })
-  });
-
-  if (!response.ok) {
-    const errBody = await response.json().catch(() => ({}));
-    const msg = response.status === 401
-      ? 'API key rejected (401). Check your key in Phase 1 and try again.'
-      : (errBody.error?.message || `API error ${response.status}`);
-    const error = new Error(msg);
-    error.status = response.status;
-    throw error;
+  let raw;
+  try {
+    raw = await callAI(prompt, "You are an expert instructional designer. Return JSON only.", 800);
+  } catch (err) {
+    if (err.message.includes('401')) {
+      err.status = 401;
+    }
+    throw err;
   }
 
-  const data = await response.json();
-  let text = (data.content?.find(b => b.type === 'text')?.text || '')
-    .replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+  let text = raw.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
 
   // Extract the JSON object
   const start = text.indexOf('{');
@@ -1897,6 +2018,10 @@ Rules:
     bullets: Array.isArray(result.bullets) ? result.bullets.map(String) : []
   };
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+  loadSavedKeys();
+});
 </script>
 </body>
 </html>
