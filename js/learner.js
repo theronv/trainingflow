@@ -131,7 +131,10 @@ const Learner = {
       $$('mod-nav-list').innerHTML = curCourse.mods.map((m, i) => `
         <div class="mod-item" id="mod-nav-${i}" onclick="Learner.loadMod(${i})">
           <span class="mod-bullet" id="mod-bullet-${i}">${i + 1}</span>
-          <span>${esc(m.title)}</span>
+          <div class="mod-item-body">
+            <div class="mod-item-title">${esc(m.title)}</div>
+            ${m.summary ? `<div class="mod-item-summary">${esc(m.summary.length > 65 ? m.summary.slice(0, 65) + '…' : m.summary)}</div>` : ''}
+          </div>
         </div>`).join('');
       $$('ch-meta').textContent = esc(curCourse.title);
 
@@ -160,19 +163,50 @@ const Learner = {
     const pct = Math.round((mi / curCourse.mods.length) * 100);
     if($$('ch-prog')) $$('ch-prog').style.width = pct + '%';
     if($$('ch-label')) $$('ch-label').textContent = `Module ${mi + 1} of ${curCourse.mods.length}`;
+
     const hasQuiz = mod.questions && mod.questions.length > 0;
-    const refUrl = curCourse.refUrl || '';
-    const refNotice = (hasQuiz && refUrl) ? `
-      <div class="ref-material-notice">
-        <span class="ref-icon">📎</span>
-        <span>Before starting the competency check, make sure you've reviewed the course material.</span>
-        <a href="${esc(refUrl)}" target="_blank" rel="noopener noreferrer" class="ref-link">View Material →</a>
+    const refUrl = mod.refUrl || curCourse.refUrl || '';
+
+    // "Read This First" source banner
+    const sourceBanner = refUrl ? `
+      <div class="source-banner">
+        <div class="source-banner-icon">📖</div>
+        <div class="source-banner-body">
+          <div class="source-banner-label">Before You Begin</div>
+          <div class="source-banner-text">This module is based on official source material. Reading it before the competency check will help you answer questions accurately.</div>
+        </div>
+        <a href="${esc(refUrl)}" target="_blank" rel="noopener noreferrer" class="source-banner-link">Open Source Material →</a>
       </div>` : '';
+
+    // Overview card: summary + objectives + meta
+    const wordCount = (mod.content || '').trim().split(/\s+/).filter(Boolean).length;
+    const readMin = Math.max(1, Math.ceil(wordCount / 200));
+    const objectivesHtml = mod.objectives && mod.objectives.length ? `
+      <div class="mod-objectives">
+        <div class="mod-objectives-label">What You'll Learn</div>
+        <ul>${mod.objectives.map(o => `<li>${esc(o)}</li>`).join('')}</ul>
+      </div>` : '';
+    const overviewCard = (mod.summary || (mod.objectives && mod.objectives.length) || hasQuiz) ? `
+      <div class="mod-overview-card">
+        ${mod.summary ? `<p class="mod-summary-text">${esc(mod.summary)}</p>` : ''}
+        ${objectivesHtml}
+        <div class="mod-meta-row">
+          <span class="mod-meta-chip">📖 ~${readMin} min read</span>
+          ${hasQuiz ? `<span class="mod-meta-chip">❓ ${mod.questions.length} question${mod.questions.length !== 1 ? 's' : ''}</span>` : ''}
+        </div>
+      </div>` : '';
+
+    // Render content with markdown parser
+    const contentHtml = typeof marked !== 'undefined' ? marked.parse(mod.content || '') : (mod.content || '');
+
     $$('mod-main').innerHTML = `<div class="module-prose">
+      ${sourceBanner}
       <h2>${esc(mod.title)}</h2>
-      <div>${mod.content}</div>
-      ${refNotice}
-      ${hasQuiz ? `<button class="btn btn-primary btn-lg" style="margin-top:var(--space-4);" onclick="Learner.startQuiz(${mi})">Start Competency Check →</button>` : `<button class="btn btn-primary btn-lg" style="margin-top:var(--space-8);" onclick="Learner.finishMod(${mi})">Continue →</button>`}
+      ${overviewCard}
+      <div class="prose-content">${contentHtml}</div>
+      ${hasQuiz
+        ? `<button class="btn btn-primary btn-lg" style="margin-top:var(--space-6);" onclick="Learner.startQuiz(${mi})">Start Competency Check →</button>`
+        : `<button class="btn btn-primary btn-lg" style="margin-top:var(--space-8);" onclick="Learner.finishMod(${mi})">Continue →</button>`}
     </div>`;
   },
 
@@ -211,7 +245,7 @@ const Learner = {
         btn.classList.add(ok ? 'correct' : 'wrong');
         if(letter) letter.classList.add(ok ? 'correct' : 'wrong');
       }
-      if(i === q.correct && !ok) {
+      if(i === q.correct_index && !ok) {
         btn.classList.add('correct');
         if(letter) letter.classList.add('correct');
       }
@@ -231,7 +265,7 @@ const Learner = {
         <div class="fb-icon">${ok ? '✓' : '✗'}</div>
         <div class="fb-body">
           <div class="fb-verdict">${ok ? 'Correct!' : 'Incorrect'}</div>
-          ${q.exp ? `<div class="fb-exp">${esc(q.exp)}</div>` : ''}
+          ${q.explanation ? `<div class="fb-exp">${esc(q.explanation)}</div>` : ''}
         </div>
         <button class="btn btn-primary fb-next" onclick="${nextFn}">${nextLabel}</button>`;
       wrap.appendChild(fb);
@@ -252,14 +286,33 @@ const Learner = {
     if(bullet) bullet.textContent = passed ? '✓' : '✗';
 
     const nextMod = mi + 1 < curCourse.mods.length;
+    const questions = curCourse.mods[mi].questions;
+    const reviewHtml = `
+      <div class="qr-review">
+        <div class="qr-review-title">Question Review</div>
+        ${answers.map((a, idx) => {
+          const q = questions[idx];
+          if (!q) return '';
+          return `<div class="qr-review-item ${a.ok ? 'qr-item-pass' : 'qr-item-fail'}">
+            <div class="qr-review-status">${a.ok ? '✓' : '✗'}</div>
+            <div class="qr-review-body">
+              <div class="qr-review-q">${esc(q.question)}</div>
+              ${!a.ok ? `<div class="qr-review-correct">Correct answer: <strong>${esc(q.options[q.correct_index] || '')}</strong></div>` : ''}
+              ${q.explanation ? `<div class="qr-review-exp">${esc(q.explanation)}</div>` : ''}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`;
+
     $$('mod-main').innerHTML = `<div class="quiz-results">
       <div class="qr-score ${passed ? 'qr-pass' : 'qr-fail'}">${pct}%</div>
       <div class="qr-label">${correct} of ${total} correct</div>
       <div class="qr-verdict">${passed ? '🎉 Module Passed!' : '❌ Not quite — review the material and try again.'}</div>
       ${nextMod
-        ? `<button class="btn btn-primary btn-lg" style="margin-top:var(--space-8);" onclick="Learner.loadMod(${mi+1})">Next Module →</button>`
-        : `<button class="btn btn-primary btn-lg" style="margin-top:var(--space-8);" onclick="Learner.completeCourse()">Finish Course 🎓</button>`}
-      ${!passed ? `<button class="btn btn-outline btn-lg" style="margin-top:var(--space-4);" onclick="Learner.retryMod(${mi})">Retry Module</button>` : ''}
+        ? `<button class="btn btn-primary btn-lg" style="margin-top:var(--space-6);" onclick="Learner.loadMod(${mi+1})">Next Module →</button>`
+        : `<button class="btn btn-primary btn-lg" style="margin-top:var(--space-6);" onclick="Learner.completeCourse()">Finish Course 🎓</button>`}
+      ${!passed ? `<button class="btn btn-outline btn-lg" style="margin-top:var(--space-3);" onclick="Learner.retryMod(${mi})">Retry Module</button>` : ''}
+      ${reviewHtml}
     </div>`;
 
     // Save progress after every quiz module (pass or fail)

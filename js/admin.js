@@ -689,12 +689,13 @@ const Admin = {
   addFileModule(rawMd, defaultName) {
     const result = Admin.parseMdToModules(rawMd, defaultName);
     const id = Date.now() + Math.random();
-    Admin.fileModules.push({ 
-      id, 
-      name: result.docTitle, 
+    Admin.fileModules.push({
+      id,
+      name: result.docTitle,
       subModules: result.modules,
       description: result.docDesc,
-      icon: result.docIcon
+      icon: result.docIcon,
+      sourceUrl: result.docUrl
     });
     Admin.renderFileModuleList();
   },
@@ -707,8 +708,8 @@ const Admin = {
   },
   parseMdToModules(raw, defaultTitle) {
     let lines = raw.split('\n');
-    let docTitle = defaultTitle, docDesc = '', docIcon = '';
-    
+    let docTitle = defaultTitle, docDesc = '', docIcon = '', docUrl = '';
+
     // Extract metadata
     let i = 0;
     while (i < lines.length && i < 15) {
@@ -717,10 +718,12 @@ const Admin = {
       const tm = line.match(/^(Title|Course Title):\s*(.+)/i);
       const dm = line.match(/^(Description):\s*(.+)/i);
       const im = line.match(/^(Icon):\s*(.+)/i);
+      const um = line.match(/^URL Source:\s*(.+)/i);
       if (tm) { docTitle = tm[2].trim(); lines[i] = ''; }
       else if (dm) { docDesc = dm[2].trim(); lines[i] = ''; }
       else if (im) { docIcon = im[2].trim(); lines[i] = ''; }
-      else if (line.match(/^Markdown Content:/i) || line.toLowerCase().startsWith('url source:')) lines[i] = '';
+      else if (um) { docUrl = um[1].trim(); lines[i] = ''; }
+      else if (line.match(/^Markdown Content:/i)) lines[i] = '';
       else if (!line.match(/^([-* ]){3,}$/)) break;
       i++;
     }
@@ -758,6 +761,7 @@ const Admin = {
       docTitle: Admin.cleanTitle(docTitle),
       docDesc: docDesc.trim(),
       docIcon: docIcon,
+      docUrl: docUrl,
       modules: modules.map(m => ({ title: m.title, content: m.rawLines.join('\n') }))
     };
   },
@@ -782,8 +786,8 @@ const Admin = {
   proceedFromUpload() {
     if (!Admin.fileModules.length) return Toast.err('Add at least one file first.');
     Admin.parsedModules = [];
-    Admin.fileModules.forEach(fm => fm.subModules.forEach(sm => Admin.parsedModules.push(sm)));
-    
+    Admin.fileModules.forEach(fm => fm.subModules.forEach(sm => Admin.parsedModules.push({ ...sm, reference_url: fm.sourceUrl || '' })));
+
     const first = Admin.fileModules[0];
     $$('ai-course-title').value = first.name;
     $$('ai-course-desc').value = first.description || '';
@@ -794,11 +798,28 @@ const Admin = {
   },
   renderModulePreview() {
     const el = $$('module-preview'); if(!el) return;
-    el.innerHTML = Admin.parsedModules.map((m, i) => `
+    el.innerHTML = `
+      <div style="font-size:var(--text-sm);font-weight:600;color:var(--ink-2);margin-bottom:var(--space-3);">
+        Review and edit module titles and source URLs before generating.
+      </div>` +
+    Admin.parsedModules.map((m, i) => {
+      const wc = (m.content || '').trim().split(/\s+/).length;
+      return `
       <div class="card" style="margin-bottom:var(--space-2);padding:var(--space-3);">
-        <div style="font-size:var(--text-xs);font-weight:700;color:var(--ink-4);">MODULE ${i+1}</div>
-        <div style="font-weight:600;">${esc(m.title)}</div>
-      </div>`).join('');
+        <div style="display:flex;align-items:center;gap:var(--space-2);margin-bottom:var(--space-2);">
+          <span style="font-size:var(--text-xs);font-weight:700;color:var(--ink-4);white-space:nowrap;">MODULE ${i+1}</span>
+          <span style="font-size:10px;color:var(--ink-4);margin-left:auto;">~${wc} words</span>
+        </div>
+        <input type="text" value="${esc(m.title)}"
+          style="width:100%;font-weight:600;border:1px solid var(--border);border-radius:4px;padding:5px 8px;background:var(--bg);color:var(--ink-1);font-size:var(--text-sm);"
+          placeholder="Module title"
+          onchange="Admin.parsedModules[${i}].title = this.value">
+        <input type="url" value="${esc(m.reference_url || '')}"
+          style="width:100%;margin-top:6px;font-size:11px;border:1px solid var(--border);border-radius:4px;padding:4px 8px;background:var(--bg);color:var(--ink-3);"
+          placeholder="Source URL (auto-detected from scraper)"
+          onchange="Admin.parsedModules[${i}].reference_url = this.value">
+      </div>`;
+    }).join('');
   },
 
   async startGeneration() {
@@ -821,9 +842,9 @@ const Admin = {
         <div style="display:flex;align-items:center;gap:12px;">
           <div id="gendot-${i}" class="gen-dot" style="background:var(--ink-4);width:8px;height:8px;border-radius:50%;flex-shrink:0;"></div>
           <div style="flex:1">
-            <div style="font-weight:600;font-size:13px">${esc(m.title)}</div>
+            <div style="font-weight:600;font-size:13px" id="gentitle-${i}">${esc(m.title)}</div>
             <div style="display:flex;gap:12px;margin-top:2px">
-              <span id="genstatus-q-${i}" style="font-size:10px;color:var(--ink-4)">Questions: waiting</span>
+              <span id="genstatus-q-${i}" style="font-size:10px;color:var(--ink-4)">Content: waiting</span>
               <span id="genstatus-s-${i}" style="font-size:10px;color:var(--ink-4)">Summary: waiting</span>
             </div>
           </div>
@@ -845,14 +866,19 @@ const Admin = {
 
       try {
         const prompt = Admin._buildQuestionPrompt(mod.title, mod.content, qCount, difficulty, focus);
-        const res = await Admin.callAI(prompt, "You are an expert quiz generator. Return JSON only.", 2000);
-        const questions = JSON.parse(res.text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim());
-        generatedModules.push({ ...mod, questions, _provider: res.provider });
-        qStatus.innerHTML = `<span style="color:var(--pass)">✓ ${questions.length} questions</span>`;
+        const res = await Admin.callAI(prompt, "You are an expert instructional designer. Return JSON only, no markdown.", 3000);
+        const parsed = JSON.parse(res.text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim());
+        const questions = parsed.questions || parsed; // fallback if AI returns bare array
+        const aiTitle = parsed.title || mod.title;
+        const objectives = Array.isArray(parsed.learning_objectives) ? parsed.learning_objectives : [];
+        const titleEl = $$(`gentitle-${i}`);
+        if (titleEl && aiTitle !== mod.title) titleEl.textContent = aiTitle;
+        generatedModules.push({ ...mod, title: aiTitle, learning_objectives: objectives, questions, _provider: res.provider });
+        qStatus.innerHTML = `<span style="color:var(--pass)">✓ ${questions.length} q · ${objectives.length} objectives</span>`;
       } catch(err) {
         console.error(err);
         qStatus.innerHTML = `<span style="color:var(--fail)">✗ Failed</span>`;
-        generatedModules.push({ ...mod, questions: [], failed: true });
+        generatedModules.push({ ...mod, questions: [], learning_objectives: [], failed: true });
       }
     }
 
@@ -907,7 +933,28 @@ const Admin = {
       applied: 'Test application of knowledge in scenarios.',
       analytical: 'Test judgment and nuanced understanding.'
     };
-    return `Write ${qCount} multiple-choice questions for: ${title}\nCONTENT:\n${content.slice(0, 4000)}\n\nRULES:\n- ${focusInstr[focus]}\n- ${diffInstr[difficulty]}\n- Exactly 4 options per question.\n- Respond in JSON array format: [{"question": "...", "options": ["A", "B", "C", "D"], "correct_index": 0, "explanation": "..."}]`;
+    return `You are an expert instructional designer. Analyze this training module and return a JSON object.
+
+MODULE TITLE (may be generic): ${title}
+CONTENT:
+${content.slice(0, 4000)}
+
+Return ONLY this JSON structure (no markdown, no extra text):
+{
+  "title": "A concise, descriptive module title (max 8 words, derived from the actual content)",
+  "learning_objectives": ["Learners will be able to ...", "Understand ...", "Apply ..."],
+  "questions": [
+    {"question": "...", "options": ["A", "B", "C", "D"], "correct_index": 0, "explanation": "Why this answer is correct..."}
+  ]
+}
+
+RULES:
+- Write exactly ${qCount} questions
+- ${focusInstr[focus]}
+- ${diffInstr[difficulty]}
+- Each question must have exactly 4 options
+- learning_objectives: 3-5 bullet points starting with action verbs
+- title: must reflect the actual content, not be generic like "Part 2"`;
   },
 
   renderReview() {
@@ -926,6 +973,22 @@ const Admin = {
     const modulesHtml = c.modules.map((m, mi) => {
       const qCount = m.questions?.length || 0;
       const failed = m.failed;
+      const objectives = Array.isArray(m.learning_objectives) ? m.learning_objectives : [];
+
+      const objectivesHtml = objectives.length ? `
+        <div style="margin-top:var(--space-3);">
+          <div style="font-size:10px;font-weight:700;color:var(--ink-4);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Learning Objectives</div>
+          <ul style="margin:0;padding-left:var(--space-5);">
+            ${objectives.map(o => `<li style="font-size:12px;color:var(--ink-2);margin-bottom:3px;">${esc(o)}</li>`).join('')}
+          </ul>
+        </div>` : '';
+
+      const sourceHtml = m.reference_url ? `
+        <div style="margin-top:var(--space-3);display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg-2);border-radius:6px;border:1px solid var(--border);">
+          <span style="font-size:12px;">🔗</span>
+          <span style="font-size:11px;color:var(--ink-4);">Source:</span>
+          <a href="${esc(m.reference_url)}" target="_blank" rel="noopener noreferrer" style="font-size:11px;color:var(--brand-1);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(m.reference_url)}</a>
+        </div>` : '';
 
       const questionsHtml = qCount ? m.questions.map((q, qi) => `
         <div style="margin-top:var(--space-4);padding-top:var(--space-3);border-top:1px solid var(--rule-2);">
@@ -945,6 +1008,8 @@ const Admin = {
             <div style="font-size:var(--text-xs);font-weight:700;color:var(--ink-4);text-transform:uppercase;letter-spacing:.06em;">Module ${mi + 1}</div>
             <div style="font-weight:700;margin-top:2px;">${esc(m.title)}</div>
             ${m.summary ? `<div style="font-size:var(--text-sm);color:var(--ink-2);margin-top:8px;line-height:1.5;padding-left:12px;border-left:2px solid var(--pass)">${esc(m.summary)}</div>` : ''}
+            ${objectivesHtml}
+            ${sourceHtml}
           </div>
           <div style="flex-shrink:0;">
             ${failed

@@ -115,6 +115,9 @@ function normCourse(c) {
     id: c.id, icon: c.icon || CONFIG.DEFAULT_ICON, title: c.title, desc: c.description || '', refUrl: c.reference_url || '',
     mods: (c.modules || []).map(m => ({
       id: m.id, title: m.title, content: m.content || '',
+      summary: m.summary || '',
+      refUrl: m.reference_url || '',
+      objectives: (() => { try { return m.learning_objectives ? JSON.parse(m.learning_objectives) : []; } catch { return []; } })(),
       questions: (m.questions || []).map(q => ({
         id: q.id,
         question: q.question,

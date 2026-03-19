@@ -13,6 +13,15 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@4/marked.min.js"></script>
+<script>
+if (typeof marked !== 'undefined') {
+  const renderer = new marked.Renderer();
+  renderer.link = (href, title, text) =>
+    `<a href="${href}" target="_blank" rel="noopener noreferrer"${title ? ` title="${title}"` : ''}>${text}</a>`;
+  marked.setOptions({ renderer, gfm: true, breaks: true });
+}
+</script>
 <link rel="stylesheet" href="css/style.css">
 
 </head>

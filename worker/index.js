@@ -595,6 +595,9 @@ async function setupSections(db) {
   await db.execute('CREATE TABLE IF NOT EXISTS sections (id TEXT PRIMARY KEY, name TEXT NOT NULL, sort_order INTEGER DEFAULT 0, created_at INTEGER)')
   try { await db.execute('ALTER TABLE courses ADD COLUMN section_id TEXT') } catch {}
   try { await db.execute('ALTER TABLE courses ADD COLUMN reference_url TEXT') } catch {}
+  try { await db.execute('ALTER TABLE modules ADD COLUMN summary TEXT') } catch {}
+  try { await db.execute('ALTER TABLE modules ADD COLUMN reference_url TEXT') } catch {}
+  try { await db.execute('ALTER TABLE modules ADD COLUMN learning_objectives TEXT') } catch {}
 }
 
 app.get('/api/sections', async (c) => {
@@ -748,8 +751,8 @@ app.post('/api/courses', requireAdmin, async (c) => {
       const m = body.modules[i]
       const mid = uid()
       await db.execute({
-        sql: 'INSERT INTO modules (id, course_id, title, content, sort_order) VALUES (?, ?, ?, ?, ?)',
-        args: [mid, cid, m.title, m.content || '', i]
+        sql: 'INSERT INTO modules (id, course_id, title, content, summary, reference_url, learning_objectives, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        args: [mid, cid, m.title, m.content || '', m.summary || null, m.reference_url || null, m.learning_objectives ? JSON.stringify(m.learning_objectives) : null, i]
       })
       if (m.questions) {
         for (let j = 0; j < m.questions.length; j++) {
@@ -758,15 +761,15 @@ app.post('/api/courses', requireAdmin, async (c) => {
           await db.execute({
             sql: 'INSERT INTO questions (id, module_id, question, option_a, option_b, option_c, option_d, correct_index, explanation, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             args: [
-              uid(), 
-              mid, 
-              q.question || q.q || '', 
-              opts[0] || q.option_a || '', 
-              opts[1] || q.option_b || '', 
-              opts[2] || q.option_c || '', 
-              opts[3] || q.option_d || '', 
-              q.correct_index ?? q.correct ?? 0, 
-              q.explanation || q.exp || '', 
+              uid(),
+              mid,
+              q.question || q.q || '',
+              opts[0] || q.option_a || '',
+              opts[1] || q.option_b || '',
+              opts[2] || q.option_c || '',
+              opts[3] || q.option_d || '',
+              q.correct_index ?? q.correct ?? 0,
+              q.explanation || q.exp || '',
               j
             ]
           })
@@ -799,8 +802,8 @@ app.put('/api/courses/:id', requireAdmin, async (c) => {
       const m = body.modules[i]
       const mid = uid()
       await db.execute({
-        sql: 'INSERT INTO modules (id, course_id, title, content, sort_order) VALUES (?, ?, ?, ?, ?)',
-        args: [mid, cid, m.title, m.content || '', i]
+        sql: 'INSERT INTO modules (id, course_id, title, content, summary, reference_url, learning_objectives, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        args: [mid, cid, m.title, m.content || '', m.summary || null, m.reference_url || null, m.learning_objectives ? JSON.stringify(m.learning_objectives) : null, i]
       })
       if (m.questions) {
         for (let j = 0; j < m.questions.length; j++) {
