@@ -468,21 +468,49 @@
           <div class="page-sub">Review how your Markdown was parsed, then set course details and AI settings.</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-6);margin-bottom:var(--space-6)">
             <div class="card">
-              <div class="card-title">Course details</div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-1)">
+                <div class="card-title">Course details</div>
+                <button id="btn-ai-autofill" class="btn btn-ghost btn-sm" onclick="Admin.autofillCourseDetails()" style="color:var(--brand-1)">✨ Auto-fill with AI</button>
+              </div>
               <div class="field"><label>Title</label><input type="text" id="ai-course-title" placeholder="e.g. Product Training"></div>
               <div class="field"><label>Icon (emoji)</label><input type="text" id="ai-course-icon" placeholder="📋" maxlength="4" style="max-width:80px"></div>
               <div class="field"><label>Description</label><textarea id="ai-course-desc" placeholder="Brief description..." style="min-height:60px"></textarea></div>
             </div>
-            <div class="card">
-              <div class="card-title">AI Settings</div>
-              <div class="field">
-                <label>Claude API Key <span style="font-size:10px;color:var(--pass);font-weight:600;">Primary</span></label>
-                <input type="password" id="claude-api-key" placeholder="sk-ant-api03-…" autocomplete="off">
+            <div class="card" id="ai-settings-card">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-4)">
+                <div class="card-title" style="margin-bottom:0">AI Settings</div>
+                <button id="btn-ai-edit" class="btn btn-ghost btn-sm hidden" onclick="Admin.requestAiEdit()">✎ Change keys</button>
               </div>
-              <div class="field">
-                <label>Gemini API Key <span style="font-size:10px;color:var(--ink-4);">Fallback</span></label>
-                <input type="password" id="gemini-api-key" placeholder="AIza…" autocomplete="off">
+
+              <div id="ai-keys-display" class="hidden" style="background:var(--bg-2);border-radius:var(--radius-md);padding:var(--space-4);margin-bottom:var(--space-2);border:1px solid var(--border);">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4)">
+                  <div>
+                    <div style="font-size:9px;font-weight:700;color:var(--ink-4);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">Claude (Primary)</div>
+                    <div id="claude-key-masked" style="font-family:monospace;font-size:11px;color:var(--pass)">••••••••••••••••</div>
+                  </div>
+                  <div>
+                    <div style="font-size:9px;font-weight:700;color:var(--ink-4);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">Gemini (Fallback)</div>
+                    <div id="gemini-key-masked" style="font-family:monospace;font-size:11px;color:var(--ink-4)">Not set</div>
+                  </div>
+                </div>
               </div>
+
+              <div id="ai-keys-edit">
+                <div class="field">
+                  <label style="display:flex;justify-content:space-between">Claude Key <span class="chip chip-blue" style="font-size:8px;padding:1px 4px">PRIMARY</span></label>
+                  <input type="password" id="claude-api-key" placeholder="sk-ant-…" autocomplete="off">
+                </div>
+                <div class="field">
+                  <label style="display:flex;justify-content:space-between">Gemini Key <span class="chip chip-gray" style="font-size:8px;padding:1px 4px">FALLBACK</span></label>
+                  <input type="password" id="gemini-api-key" placeholder="AIza…" autocomplete="off">
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-top:var(--space-2)">
+                  <div style="font-size:10px;color:var(--ink-4)">Stored in browser only.</div>
+                  <button class="btn btn-primary btn-sm" onclick="Admin.saveAiKeys()">Save Keys</button>
+                </div>
+              </div>
+
+              <div class="divider" style="margin:var(--space-4) 0"></div>
               <div class="field">
                 <label>Questions per module</label>
                 <select id="q-per-mod">
