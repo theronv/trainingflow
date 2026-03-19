@@ -537,7 +537,7 @@ const Admin = {
     if (!pw) return;
     try {
       // Use the same validation endpoint/logic as admin login
-      const res = await fetch(`${CONFIG.API_URL}/api/auth/login`, {
+      const res = await fetch(`${CONFIG.WORKER_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password: pw })
@@ -581,13 +581,15 @@ const Admin = {
     const geminiKey = localStorage.getItem('trainflow_gemini_key');
     if (!claudeKey && !geminiKey) throw new Error('Please configure an API key first.');
 
+    let lastError = null;
+
     if (claudeKey) {
       try {
         const res = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
           headers: { 'x-api-key': claudeKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json', 'anthropic-dangerous-direct-browser-access': 'true' },
           body: JSON.stringify({
-            model: 'claude-3-5-sonnet-20240620',
+            model: 'claude-sonnet-4-6',
             max_tokens: maxTokens,
             system: systemPrompt,
             messages: [{ role: 'user', content: prompt }]
@@ -597,22 +599,40 @@ const Admin = {
           const data = await res.json();
           return { text: data.content[0].text, provider: 'Claude' };
         }
-      } catch (e) { console.warn('Claude failed, trying fallback...', e); }
+        const errBody = await res.json().catch(() => ({}));
+        if (res.status === 401) {
+          lastError = new Error('Invalid Claude API key. Click "Change keys" to update it.');
+        } else {
+          lastError = new Error(`Claude error (${res.status}): ${errBody?.error?.message || res.statusText}`);
+        }
+        console.warn('Claude failed:', lastError.message);
+      } catch (e) {
+        lastError = e;
+        console.warn('Claude request failed, trying fallback...', e);
+      }
     }
 
     if (geminiKey) {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: (systemPrompt ? systemPrompt + "\n\n" : "") + prompt }] }] })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        return { text: data.candidates[0].content.parts[0].text, provider: 'Gemini' };
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: [{ text: (systemPrompt ? systemPrompt + "\n\n" : "") + prompt }] }] })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          return { text: data.candidates[0].content.parts[0].text, provider: 'Gemini' };
+        }
+        const errBody = await res.json().catch(() => ({}));
+        lastError = new Error(res.status === 400 ? 'Invalid Gemini API key.' : `Gemini error (${res.status}): ${errBody?.error?.message || res.statusText}`);
+        console.warn('Gemini failed:', lastError.message);
+      } catch (e) {
+        lastError = e;
+        console.warn('Gemini request failed:', e);
       }
     }
-    throw new Error('AI Generation failed. Check your API keys.');
+    throw lastError || new Error('AI Generation failed. Check your API keys.');
   },
 
   async autofillCourseDetails() {
