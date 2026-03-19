@@ -746,50 +746,266 @@ function proceedFromUpload() {
 
 // Convert snake_case, kebab-case, or ALLCAPS headings to Title Case
 function cleanTitle(s) {
+  if (!s) return '';
+  // If it looks like a filename, clean it up
   if (/^[\w-]+$/.test(s) && (s.includes('_') || s.includes('-') || s === s.toLowerCase() || s === s.toUpperCase())) {
     s = s.replace(/[-_]/g, ' ').replace(/\s+/g, ' ').trim();
   }
   return s.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
 }
 
+function addFileModule(rawMd, defaultName) {
+  const result = parseMdToModules(rawMd, defaultName);
+  const id = Date.now() + Math.random();
+  fileModules.push({ 
+    id, 
+    name: result.docTitle, 
+    subModules: result.modules, 
+    source: defaultName,
+    description: result.docDesc,
+    icon: result.docIcon
+  });
+  renderFileModuleList();
+}
+
+function loadFromPaste() {
+  const md = document.getElementById('md-paste').value.trim();
+  if (!md) { toast('Paste some Markdown first.', 'error'); return; }
+  const name = document.getElementById('paste-module-name').value.trim() || 'Pasted Content';
+  addFileModule(md, name);
+  document.getElementById('md-paste').value = '';
+  document.getElementById('paste-module-name').value = '';
+  toast(`Added "${name}"`, 'success');
+}
+
+function removeFileModule(id) {
+  fileModules = fileModules.filter(m => m.id !== id);
+  renderFileModuleList();
+}
+
+function moveFileModule(id, dir) {
+  const idx = fileModules.findIndex(m => m.id === id);
+  if (idx === -1) return;
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= fileModules.length) return;
+  [fileModules[idx], fileModules[newIdx]] = [fileModules[newIdx], fileModules[idx]];
+  renderFileModuleList();
+}
+
+function renderFileModuleList() {
+  const el = document.getElementById('file-module-list');
+  const actEl = document.getElementById('upload-actions');
+  const countEl = document.getElementById('upload-module-count');
+
+  const hintEl = document.getElementById('upload-hint');
+  if (!fileModules.length) {
+    el.innerHTML = '';
+    actEl.classList.add('hidden');
+    actEl.classList.remove('upload-actions-visible');
+    if (hintEl) hintEl.classList.remove('hidden');
+    return;
+  }
+  if (hintEl) hintEl.classList.add('hidden');
+
+  const totalMods = fileModules.reduce((s, f) => s + f.subModules.length, 0);
+  countEl.textContent = `${fileModules.length} file${fileModules.length !== 1 ? 's' : ''} · ${totalMods} module${totalMods !== 1 ? 's' : ''} total`;
+  actEl.classList.remove('hidden');
+  actEl.classList.add('upload-actions-visible');
+
+  el.innerHTML = fileModules.map((fm, fi) => `
+    <div style="background:var(--white);border:1px solid var(--rule);border-radius:var(--r-lg);margin-bottom:var(--space-3);overflow:hidden;box-shadow:var(--shadow-xs)">
+      <div style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3) var(--space-4);background:var(--canvas);border-bottom:1px solid var(--rule)">
+        <span style="font-size:18px;cursor:grab;color:var(--ink-4)" title="Drag to reorder">⠿</span>
+        <div style="flex:1;min-width:0">
+          <input type="text" value="${esc(fm.name)}" 
+            onchange="fileModules[${fi}].name = this.value; updateSubModuleNames(${fi})"
+            style="font-weight:600;font-size:var(--text-sm);border:1.5px solid transparent;background:transparent;padding:4px 8px;border-radius:var(--r-sm);width:100%;max-width:360px"
+            onfocus="this.style.borderColor='var(--brand-1)';this.style.background='var(--white)'"
+            onblur="this.style.borderColor='transparent';this.style.background='transparent'">
+          <div style="font-size:var(--text-xs);color:var(--ink-4);margin-top:2px;padding-left:8px">
+            ${fm.subModules.length} section${fm.subModules.length !== 1 ? 's' : ''} · ${fm.subModules.reduce((s,m) => s + wordCount(m.content), 0)} words
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          <button class="btn btn-ghost btn-sm" onclick="moveFileModule(${fm.id},${-1})" ${fi===0?'disabled':''} title="Move up">↑</button>
+          <button class="btn btn-ghost btn-sm" onclick="moveFileModule(${fm.id},${1})" ${fi===fileModules.length-1?'disabled':''} title="Move down">↓</button>
+          <button class="btn btn-ghost btn-sm" style="color:var(--fail)" onclick="removeFileModule(${fm.id})" title="Remove">✕</button>
+        </div>
+      </div>
+      ${fm.subModules.length > 1 ? `
+      <div style="padding:var(--space-3) var(--space-4)">
+        <div style="font-size:var(--text-xs);font-weight:700;color:var(--ink-4);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:var(--space-2)">Sections in this file</div>
+        ${fm.subModules.map((sm, si) => `
+          <div style="display:flex;align-items:center;gap:var(--space-2);padding:5px 0;border-bottom:1px solid var(--rule-2)">
+            <span style="font-size:var(--text-xs);color:var(--ink-4);width:20px;text-align:right;flex-shrink:0">${si+1}</span>
+            <input type="text" value="${esc(sm.title)}"
+              onchange="fileModules[${fi}].subModules[${si}].title = this.value"
+              style="flex:1;font-size:var(--text-sm);border:1.5px solid transparent;background:transparent;padding:3px 8px;border-radius:var(--r-sm)"
+              onfocus="this.style.borderColor='var(--brand-1)';this.style.background='var(--white)'"
+              onblur="this.style.borderColor='transparent';this.style.background='transparent'">
+            <span style="font-size:var(--text-xs);color:var(--ink-4);flex-shrink:0">${wordCount(sm.content)}w</span>
+          </div>`).join('')}
+      </div>` : ''}
+    </div>`).join('');
+}
+
+function updateSubModuleNames(fi) {
+  // If file has only one sub-module, keep its title in sync with the file name
+  const fm = fileModules[fi];
+  if (fm && fm.subModules.length === 1) {
+    fm.subModules[0].title = fm.name;
+  }
+}
+
+function proceedFromUpload() {
+  if (!fileModules.length) { toast('Add at least one file first.', 'error'); return; }
+  // Flatten all sub-modules across all files into parsedModules
+  parsedModules = [];
+  fileModules.forEach(fm => {
+    fm.subModules.forEach(sm => parsedModules.push({ title: sm.title, content: sm.content }));
+  });
+  if (!parsedModules.length) { toast('No content found in uploaded files.', 'error'); return; }
+  populateConfigurePhase();
+  goPhase(2);
+}
+
+// ── Markdown parsing ──────────────────────────────────────────────────────────
+
 // Parse a single .md string into an array of {title, content} modules
+// Now extracts metadata (Title, Description, Icon) and handles HR splitting
 function parseMdToModules(raw, defaultTitle) {
-  const lines = raw.split('\n');
+  let lines = raw.split('\n');
+  let docTitle = defaultTitle;
+  let docDesc = '';
+  let docIcon = '';
+
+  // 1. Extract metadata from the top (Title:, Description:, Icon:, etc.)
+  let i = 0;
+  while (i < lines.length && i < 15) {
+    const line = lines[i].trim();
+    if (!line) { i++; continue; }
+
+    const titleMatch = line.match(/^(Title|Course Title):\s*(.+)/i);
+    const descMatch = line.match(/^(Description):\s*(.+)/i);
+    const iconMatch = line.match(/^(Icon):\s*(.+)/i);
+    const markdownContentMatch = line.match(/^Markdown Content:/i);
+
+    if (titleMatch) {
+      docTitle = titleMatch[2].trim();
+      lines[i] = ''; 
+    } else if (descMatch) {
+      docDesc = descMatch[2].trim();
+      lines[i] = '';
+    } else if (iconMatch) {
+      docIcon = iconMatch[2].trim();
+      lines[i] = '';
+    } else if (markdownContentMatch) {
+      lines[i] = '';
+    } else if (line.toLowerCase().startsWith('url source:')) {
+      lines[i] = '';
+    } else if (line === '---' || line === '***' || line === '* * *') {
+      // skip dividers at the very top
+    } else {
+      // Found actual content, stop metadata extraction
+      break;
+    }
+    i++;
+  }
+
+  // 2. Clean up lines
+  const cleanLines = lines.filter((l, idx) => idx >= i || l.trim() !== '');
+
+  // 3. Detect splitting strategy
+  const hasH2 = cleanLines.some(l => l.startsWith('## '));
+  const hasHR = cleanLines.some(l => /^([-* ]){3,}$/.test(l.trim()));
+
   const modules = [];
   let cur = null;
-  let docTitle = defaultTitle;
 
-  for (const line of lines) {
-    const h1 = line.match(/^#\s+(.+)/);
-    const h2 = line.match(/^##\s+(.+)/);
-    if (h1 && !cur) {
-      docTitle = h1[1].trim();
-    } else if (h2) {
-      if (cur) modules.push(cur);
-      cur = { title: cleanTitle(h2[1].trim()), rawLines: [] };
-    } else if (cur) {
-      cur.rawLines.push(line);
+  if (hasH2) {
+    // Split by H2
+    for (const line of cleanLines) {
+      const h1 = line.match(/^#\s+(.+)/);
+      const h2 = line.match(/^##\s+(.+)/);
+      if (h1 && !cur) {
+        if (!docTitle || docTitle === defaultTitle) docTitle = h1[1].trim();
+      } else if (h2) {
+        if (cur) modules.push(cur);
+        cur = { title: cleanTitle(h2[1].trim()), rawLines: [] };
+      } else if (cur) {
+        cur.rawLines.push(line);
+      } else if (line.trim() !== '') {
+        // Content before first H2, use it as description if we don't have one
+        if (!docDesc) docDesc += line + ' ';
+      }
+    }
+  } else if (hasHR) {
+    // Split by HR
+    cur = { title: cleanTitle(docTitle), rawLines: [] };
+    let sectionIdx = 1;
+    for (const line of cleanLines) {
+      if (/^([-* ]){3,}$/.test(line.trim())) {
+        if (cur.rawLines.some(l => l.trim() !== '')) {
+          modules.push(cur);
+          sectionIdx++;
+          cur = { title: `${cleanTitle(docTitle)} - Part ${sectionIdx}`, rawLines: [] };
+        }
+      } else {
+        cur.rawLines.push(line);
+      }
     }
   }
-  if (cur) modules.push(cur);
 
-  // Fallback: treat whole file as one module
-  if (!modules.length) {
-    modules.push({ title: cleanTitle(defaultTitle), rawLines: lines });
+  if (cur && cur.rawLines.some(l => l.trim() !== '')) {
+    modules.push(cur);
   }
 
-  return modules.map(m => ({
-    title: m.title,
-    content: mdToHtml(m.rawLines.join('\n'))
-  }));
+  if (modules.length === 0) {
+    modules.push({ title: cleanTitle(docTitle), rawLines: cleanLines });
+  }
+
+  // Final cleanup of docDesc
+  docDesc = docDesc.trim();
+  if (!docDesc && modules.length > 0) {
+    // Try to use first paragraph of first module as description if it's short
+    const firstModLines = modules[0].rawLines;
+    let firstPara = '';
+    for (const l of firstModLines) {
+      if (l.trim() === '') {
+        if (firstPara) break;
+      } else {
+        firstPara += l.trim() + ' ';
+      }
+    }
+    if (firstPara.length > 0 && firstPara.length < 250) {
+      docDesc = firstPara.trim();
+    }
+  }
+
+  // Try to find icon if not set
+  if (!docIcon) {
+    const emojiMatch = (docTitle + ' ' + docDesc).match(/[\u{1F300}-\u{1F9FF}]/u);
+    if (emojiMatch) docIcon = emojiMatch[0];
+  }
+
+  return {
+    docTitle: cleanTitle(docTitle),
+    docDesc: docDesc,
+    docIcon: docIcon,
+    modules: modules.map(m => ({
+      title: m.title,
+      content: mdToHtml(m.rawLines.join('\n'))
+    }))
+  };
 }
 
 function populateConfigurePhase() {
-  // Suggest a course title from the first file's name
+  // Suggest a course title from the first file's metadata
   if (!document.getElementById('course-title').value) {
-    const firstName = fileModules[0]?.name || 'My Course';
-    document.getElementById('course-title').value = firstName;
-    document.getElementById('course-icon').value = '📋';
+    const first = fileModules[0];
+    document.getElementById('course-title').value = first?.name || 'My Course';
+    document.getElementById('course-icon').value = first?.icon || '📋';
+    document.getElementById('course-desc').value = first?.description || '';
   }
   document.getElementById('mod-count-chip').textContent =
     `${parsedModules.length} module${parsedModules.length !== 1 ? 's' : ''}`;
