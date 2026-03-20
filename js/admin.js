@@ -336,24 +336,37 @@ const Admin = {
     const hex2 = b.c2 || CONFIG.DEFAULT_C2;
     if($$('br-c2'))     $$('br-c2').value     = hex2;
     if($$('br-c2-hex')) $$('br-c2-hex').value = hex2;
+    const hex3 = b.c3 || CONFIG.DEFAULT_C3;
+    if($$('br-c3'))     $$('br-c3').value     = hex3;
+    if($$('br-c3-hex')) $$('br-c3-hex').value = hex3;
+    // Logo preview box
+    const lpb = $$('br-prev-logo-box'); const lph = $$('br-prev-logo-placeholder');
+    if (lpb) { lpb.src = b.logo || ''; lpb.style.display = b.logo ? 'block' : 'none'; }
+    if (lph) lph.style.display = b.logo ? 'none' : '';
     // Live preview
     const pn = $$('br-prev-name'); if (pn) pn.textContent = b.name;
-    const pl = $$('br-prev-logo');
-    if (pl) { pl.src = b.logo || ''; pl.style.display = b.logo ? 'block' : 'none'; }
+    const pl = $$('br-prev-logo'); if (pl) { pl.src = b.logo || ''; pl.style.display = b.logo ? 'block' : 'none'; }
+    const ptag = $$('br-prev-tagline'); if (ptag) ptag.textContent = b.tagline || CONFIG.DEFAULT_TAGLINE;
+    const pcorg = $$('br-prev-cert-org'); if (pcorg) { pcorg.textContent = b.name; pcorg.style.color = hex; }
   },
   async saveBrand() {
     try {
-      const hex = $$('br-c1')?.value || CONFIG.DEFAULT_C1;
+      const hex  = $$('br-c1')?.value || CONFIG.DEFAULT_C1;
+      const hex2 = $$('br-c2')?.value || CONFIG.DEFAULT_C2;
+      const hex3 = $$('br-c3')?.value || CONFIG.DEFAULT_C3;
+      const logoVal = brandCache.logo || $$('br-logo-url')?.value || '';
       const body = {
         org_name: $$('br-name').value,
+        tagline: $$('br-tag')?.value || '',
         pass_threshold: parseInt($$('br-pass').value),
         primary_color: hex,
-        secondary_color: $$('br-c2')?.value || CONFIG.DEFAULT_C2,
-        logo_url: brandCache.logo && !brandCache.logo.startsWith('data:') ? brandCache.logo : ($$('br-logo-url')?.value || ''),
+        secondary_color: hex2,
+        accent_color: hex3,
+        logo_url: logoVal,
       };
       await api('/api/brand', { method:'PUT', body:JSON.stringify(body) });
       if (/^#[0-9a-fA-F]{6}$/.test(hex)) localStorage.setItem('trainflow_brand_color', hex);
-      brandCache = { ...brandCache, name: body.org_name, c1: hex, c2: body.secondary_color, pass: body.pass_threshold };
+      brandCache = { ...brandCache, name: body.org_name, tagline: body.tagline, c1: hex, c2: hex2, c3: hex3, logo: logoVal, pass: body.pass_threshold };
       applyBrand();
       Toast.ok('Brand saved.');
     } catch(e) { Toast.err(e.message); }
@@ -685,6 +698,12 @@ const Admin = {
     e.target.value = '';
   },
   readAndAddFile(file) {
+    const MAX_BYTES = 2 * 1024 * 1024; // 2MB
+    if (file.size > MAX_BYTES) {
+      const mb = (file.size / 1024 / 1024).toFixed(1);
+      Toast.err(`"${file.name}" is ${mb}MB — max 2MB. Split the file or trim content before uploading.`);
+      return;
+    }
     const reader = new FileReader();
     reader.onload = ev => Admin.addFileModule(ev.target.result, file.name.replace(/\.[^.]+$/, ''));
     reader.readAsText(file);
@@ -797,6 +816,12 @@ const Admin = {
   removeFileModule(i) { Admin.fileModules.splice(i, 1); Admin.renderFileModuleList(); },
   proceedFromUpload() {
     if (!Admin.fileModules.length) return Toast.err('Add at least one file first.');
+    const totalMods = Admin.fileModules.reduce((s, f) => s + f.subModules.length, 0);
+    const MAX_MODS = 20;
+    if (totalMods > MAX_MODS) {
+      Toast.err(`${totalMods} modules detected — max is ${MAX_MODS}. Remove ${totalMods - MAX_MODS} module(s) from the list above before proceeding.`);
+      return;
+    }
     Admin.parsedModules = [];
     Admin.fileModules.forEach(fm => fm.subModules.forEach(sm => Admin.parsedModules.push({ ...sm, reference_url: sm.reference_url || fm.sourceUrl || '' })));
 
@@ -839,6 +864,13 @@ const Admin = {
     const claudeKey = localStorage.getItem('trainflow_claude_key');
     const geminiKey = localStorage.getItem('trainflow_gemini_key');
     if (!claudeKey && !geminiKey) return Toast.err('Enter an API key in the AI Settings card.');
+
+    // Gate 3: warn about content truncation for long modules
+    const CHAR_LIMIT = 4000;
+    const longMods = Admin.parsedModules.filter(m => (m.content || '').length > CHAR_LIMIT);
+    if (longMods.length > 0) {
+      Toast.info(`${longMods.length} module(s) exceed ${CHAR_LIMIT} characters — only the first ${CHAR_LIMIT} chars will be used for AI generation. Consider trimming long modules for best results.`);
+    }
 
     Admin.isGenerating = true;
     Admin.goPhase(3);
@@ -1038,9 +1070,18 @@ RULES:
 
   async saveAiCourse() {
     const btn = document.querySelector('[onclick="App.saveAiCourse()"]');
+
+    // Gate 4: warn on large payloads before hitting the Worker
+    const payload = JSON.stringify(Admin.generatedCourse);
+    const payloadKB = Math.round(payload.length / 1024);
+    if (payloadKB > 500) {
+      const ok = confirm(`This course is large (~${payloadKB}KB). Saving may take a moment. Continue?`);
+      if (!ok) return;
+    }
+
     if(btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
     try {
-      await api('/api/courses', { method: 'POST', body: JSON.stringify(Admin.generatedCourse) });
+      await api('/api/courses', { method: 'POST', body: payload });
       Toast.ok('Course saved!');
       // Reset importer state
       Admin.fileModules = []; Admin.parsedModules = []; Admin.generatedCourse = null; Admin.isGenerating = false;

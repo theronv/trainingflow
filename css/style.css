@@ -15,6 +15,12 @@
   --brand-dark:   #2563eb;
   --brand-glow:   rgba(59,130,246,0.15);
   --shadow-brand: 0 0 0 3px rgba(59,130,246,0.2);
+  --brand-secondary:      #7c3aed;
+  --brand-secondary-dark: #6d28d9;
+  --brand-secondary-glow: rgba(124,58,237,0.10);
+  --brand-accent:         #0891b2;
+  --brand-accent-dark:    #0e7490;
+  --brand-accent-glow:    rgba(8,145,178,0.12);
 
   /* ── Status ── */
   --success:      #10b981;
@@ -650,9 +656,9 @@ tbody tr:hover td { background: var(--surface); }
   margin-bottom: var(--space-4);
 }
 .ldg-logo-img {
-  height: 56px;
+  max-height: 120px;
   width: auto;
-  max-width: 200px;
+  max-width: 280px;
   object-fit: contain;
   border-radius: var(--radius-md);
 }
@@ -667,7 +673,7 @@ tbody tr:hover td { background: var(--surface); }
   font-size: var(--text-md); color: var(--ink-3); font-weight: 300;
   margin-bottom: var(--space-12); line-height: 1.5;
 }
-.landing-rule { width: 40px; height: 2px; background: var(--brand); margin: 0 auto var(--space-10); }
+.landing-rule { width: 100%; height: 4px; background: linear-gradient(to right, var(--brand), var(--brand-secondary)); margin: 0 auto var(--space-10); border-radius: 2px; }
 .role-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-8); }
 .role-tiles { display: flex; gap: var(--space-5); flex-wrap: wrap; justify-content: center; }
 @media (max-width: 600px) { .role-grid { grid-template-columns: 1fr; } }
@@ -1036,7 +1042,8 @@ tbody tr:hover td { background: var(--surface); }
   box-shadow: var(--shadow-lg);
   font-family: var(--font-body);
 }
-.cert-accent-bar { height: 6px; background: var(--brand); border-radius: var(--radius-xl) var(--radius-xl) 0 0; }
+.cert-accent-bar { height: 6px; background: linear-gradient(to right, var(--brand), var(--brand-secondary)); border-radius: var(--radius-xl) var(--radius-xl) 0 0; }
+.course-header-logo { height: 32px; width: auto; max-width: 100px; object-fit: contain; flex-shrink: 0; }
 .cert-body { padding: 52px 64px 48px; text-align: center; }
 .cert-org-name {
   font-family: var(--font-mono);

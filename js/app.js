@@ -105,17 +105,29 @@ const AppProxy = {
     } catch(e) { Toast.err(e.message); }
   },
   previewBrand: () => {
-    const hex = $$('br-c1')?.value;
-    if (hex && /^#[0-9a-fA-F]{6}$/.test(hex)) brandCache.c1 = hex;
-    const name = $$('br-name')?.value; if (name) brandCache.name = name;
+    const hex  = $$('br-c1')?.value; if (hex  && /^#[0-9a-fA-F]{6}$/.test(hex))  brandCache.c1 = hex;
+    const hex2 = $$('br-c2')?.value; if (hex2 && /^#[0-9a-fA-F]{6}$/.test(hex2)) brandCache.c2 = hex2;
+    const hex3 = $$('br-c3')?.value; if (hex3 && /^#[0-9a-fA-F]{6}$/.test(hex3)) brandCache.c3 = hex3;
+    const name = $$('br-name')?.value; if (name !== undefined) brandCache.name = name;
+    const tagline = $$('br-tag')?.value; if (tagline !== undefined) brandCache.tagline = tagline;
     const logoUrl = $$('br-logo-url')?.value; if (logoUrl !== undefined) brandCache.logo = logoUrl;
     applyBrand();
     // Update live branding panel preview
     const pn = $$('br-prev-name'); if (pn) pn.textContent = brandCache.name;
-    const pl = $$('br-prev-logo');
-    if (pl) { pl.src = brandCache.logo || ''; pl.style.display = brandCache.logo ? 'block' : 'none'; }
+    const pl = $$('br-prev-logo'); if (pl) { pl.src = brandCache.logo || ''; pl.style.display = brandCache.logo ? 'block' : 'none'; }
+    const ptag = $$('br-prev-tagline'); if (ptag) ptag.textContent = brandCache.tagline || CONFIG.DEFAULT_TAGLINE;
+    const pcorg = $$('br-prev-cert-org'); if (pcorg) { pcorg.textContent = brandCache.name; pcorg.style.color = brandCache.c1 || CONFIG.DEFAULT_C1; }
+    const lpb = $$('br-prev-logo-box'); const lph = $$('br-prev-logo-placeholder');
+    if (lpb) { lpb.src = brandCache.logo || ''; lpb.style.display = brandCache.logo ? 'block' : 'none'; }
+    if (lph) lph.style.display = brandCache.logo ? 'none' : '';
   },
-  resetBrand: () => { brandCache = { name: CONFIG.DEFAULT_BRAND_NAME, c1: CONFIG.DEFAULT_C1, c2: CONFIG.DEFAULT_C2, pass: CONFIG.DEFAULT_PASS }; applyBrand(); Admin.renderBranding(); },
+  resetBrand: () => { brandCache = { name: CONFIG.DEFAULT_BRAND_NAME, tagline: CONFIG.DEFAULT_TAGLINE, logo: '', c1: CONFIG.DEFAULT_C1, c2: CONFIG.DEFAULT_C2, c3: CONFIG.DEFAULT_C3, pass: CONFIG.DEFAULT_PASS }; applyBrand(); Admin.renderBranding(); },
+  applyPalette: (c1, c2, c3) => {
+    brandCache.c1 = c1; brandCache.c2 = c2; brandCache.c3 = c3;
+    const set = (id, val) => { const el = $$(id); if(el) el.value = val; };
+    set('br-c1', c1); set('br-c1-hex', c1); set('br-c2', c2); set('br-c2-hex', c2); set('br-c3', c3); set('br-c3-hex', c3);
+    App.previewBrand();
+  },
   openTagsModal: () => { $$('tags-modal').classList.remove('hidden'); },
   closeTagsModal: () => $$('tags-modal').classList.add('hidden'),
   closeLearnerTagsModal: () => $$('learner-tags-modal').classList.add('hidden'),
@@ -189,6 +201,9 @@ const AppProxy = {
       const urlInput = $$('br-logo-url'); if (urlInput) urlInput.value = '';
       applyBrand();
       const pl = $$('br-prev-logo'); if (pl) { pl.src = brandCache.logo; pl.style.display = 'block'; }
+      const lpb = $$('br-prev-logo-box'); const lph = $$('br-prev-logo-placeholder');
+      if (lpb) { lpb.src = brandCache.logo; lpb.style.display = 'block'; }
+      if (lph) lph.style.display = 'none';
     };
     reader.readAsDataURL(file);
   },

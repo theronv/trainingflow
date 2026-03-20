@@ -9,7 +9,8 @@ const CONFIG = {
   DEFAULT_BRAND_NAME: 'TrainFlow',
   DEFAULT_TAGLINE: 'Training & Certification Platform',
   DEFAULT_C1: '#2563eb',
-  DEFAULT_C2: '#1d4ed8',
+  DEFAULT_C2: '#7c3aed',
+  DEFAULT_C3: '#0891b2',
   DEFAULT_PASS: 80,
   DEFAULT_ICON: '📋',
   MIN_PW_LEN: 8,
@@ -91,7 +92,7 @@ let teamsCache   = [];
 let coursesCache = [];
 let assignCache  = [];
 let isDemo       = false;
-let brandCache   = { name: CONFIG.DEFAULT_BRAND_NAME, tagline: CONFIG.DEFAULT_TAGLINE, logo: '', c1: CONFIG.DEFAULT_C1, c2: CONFIG.DEFAULT_C2, pass: CONFIG.DEFAULT_PASS };
+let brandCache   = { name: CONFIG.DEFAULT_BRAND_NAME, tagline: CONFIG.DEFAULT_TAGLINE, logo: '', c1: CONFIG.DEFAULT_C1, c2: CONFIG.DEFAULT_C2, c3: CONFIG.DEFAULT_C3, pass: CONFIG.DEFAULT_PASS };
 
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
@@ -129,7 +130,7 @@ function normCourse(c) {
   };
 }
 function normRecord(r) { return { cid: r.course_id, learner: r.learner_name, score: r.score, passed: Boolean(r.passed), date: (r.completed_at || 0) * 1000, cid2: r.cert_id || '', }; }
-function normBrand(b) { return { name: b.org_name || CONFIG.DEFAULT_BRAND_NAME, tagline: b.tagline || CONFIG.DEFAULT_TAGLINE, logo: b.logo_url || '', c1: b.primary_color || CONFIG.DEFAULT_C1, c2: b.secondary_color || CONFIG.DEFAULT_C2, pass: b.pass_threshold ?? CONFIG.DEFAULT_PASS, }; }
+function normBrand(b) { return { name: b.org_name || CONFIG.DEFAULT_BRAND_NAME, tagline: b.tagline || CONFIG.DEFAULT_TAGLINE, logo: b.logo_url || '', c1: b.primary_color || CONFIG.DEFAULT_C1, c2: b.secondary_color || CONFIG.DEFAULT_C2, c3: b.accent_color || CONFIG.DEFAULT_C3, pass: b.pass_threshold ?? CONFIG.DEFAULT_PASS, }; }
 
 function hexToRgba(hex, alpha) {
   const r = parseInt(hex.slice(1,3),16);
@@ -149,38 +150,66 @@ function darken(hex, percent) {
 
 function applyBrand() {
   const b = brandCache;
-  const hex = (b.c1 && /^#[0-9a-fA-F]{6}$/.test(b.c1)) ? b.c1 : CONFIG.DEFAULT_C1;
+  const validHex = (h, def) => (h && /^#[0-9a-fA-F]{6}$/.test(h)) ? h : def;
+  const root = document.documentElement.style;
 
-  // Apply all brand CSS tokens
-  document.documentElement.style.setProperty('--brand',        hex);
-  document.documentElement.style.setProperty('--brand-dark',   darken(hex, 15));
-  document.documentElement.style.setProperty('--brand-glow',   hexToRgba(hex, 0.15));
-  document.documentElement.style.setProperty('--shadow-brand', `0 0 0 3px ${hexToRgba(hex, 0.2)}`);
-  // Legacy aliases
-  document.documentElement.style.setProperty('--brand-1', hex);
-  document.documentElement.style.setProperty('--brand-2', b.c2 || CONFIG.DEFAULT_C2);
+  // --- Primary ---
+  const c1 = validHex(b.c1, CONFIG.DEFAULT_C1);
+  root.setProperty('--brand',        c1);
+  root.setProperty('--brand-dark',   darken(c1, 15));
+  root.setProperty('--brand-glow',   hexToRgba(c1, 0.15));
+  root.setProperty('--shadow-brand', `0 0 0 3px ${hexToRgba(c1, 0.2)}`);
+  root.setProperty('--brand-1', c1); // legacy
+
+  // --- Secondary ---
+  const c2 = validHex(b.c2, CONFIG.DEFAULT_C2);
+  root.setProperty('--brand-secondary',      c2);
+  root.setProperty('--brand-secondary-dark', darken(c2, 15));
+  root.setProperty('--brand-secondary-glow', hexToRgba(c2, 0.10));
+  root.setProperty('--brand-2', c2); // fix legacy alias
+
+  // --- Accent ---
+  const c3 = validHex(b.c3, CONFIG.DEFAULT_C3);
+  root.setProperty('--brand-accent',      c3);
+  root.setProperty('--brand-accent-dark', darken(c3, 12));
+  root.setProperty('--brand-accent-glow', hexToRgba(c3, 0.12));
 
   // Org name across all surfaces
   ['ldg-brand', 'l-brand', 'a-brand', 'm-brand'].forEach(id => { const el = $$(id); if(el) el.textContent = b.name; });
   const certSig = $$('c-sig-dept');
   if(certSig) certSig.textContent = b.name + ' Training Department';
 
-  // Logo across all surfaces (topbars + landing)
+  // Tagline (dynamic)
+  const taglineEl = $$('ldg-tagline');
+  if (taglineEl) taglineEl.textContent = b.tagline || CONFIG.DEFAULT_TAGLINE;
+
+  // Logo across all surfaces (topbars + landing + course header)
   const logoSrc = b.logo || '';
-  ['l-logo', 'a-logo', 'm-logo', 'ldg-logo'].forEach(id => {
+  ['l-logo', 'a-logo', 'm-logo', 'ldg-logo', 'ch-logo'].forEach(id => {
     const img = $$(id); if(!img) return;
     if(logoSrc) { img.src = logoSrc; img.classList.remove('hidden'); }
     else { img.src = ''; img.classList.add('hidden'); }
   });
 
+  // Cert logo
+  const cLogo = $$('c-logo'); const cLogoWrap = $$('c-logo-wrap');
+  if (cLogo && cLogoWrap) {
+    if (logoSrc) { cLogo.src = logoSrc; cLogoWrap.classList.remove('hidden'); }
+    else { cLogo.src = ''; cLogoWrap.classList.add('hidden'); }
+  }
+
   // Hide/show the diamond accent on topbar brand when logo is present
   document.querySelectorAll('.brand').forEach(el => el.classList.toggle('has-logo', !!logoSrc));
 
-  // Landing: show logo image + name together, or just name
+  // Landing: show logo image + name together, or just name (in brand color when no logo)
   const ldgWrap = $$('ldg-logo-wrap');
   if (ldgWrap) ldgWrap.classList.toggle('hidden', !logoSrc);
   const ldgBrand = $$('ldg-brand');
-  if (ldgBrand) ldgBrand.style.display = ''; // always show name
+  if (ldgBrand) { ldgBrand.style.display = ''; ldgBrand.style.color = logoSrc ? '' : c1; }
+
+  // Mobile browser theme color
+  const themeMeta = document.querySelector('meta[name="theme-color"]');
+  if (themeMeta) themeMeta.content = c1;
 }
 
 function showPage(id) { 
@@ -220,7 +249,7 @@ const App = {
   startDemo() {
     isDemo = true;
     curLearner = { id: 'demo-id', name: 'Demo Learner' };
-    brandCache = { name: 'TrainFlow Demo', tagline: 'Experience the new UI/UX', logo: '', c1: CONFIG.DEFAULT_C1, c2: CONFIG.DEFAULT_C2, pass: CONFIG.DEFAULT_PASS };
+    brandCache = { name: 'TrainFlow Demo', tagline: 'Experience the new UI/UX', logo: '', c1: CONFIG.DEFAULT_C1, c2: CONFIG.DEFAULT_C2, c3: CONFIG.DEFAULT_C3, pass: CONFIG.DEFAULT_PASS };
     applyBrand();
     Toast.ok('Demo Mode Activated ✨');
     Learner.init();

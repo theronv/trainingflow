@@ -253,9 +253,9 @@ app.patch('/api/admin/learners/:lid/team', requireAdmin, async (c) => {
 app.put('/api/brand', requireAdmin, async (c) => {
   const body = await c.req.json()
   const db = getDb(c.env)
-  await db.execute({ 
-    sql: 'UPDATE brand SET org_name = ?, pass_threshold = ? WHERE id = "default"', 
-    args: [body.org_name, body.pass_threshold] 
+  await db.execute({
+    sql: 'UPDATE brand SET org_name = ?, tagline = ?, primary_color = ?, secondary_color = ?, accent_color = ?, logo_url = ?, pass_threshold = ? WHERE id = "default"',
+    args: [body.org_name, body.tagline || '', body.primary_color || '#2563eb', body.secondary_color || '#7c3aed', body.accent_color || '#0891b2', body.logo_url || '', body.pass_threshold || 80]
   })
   return c.json({ ok: true })
 })
@@ -598,6 +598,7 @@ async function setupSections(db) {
   try { await db.execute('ALTER TABLE modules ADD COLUMN summary TEXT') } catch {}
   try { await db.execute('ALTER TABLE modules ADD COLUMN reference_url TEXT') } catch {}
   try { await db.execute('ALTER TABLE modules ADD COLUMN learning_objectives TEXT') } catch {}
+  try { await db.execute("ALTER TABLE brand ADD COLUMN accent_color TEXT NOT NULL DEFAULT '#0891b2'") } catch {}
 }
 
 app.get('/api/sections', async (c) => {
@@ -739,18 +740,25 @@ app.post('/api/courses', requireAdmin, async (c) => {
   const body = await c.req.json()
   const db = getDb(c.env)
   const cid = uid()
-  
+
   await setupSections(db)
-  await db.execute({
+
+  // Build all INSERT statements and fire them as a single batch request to Turso.
+  // Sequential db.execute() calls make one HTTP round-trip per statement — for a
+  // large course (e.g. 10 modules × 8 questions) that is 90+ round-trips and will
+  // time out. db.batch() sends everything in one HTTP request.
+  const stmts = []
+
+  stmts.push({
     sql: 'INSERT INTO courses (id, title, icon, description, reference_url) VALUES (?, ?, ?, ?, ?)',
     args: [cid, body.title, body.icon || '📋', body.description || '', body.reference_url || null]
   })
-  
+
   if (body.modules) {
     for (let i = 0; i < body.modules.length; i++) {
       const m = body.modules[i]
       const mid = uid()
-      await db.execute({
+      stmts.push({
         sql: 'INSERT INTO modules (id, course_id, title, content, summary, reference_url, learning_objectives, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
         args: [mid, cid, m.title, m.content || '', m.summary || null, m.reference_url || null, m.learning_objectives ? JSON.stringify(m.learning_objectives) : null, i]
       })
@@ -758,60 +766,7 @@ app.post('/api/courses', requireAdmin, async (c) => {
         for (let j = 0; j < m.questions.length; j++) {
           const q = m.questions[j]
           const opts = q.options || q.opts || []
-          await db.execute({
-            sql: 'INSERT INTO questions (id, module_id, question, option_a, option_b, option_c, option_d, correct_index, explanation, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            args: [
-              uid(),
-              mid,
-              q.question || q.q || '',
-              opts[0] || q.option_a || '',
-              opts[1] || q.option_b || '',
-              opts[2] || q.option_c || '',
-              opts[3] || q.option_d || '',
-              q.correct_index ?? q.correct ?? 0,
-              q.explanation || q.exp || '',
-              j
-            ]
-          })
-        }
-      }
-    }
-  }
-  return c.json({ id: cid }, 201)
-})
-
-app.put('/api/courses/:id', requireAdmin, async (c) => {
-  const cid = c.req.param('id')
-  const body = await c.req.json()
-  const db = getDb(c.env)
-  try {
-  await setupSections(db)
-  // Update course metadata
-  await db.execute({
-    sql: 'UPDATE courses SET title = ?, icon = ?, description = ?, reference_url = ? WHERE id = ?',
-    args: [body.title, body.icon || '📋', body.description || '', body.reference_url || null, cid]
-  })
-  // Replace all modules and questions
-  const oldMods = await db.execute({ sql: 'SELECT id FROM modules WHERE course_id = ?', args: [cid] })
-  for (const row of toObjs(oldMods)) {
-    await db.execute({ sql: 'DELETE FROM questions WHERE module_id = ?', args: [row.id] })
-  }
-  await db.execute({ sql: 'DELETE FROM modules WHERE course_id = ?', args: [cid] })
-  if (body.modules) {
-    for (let i = 0; i < body.modules.length; i++) {
-      const m = body.modules[i]
-      const mid = uid()
-      await db.execute({
-        sql: 'INSERT INTO modules (id, course_id, title, content, summary, reference_url, learning_objectives, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        args: [mid, cid, m.title, m.content || '', m.summary || null, m.reference_url || null, m.learning_objectives ? JSON.stringify(m.learning_objectives) : null, i]
-      })
-      if (m.questions) {
-        for (let j = 0; j < m.questions.length; j++) {
-          const q = m.questions[j]
-          // Handle both raw DB format (question/option_a/correct_index)
-          // and normalized frontend format (q/opts/correct) from normCourse()
-          const opts = q.opts || q.options || []
-          await db.execute({
+          stmts.push({
             sql: 'INSERT INTO questions (id, module_id, question, option_a, option_b, option_c, option_d, correct_index, explanation, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             args: [
               uid(), mid,
@@ -829,7 +784,77 @@ app.put('/api/courses/:id', requireAdmin, async (c) => {
       }
     }
   }
-  return c.json({ ok: true })
+
+  try {
+    await db.batch(stmts, 'write')
+  } catch (e) {
+    console.error('POST /api/courses batch error:', e.message)
+    return c.json({ error: e.message || 'Failed to save course' }, 500)
+  }
+
+  return c.json({ id: cid }, 201)
+})
+
+app.put('/api/courses/:id', requireAdmin, async (c) => {
+  const cid = c.req.param('id')
+  const body = await c.req.json()
+  const db = getDb(c.env)
+  try {
+    await setupSections(db)
+
+    // Fetch old module IDs in one read so we can delete their questions.
+    const oldMods = await db.execute({ sql: 'SELECT id FROM modules WHERE course_id = ?', args: [cid] })
+    const oldModIds = toObjs(oldMods).map(r => r.id)
+
+    // Build all writes as a single batch — one HTTP round-trip to Turso.
+    const stmts = []
+
+    stmts.push({
+      sql: 'UPDATE courses SET title = ?, icon = ?, description = ?, reference_url = ? WHERE id = ?',
+      args: [body.title, body.icon || '📋', body.description || '', body.reference_url || null, cid]
+    })
+
+    // Delete old questions and modules
+    for (const mid of oldModIds) {
+      stmts.push({ sql: 'DELETE FROM questions WHERE module_id = ?', args: [mid] })
+    }
+    stmts.push({ sql: 'DELETE FROM modules WHERE course_id = ?', args: [cid] })
+
+    // Insert new modules and questions
+    if (body.modules) {
+      for (let i = 0; i < body.modules.length; i++) {
+        const m = body.modules[i]
+        const mid = uid()
+        stmts.push({
+          sql: 'INSERT INTO modules (id, course_id, title, content, summary, reference_url, learning_objectives, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+          args: [mid, cid, m.title, m.content || '', m.summary || null, m.reference_url || null, m.learning_objectives ? JSON.stringify(m.learning_objectives) : null, i]
+        })
+        if (m.questions) {
+          for (let j = 0; j < m.questions.length; j++) {
+            const q = m.questions[j]
+            // Handle both raw DB format (option_a/b/c/d) and normalized frontend format (options[])
+            const opts = q.opts || q.options || []
+            stmts.push({
+              sql: 'INSERT INTO questions (id, module_id, question, option_a, option_b, option_c, option_d, correct_index, explanation, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+              args: [
+                uid(), mid,
+                q.question || q.q || '',
+                opts[0] || q.option_a || '',
+                opts[1] || q.option_b || '',
+                opts[2] || q.option_c || '',
+                opts[3] || q.option_d || '',
+                q.correct_index ?? q.correct ?? 0,
+                q.explanation || q.exp || '',
+                j
+              ]
+            })
+          }
+        }
+      }
+    }
+
+    await db.batch(stmts, 'write')
+    return c.json({ ok: true })
   } catch (e) {
     console.error('PUT /api/courses/:id error:', e.message)
     return c.json({ error: e.message || 'Failed to save course' }, 500)
