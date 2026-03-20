@@ -139,9 +139,14 @@ async function requireLearner(c, next) {
 
 // ── Routes: Core ──────────────────────────────────────────────────────────────
 
+async function setupBrand(db) {
+  try { await db.execute("ALTER TABLE brand ADD COLUMN accent_color TEXT NOT NULL DEFAULT '#0891b2'") } catch {}
+}
+
 app.get('/api/brand', async (c) => {
   const db = getDb(c.env)
   try {
+    await setupBrand(db)
     const res = await db.execute({ sql: 'SELECT * FROM brand WHERE id = ?', args: ['default'] })
     const brand = toObj(res)
     return brand ? c.json(brand) : c.json({ org_name: 'TrainFlow' })
@@ -253,11 +258,17 @@ app.patch('/api/admin/learners/:lid/team', requireAdmin, async (c) => {
 app.put('/api/brand', requireAdmin, async (c) => {
   const body = await c.req.json()
   const db = getDb(c.env)
-  await db.execute({
-    sql: 'UPDATE brand SET org_name = ?, tagline = ?, primary_color = ?, secondary_color = ?, accent_color = ?, logo_url = ?, pass_threshold = ? WHERE id = "default"',
-    args: [body.org_name, body.tagline || '', body.primary_color || '#2563eb', body.secondary_color || '#7c3aed', body.accent_color || '#0891b2', body.logo_url || '', body.pass_threshold || 80]
-  })
-  return c.json({ ok: true })
+  try {
+    await setupBrand(db)
+    await db.execute({
+      sql: 'UPDATE brand SET org_name = ?, tagline = ?, primary_color = ?, secondary_color = ?, accent_color = ?, logo_url = ?, pass_threshold = ? WHERE id = "default"',
+      args: [body.org_name, body.tagline || '', body.primary_color || '#2563eb', body.secondary_color || '#7c3aed', body.accent_color || '#0891b2', body.logo_url || '', body.pass_threshold || 80]
+    })
+    return c.json({ ok: true })
+  } catch (e) {
+    console.error('PUT /api/brand error:', e)
+    return c.json({ error: 'Failed to save branding', detail: e.message }, 500)
+  }
 })
 
 app.put('/api/admin/password', requireAdmin, async (c) => {
@@ -598,7 +609,6 @@ async function setupSections(db) {
   try { await db.execute('ALTER TABLE modules ADD COLUMN summary TEXT') } catch {}
   try { await db.execute('ALTER TABLE modules ADD COLUMN reference_url TEXT') } catch {}
   try { await db.execute('ALTER TABLE modules ADD COLUMN learning_objectives TEXT') } catch {}
-  try { await db.execute("ALTER TABLE brand ADD COLUMN accent_color TEXT NOT NULL DEFAULT '#0891b2'") } catch {}
 }
 
 app.get('/api/sections', async (c) => {

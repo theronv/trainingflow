@@ -110,7 +110,7 @@ const AppProxy = {
     const hex3 = $$('br-c3')?.value; if (hex3 && /^#[0-9a-fA-F]{6}$/.test(hex3)) brandCache.c3 = hex3;
     const name = $$('br-name')?.value; if (name !== undefined) brandCache.name = name;
     const tagline = $$('br-tag')?.value; if (tagline !== undefined) brandCache.tagline = tagline;
-    const logoUrl = $$('br-logo-url')?.value; if (logoUrl !== undefined) brandCache.logo = logoUrl;
+    const logoUrl = $$('br-logo-url')?.value; if (logoUrl) brandCache.logo = logoUrl;
     applyBrand();
     // Update live branding panel preview
     const pn = $$('br-prev-name'); if (pn) pn.textContent = brandCache.name;
