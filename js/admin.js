@@ -749,9 +749,42 @@ const Admin = {
       else if (!line.match(/^([-* ]){3,}$/)) break;
       i++;
     }
-    const cleanLines = lines.filter((l, idx) => idx >= i || l.trim() !== '');
+
+    // Change 1 — Pre-processor: strip navigation noise from content lines (after metadata)
+    const isNavLink = l => {
+      const t = l.trim();
+      if (/^[-*]\s*\[[ x]\]\s*\[/.test(t)) return true;           // checkbox nav
+      if (/^[-*]?\s*\[.+\]\(https?:\/\/[^)]+\)[\s.,;]*$/.test(t)) return true; // lone link line
+      if (/^https?:\/\/\S+$/.test(t)) return true;                 // bare URL
+      return false;
+    };
+    const isAnchorOnlyHeading = l => /^#{1,6}\s+\[.+\]\(https?:\/\/.+\)\s*$/.test(l);
+    const isBoilerplate = l => /^(©|\(c\)|copyright|all rights reserved|privacy policy|terms of (use|service)|cookie)/i.test(l.trim());
+
+    // Group content lines into blank-separated paragraphs; drop nav-dense paragraphs (>70% link lines)
+    const contentLines = lines.slice(i);
+    const paragraphs = [];
+    let curPara = [];
+    for (const l of contentLines) {
+      if (!l.trim()) { if (curPara.length) { paragraphs.push(curPara); curPara = []; } paragraphs.push(['']); }
+      else curPara.push(l);
+    }
+    if (curPara.length) paragraphs.push(curPara);
+
+    const filteredContent = paragraphs.flatMap(para => {
+      if (para.length === 1 && !para[0].trim()) return para;
+      const nonEmpty = para.filter(l => l.trim());
+      if (nonEmpty.length >= 3 && nonEmpty.filter(isNavLink).length / nonEmpty.length > 0.7) return [];
+      return para.filter(l => !isAnchorOnlyHeading(l) && !isBoilerplate(l));
+    });
+
+    const metaLines = lines.slice(0, i).filter(l => l.trim() !== '');
+    const cleanLines = [...metaLines, ...filteredContent];
+
     const hasH2 = cleanLines.some(l => l.startsWith('## '));
-    const hasHR = cleanLines.some(l => /^([-* ]){3,}$/.test(l.trim()));
+    // Change 2 — Heading hierarchy: try ### after ## but before HR
+    const hasH3 = !hasH2 && cleanLines.some(l => l.startsWith('### '));
+    const hasHR = !hasH2 && !hasH3 && cleanLines.some(l => /^([-* ]){3,}$/.test(l.trim()));
 
     const modules = []; let cur = null;
     if (hasH2) {
@@ -760,6 +793,15 @@ const Admin = {
         if (h2) {
           if (cur) modules.push(cur);
           cur = { title: Admin.cleanTitle(h2[1].trim()), rawLines: [] };
+        } else if (cur) cur.rawLines.push(line);
+        else if (line.trim() && !docDesc) docDesc += line + ' ';
+      }
+    } else if (hasH3) {
+      for (const line of cleanLines) {
+        const h3 = line.match(/^###\s+(.+)/);
+        if (h3) {
+          if (cur) modules.push(cur);
+          cur = { title: Admin.cleanTitle(h3[1].trim()), rawLines: [] };
         } else if (cur) cur.rawLines.push(line);
         else if (line.trim() && !docDesc) docDesc += line + ' ';
       }
@@ -779,21 +821,26 @@ const Admin = {
     if (cur && cur.rawLines.some(l => l.trim())) modules.push(cur);
     if (!modules.length) modules.push({ title: Admin.cleanTitle(docTitle), rawLines: cleanLines });
 
+    // Change 3 — Post-parse quality filter: drop modules with <40 real content words
+    const contentWords = text => text.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').replace(/[#*_`>~]/g, ' ').split(/\s+/).filter(w => w.length > 2).length;
+
     return {
       docTitle: Admin.cleanTitle(docTitle),
       docDesc: docDesc.trim(),
       docIcon: docIcon,
       docUrl: docUrl,
-      modules: modules.map(m => {
-        // Extract a URL Source line embedded within this section's content
-        let sectionUrl = '';
-        const filteredLines = m.rawLines.filter(line => {
-          const um = line.match(/^URL Source:\s*(.+)/i);
-          if (um) { sectionUrl = um[1].trim(); return false; }
-          return true;
-        });
-        return { title: m.title, content: filteredLines.join('\n'), reference_url: sectionUrl || docUrl };
-      })
+      modules: modules
+        .filter(m => contentWords(m.rawLines.join('\n')) >= 40)
+        .map(m => {
+          // Extract a URL Source line embedded within this section's content
+          let sectionUrl = '';
+          const filteredLines = m.rawLines.filter(line => {
+            const um = line.match(/^URL Source:\s*(.+)/i);
+            if (um) { sectionUrl = um[1].trim(); return false; }
+            return true;
+          });
+          return { title: m.title, content: filteredLines.join('\n'), reference_url: sectionUrl || docUrl };
+        })
     };
   },
   renderFileModuleList() {
