@@ -88,10 +88,10 @@ const Admin = {
       const grid = $$('teams-grid'); if(!grid) return;
       if (!teams.length) { grid.innerHTML = '<div class="empty">No teams created yet.</div>'; }
       else {
-        grid.innerHTML = teams.map(t => `<div class="card">
+        grid.innerHTML = teams.map(t => `<div class="card team-card">
           <div style="font-weight:700;margin-bottom:4px;">${esc(t.name)}</div>
           <div style="font-size:11px;color:var(--ink-meta);margin-bottom:12px;">${t.learner_count || 0} learner${t.learner_count !== 1 ? 's' : ''} · ${t.manager_count || 0} manager${t.manager_count !== 1 ? 's' : ''}</div>
-          <div style="display:flex;gap:var(--s-2);flex-wrap:wrap;">
+          <div class="team-card-actions">
             <button class="btn btn-outline btn-sm" onclick="Admin.toggleTeamMembers('${t.id}')">View Members</button>
             <button class="btn btn-outline btn-sm" onclick="Admin.openAddManager('${t.id}','${esc(t.name)}')">+ Manager</button>
             <button class="btn btn-outline btn-sm" onclick="Admin.openGenerateInvite('${t.id}','${esc(t.name)}')">+ Invite</button>

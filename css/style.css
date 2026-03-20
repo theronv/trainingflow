@@ -473,7 +473,9 @@ textarea { resize: vertical; min-height: 90px; line-height: 1.6; }
 .stat-label { font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
 
 /* ══════════════════ COURSE GRID ══════════════════ */
-.courses-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--space-5); }
+.courses-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--space-5); align-items: stretch; }
+.team-card { display: flex; flex-direction: column; }
+.team-card-actions { display: flex; gap: var(--s-2); flex-wrap: wrap; margin-top: auto; }
 .section-header {
   grid-column: 1 / -1;
   margin-top: var(--space-6);
