@@ -147,6 +147,8 @@ async function setupBrand(db) {
   try { await db.execute("ALTER TABLE brand ADD COLUMN primary_color TEXT DEFAULT '#2563eb'") } catch {}
   try { await db.execute("ALTER TABLE brand ADD COLUMN secondary_color TEXT DEFAULT '#1d4ed8'") } catch {}
   try { await db.execute("ALTER TABLE brand ADD COLUMN accent_color TEXT DEFAULT '#0891b2'") } catch {}
+  try { await db.execute("ALTER TABLE brand ADD COLUMN font_family TEXT DEFAULT 'Inter'") } catch {}
+  try { await db.execute("ALTER TABLE brand ADD COLUMN font_url TEXT DEFAULT ''") } catch {}
 }
 
 app.get('/api/brand', async (c) => {
@@ -267,8 +269,8 @@ app.put('/api/brand', requireAdmin, async (c) => {
   try {
     await setupBrand(db)
     await db.execute({
-      sql: `INSERT INTO brand (id, org_name, tagline, primary_color, secondary_color, accent_color, logo_url, pass_threshold)
-            VALUES ('default', ?, ?, ?, ?, ?, ?, ?)
+      sql: `INSERT INTO brand (id, org_name, tagline, primary_color, secondary_color, accent_color, logo_url, pass_threshold, font_family, font_url)
+            VALUES ('default', ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
               org_name        = excluded.org_name,
               tagline         = excluded.tagline,
@@ -276,8 +278,10 @@ app.put('/api/brand', requireAdmin, async (c) => {
               secondary_color = excluded.secondary_color,
               accent_color    = excluded.accent_color,
               logo_url        = excluded.logo_url,
-              pass_threshold  = excluded.pass_threshold`,
-      args: [body.org_name, body.tagline || '', body.primary_color || '#2563eb', body.secondary_color || '#7c3aed', body.accent_color || '#0891b2', body.logo_url || '', body.pass_threshold ?? 80]
+              pass_threshold  = excluded.pass_threshold,
+              font_family     = excluded.font_family,
+              font_url        = excluded.font_url`,
+      args: [body.org_name, body.tagline || '', body.primary_color || '#2563eb', body.secondary_color || '#7c3aed', body.accent_color || '#0891b2', body.logo_url || '', body.pass_threshold ?? 80, body.font_family || 'Inter', body.font_url || '']
     })
     return c.json({ ok: true })
   } catch (e) {

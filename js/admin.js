@@ -348,6 +348,16 @@ const Admin = {
     const pl = $$('br-prev-logo'); if (pl) { pl.src = b.logo || ''; pl.style.display = b.logo ? 'block' : 'none'; }
     const ptag = $$('br-prev-tagline'); if (ptag) ptag.textContent = b.tagline || CONFIG.DEFAULT_TAGLINE;
     const pcorg = $$('br-prev-cert-org'); if (pcorg) { pcorg.textContent = b.name; pcorg.style.color = hex; }
+    // Font selector
+    const fontSel = $$('br-font');
+    if (fontSel) fontSel.value = b.fontUrl ? 'Custom' : (b.font || CONFIG.DEFAULT_FONT);
+    Admin._toggleCustomFont(!!b.fontUrl);
+    const cfName = $$('br-font-custom-name');
+    if (cfName) cfName.textContent = b.fontUrl ? 'Custom font loaded ✓' : '';
+  },
+  _toggleCustomFont(show) {
+    const el = $$('br-font-custom');
+    if (el) el.classList.toggle('hidden', !show);
   },
   async saveBrand() {
     try {
@@ -355,6 +365,8 @@ const Admin = {
       const hex2 = $$('br-c2')?.value || CONFIG.DEFAULT_C2;
       const hex3 = $$('br-c3')?.value || CONFIG.DEFAULT_C3;
       const logoVal = brandCache.logo || $$('br-logo-url')?.value || '';
+      const fontFamily = $$('br-font')?.value || CONFIG.DEFAULT_FONT;
+      const fontUrl = fontFamily === 'Custom' ? (brandCache.fontUrl || '') : '';
       const body = {
         org_name: $$('br-name').value,
         tagline: $$('br-tag')?.value || '',
@@ -363,10 +375,12 @@ const Admin = {
         secondary_color: hex2,
         accent_color: hex3,
         logo_url: logoVal,
+        font_family: fontFamily,
+        font_url: fontUrl,
       };
       await api('/api/brand', { method:'PUT', body:JSON.stringify(body) });
       if (/^#[0-9a-fA-F]{6}$/.test(hex)) localStorage.setItem('trainflow_brand_color', hex);
-      brandCache = { ...brandCache, name: body.org_name, tagline: body.tagline, c1: hex, c2: hex2, c3: hex3, logo: logoVal, pass: body.pass_threshold };
+      brandCache = { ...brandCache, name: body.org_name, tagline: body.tagline, c1: hex, c2: hex2, c3: hex3, logo: logoVal, pass: body.pass_threshold, font: fontFamily, fontUrl };
       applyBrand();
       Toast.ok('Brand saved.');
     } catch(e) { Toast.err(e.message); }

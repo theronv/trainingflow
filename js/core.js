@@ -12,10 +12,24 @@ const CONFIG = {
   DEFAULT_C2: '#7c3aed',
   DEFAULT_C3: '#0891b2',
   DEFAULT_PASS: 80,
+  DEFAULT_FONT: 'Inter',
   DEFAULT_ICON: '📋',
   MIN_PW_LEN: 8,
   TOAST_MS: 3200,
   FOCUS_DELAY: 80,
+};
+
+// Google Fonts query strings for each preset (null = no load needed)
+const GFONTS = {
+  'Inter':            null,
+  'Roboto':           'Roboto:wght@400;500;600;700',
+  'Open Sans':        'Open+Sans:ital,wght@0,400;0,500;0,600;0,700',
+  'Lato':             'Lato:wght@400;700',
+  'Poppins':          'Poppins:wght@400;500;600;700',
+  'DM Sans':          'DM+Sans:wght@400;500;600;700',
+  'Nunito':           'Nunito:wght@400;500;600;700',
+  'Playfair Display': 'Playfair+Display:wght@400;600;700',
+  'Merriweather':     'Merriweather:wght@400;700',
 };
 
 const WORKER_URL = CONFIG.WORKER_URL;
@@ -92,7 +106,7 @@ let teamsCache   = [];
 let coursesCache = [];
 let assignCache  = [];
 let isDemo       = false;
-let brandCache   = { name: CONFIG.DEFAULT_BRAND_NAME, tagline: CONFIG.DEFAULT_TAGLINE, logo: '', c1: CONFIG.DEFAULT_C1, c2: CONFIG.DEFAULT_C2, c3: CONFIG.DEFAULT_C3, pass: CONFIG.DEFAULT_PASS };
+let brandCache   = { name: CONFIG.DEFAULT_BRAND_NAME, tagline: CONFIG.DEFAULT_TAGLINE, logo: '', c1: CONFIG.DEFAULT_C1, c2: CONFIG.DEFAULT_C2, c3: CONFIG.DEFAULT_C3, pass: CONFIG.DEFAULT_PASS, font: CONFIG.DEFAULT_FONT, fontUrl: '' };
 
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
@@ -130,7 +144,7 @@ function normCourse(c) {
   };
 }
 function normRecord(r) { return { cid: r.course_id, learner: r.learner_name, score: r.score, passed: Boolean(r.passed), date: (r.completed_at || 0) * 1000, cid2: r.cert_id || '', }; }
-function normBrand(b) { return { name: b.org_name || CONFIG.DEFAULT_BRAND_NAME, tagline: b.tagline || CONFIG.DEFAULT_TAGLINE, logo: b.logo_url || '', c1: b.primary_color || CONFIG.DEFAULT_C1, c2: b.secondary_color || CONFIG.DEFAULT_C2, c3: b.accent_color || CONFIG.DEFAULT_C3, pass: b.pass_threshold ?? CONFIG.DEFAULT_PASS, }; }
+function normBrand(b) { return { name: b.org_name || CONFIG.DEFAULT_BRAND_NAME, tagline: b.tagline || CONFIG.DEFAULT_TAGLINE, logo: b.logo_url || '', c1: b.primary_color || CONFIG.DEFAULT_C1, c2: b.secondary_color || CONFIG.DEFAULT_C2, c3: b.accent_color || CONFIG.DEFAULT_C3, pass: b.pass_threshold ?? CONFIG.DEFAULT_PASS, font: b.font_family || CONFIG.DEFAULT_FONT, fontUrl: b.font_url || '' }; }
 
 function hexToRgba(hex, alpha) {
   const r = parseInt(hex.slice(1,3),16);
@@ -210,6 +224,34 @@ function applyBrand() {
   // Mobile browser theme color
   const themeMeta = document.querySelector('meta[name="theme-color"]');
   if (themeMeta) themeMeta.content = c1;
+
+  // --- Font ---
+  const fontFamily = b.font || CONFIG.DEFAULT_FONT;
+  const fontUrl    = b.fontUrl || '';
+
+  // Remove any previously injected font elements
+  const prevLink  = document.getElementById('brand-font-link');
+  const prevStyle = document.getElementById('brand-font-face');
+  if (prevLink)  prevLink.remove();
+  if (prevStyle) prevStyle.remove();
+
+  if (fontUrl) {
+    // Custom uploaded font (base64 data URL)
+    const style = document.createElement('style');
+    style.id = 'brand-font-face';
+    style.textContent = `@font-face { font-family: 'BrandCustomFont'; src: url('${fontUrl}'); font-weight: 100 900; font-style: normal; }`;
+    document.head.appendChild(style);
+    root.setProperty('--font-body', "'BrandCustomFont', system-ui, sans-serif");
+  } else if (fontFamily !== 'Inter' && GFONTS[fontFamily]) {
+    const link = document.createElement('link');
+    link.id   = 'brand-font-link';
+    link.rel  = 'stylesheet';
+    link.href = `https://fonts.googleapis.com/css2?family=${GFONTS[fontFamily]}&display=swap`;
+    document.head.appendChild(link);
+    root.setProperty('--font-body', `'${fontFamily}', system-ui, sans-serif`);
+  } else {
+    root.setProperty('--font-body', "'Inter', system-ui, sans-serif");
+  }
 }
 
 function showPage(id) { 
@@ -249,7 +291,7 @@ const App = {
   startDemo() {
     isDemo = true;
     curLearner = { id: 'demo-id', name: 'Demo Learner' };
-    brandCache = { name: 'TrainFlow Demo', tagline: 'Experience the new UI/UX', logo: '', c1: CONFIG.DEFAULT_C1, c2: CONFIG.DEFAULT_C2, c3: CONFIG.DEFAULT_C3, pass: CONFIG.DEFAULT_PASS };
+    brandCache = { name: 'TrainFlow Demo', tagline: 'Experience the new UI/UX', logo: '', c1: CONFIG.DEFAULT_C1, c2: CONFIG.DEFAULT_C2, c3: CONFIG.DEFAULT_C3, pass: CONFIG.DEFAULT_PASS, font: CONFIG.DEFAULT_FONT, fontUrl: '' };
     applyBrand();
     Toast.ok('Demo Mode Activated ✨');
     Learner.init();

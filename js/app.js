@@ -121,7 +121,35 @@ const AppProxy = {
     if (lpb) { lpb.src = brandCache.logo || ''; lpb.style.display = brandCache.logo ? 'block' : 'none'; }
     if (lph) lph.style.display = brandCache.logo ? 'none' : '';
   },
-  resetBrand: () => { brandCache = { name: CONFIG.DEFAULT_BRAND_NAME, tagline: CONFIG.DEFAULT_TAGLINE, logo: '', c1: CONFIG.DEFAULT_C1, c2: CONFIG.DEFAULT_C2, c3: CONFIG.DEFAULT_C3, pass: CONFIG.DEFAULT_PASS }; applyBrand(); Admin.renderBranding(); },
+  resetBrand: () => { brandCache = { name: CONFIG.DEFAULT_BRAND_NAME, tagline: CONFIG.DEFAULT_TAGLINE, logo: '', c1: CONFIG.DEFAULT_C1, c2: CONFIG.DEFAULT_C2, c3: CONFIG.DEFAULT_C3, pass: CONFIG.DEFAULT_PASS, font: CONFIG.DEFAULT_FONT, fontUrl: '' }; applyBrand(); Admin.renderBranding(); },
+  changeFontPreset: (val) => {
+    if (val !== 'Custom') {
+      brandCache.font = val;
+      brandCache.fontUrl = '';
+      applyBrand();
+    }
+    Admin._toggleCustomFont(val === 'Custom');
+    const cfName = $$('br-font-custom-name');
+    if (cfName && val !== 'Custom') cfName.textContent = '';
+  },
+  uploadFont: (e) => {
+    const file = e.target.files[0]; if (!file) return;
+    const allowed = ['font/woff2','font/woff','font/ttf','font/otf','application/font-woff','application/font-woff2','application/x-font-ttf','application/x-font-opentype','application/octet-stream'];
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (!['woff','woff2','ttf','otf'].includes(ext)) { Toast.err('Upload a .woff2, .woff, .ttf, or .otf file.'); return; }
+    if (file.size > 2 * 1024 * 1024) { Toast.err('Font file must be under 2MB.'); return; }
+    const reader = new FileReader();
+    reader.onload = ev => {
+      brandCache.fontUrl = ev.target.result;
+      brandCache.font = 'Custom';
+      const sel = $$('br-font'); if (sel) sel.value = 'Custom';
+      Admin._toggleCustomFont(true);
+      const cfName = $$('br-font-custom-name');
+      if (cfName) cfName.textContent = `${file.name} loaded ✓`;
+      applyBrand();
+    };
+    reader.readAsDataURL(file);
+  },
   applyPalette: (c1, c2, c3) => {
     brandCache.c1 = c1; brandCache.c2 = c2; brandCache.c3 = c3;
     const set = (id, val) => { const el = $$(id); if(el) el.value = val; };
