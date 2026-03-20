@@ -979,4 +979,71 @@ app.post('/api/learners/login', async (c) => {
   return c.json({ token, user: { id: user.id, name: user.name } })
 })
 
+app.patch('/api/managers/me', requireManager, async (c) => {
+  const user = c.get('user')
+  const body = await c.req.json().catch(() => ({}))
+  const db = getDb(c.env)
+  if (body.password) {
+    if (body.password.length < 8) return c.json({ error: 'Password must be at least 8 characters' }, 400)
+    const row = toObj(await db.execute({ sql: 'SELECT password_hash FROM users WHERE id = ?', args: [user.id] }))
+    if (!row || !(await pbkdf2Verify(body.current_password || '', row.password_hash))) return c.json({ error: 'Current password is incorrect' }, 400)
+    const hash = await pbkdf2Hash(body.password)
+    await db.execute({ sql: 'UPDATE users SET password_hash = ? WHERE id = ?', args: [hash, user.id] })
+  }
+  if (body.name && body.name.trim()) {
+    await db.execute({ sql: 'UPDATE users SET name = ? WHERE id = ?', args: [body.name.trim(), user.id] })
+  }
+  return c.json({ ok: true })
+})
+
+app.patch('/api/learners/me', requireLearner, async (c) => {
+  const user = c.get('user')
+  const body = await c.req.json().catch(() => ({}))
+  const db = getDb(c.env)
+  if (body.password) {
+    if (body.password.length < 8) return c.json({ error: 'Password must be at least 8 characters' }, 400)
+    const row = toObj(await db.execute({ sql: 'SELECT password_hash FROM users WHERE id = ?', args: [user.id] }))
+    if (!row || !(await pbkdf2Verify(body.current_password || '', row.password_hash))) return c.json({ error: 'Current password is incorrect' }, 400)
+    const hash = await pbkdf2Hash(body.password)
+    await db.execute({ sql: 'UPDATE users SET password_hash = ? WHERE id = ?', args: [hash, user.id] })
+  }
+  if (body.name && body.name.trim()) {
+    await db.execute({ sql: 'UPDATE users SET name = ? WHERE id = ?', args: [body.name.trim(), user.id] })
+    return c.json({ ok: true, name: body.name.trim() })
+  }
+  return c.json({ ok: true })
+})
+
+app.post('/api/admin/backup/restore', requireAdmin, async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  const db = getDb(c.env)
+  const courses = body.courses || []
+  let imported = 0, skipped = 0
+  for (const course of courses) {
+    const existing = toObj(await db.execute({ sql: 'SELECT id FROM courses WHERE id = ?', args: [course.id] }))
+    if (existing) { skipped++; continue }
+    await db.execute({
+      sql: 'INSERT INTO courses (id, title, description, icon, reference_url) VALUES (?, ?, ?, ?, ?)',
+      args: [course.id, course.title, course.description || '', course.icon || '📋', course.reference_url || null]
+    })
+    for (let mi = 0; mi < (course.modules || []).length; mi++) {
+      const mod = course.modules[mi]
+      await db.execute({
+        sql: 'INSERT INTO modules (id, course_id, title, content, summary, reference_url, learning_objectives, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        args: [mod.id, course.id, mod.title, mod.content || '', mod.summary || '', mod.reference_url || null, mod.learning_objectives || null, mi]
+      })
+      for (let qi = 0; qi < (mod.questions || []).length; qi++) {
+        const q = mod.questions[qi]
+        const opts = q.options || []
+        await db.execute({
+          sql: 'INSERT INTO questions (id, module_id, question, option_a, option_b, option_c, option_d, correct_index, explanation, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          args: [q.id, mod.id, q.question, q.option_a||opts[0]||'', q.option_b||opts[1]||'', q.option_c||opts[2]||'', q.option_d||opts[3]||'', q.correct_index||0, q.explanation||'', qi]
+        })
+      }
+    }
+    imported++
+  }
+  return c.json({ ok: true, imported, skipped })
+})
+
 export default app

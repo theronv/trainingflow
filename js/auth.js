@@ -2,6 +2,17 @@
 //  TRAINFLOW — Authentication Logic
 // ══════════════════════════════════════════════════════════
 
+function scheduleExpiryWarning(token) {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    if (!payload.exp) return;
+    const msUntilWarn = (payload.exp * 1000) - Date.now() - 5 * 60 * 1000;
+    if (msUntilWarn > 0) {
+      setTimeout(() => Toast.info('Your session expires in 5 minutes. Save your work and sign in again to continue.'), msUntilWarn);
+    }
+  } catch(e) { /* ignore */ }
+}
+
 const Auth = {
   // ─── ADMIN ───
   async doLogin() {
@@ -9,6 +20,7 @@ const Auth = {
     try {
       const { token } = await api('/api/auth/login', { method: 'POST', body: JSON.stringify({ password }) });
       setToken(token);
+      scheduleExpiryWarning(token);
       $$('pw-input').value = '';
       applyBrand();
       App.show('screen-admin');
@@ -31,7 +43,7 @@ const Auth = {
     if(!name || !password) return Toast.err('Enter name and password.');
     try {
       const data = await api('/api/auth/manager/login', { method: 'POST', body: JSON.stringify({ name, password }) });
-      setManagerToken(data.token); setManagerUser(data); curManager = data;
+      setManagerToken(data.token); scheduleExpiryWarning(data.token); setManagerUser(data); curManager = data;
       Manager.init();
     } catch(e) { Toast.err(e.message); }
   },
@@ -40,7 +52,7 @@ const Auth = {
     if(!name || pw1.length < 8 || pw1 !== pw2 || !invite_code) return Toast.err('Please check all fields.');
     try {
       const data = await api('/api/auth/manager/register', { method: 'POST', body: JSON.stringify({ name, password: pw1, invite_code }) });
-      setManagerToken(data.token); setManagerUser(data); curManager = data;
+      setManagerToken(data.token); scheduleExpiryWarning(data.token); setManagerUser(data); curManager = data;
       Manager.init();
     } catch(e) { Toast.err(e.message); }
   },

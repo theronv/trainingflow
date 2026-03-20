@@ -270,12 +270,16 @@ const Admin = {
     if (!name) return Toast.err('Name is required.');
     if (pw1.length < CONFIG.MIN_PW_LEN) return Toast.err(`Password must be at least ${CONFIG.MIN_PW_LEN} characters.`);
     if (pw1 !== pw2) return Toast.err('Passwords do not match.');
+    const btn = $$('al-submit-btn');
+    const orig = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
     try {
       await api('/api/learners', { method:'POST', body:JSON.stringify({ name, password: pw1, role, team_id: teamId }) });
       Admin.closeAddLearner();
       Toast.ok('Account created.');
       Admin.renderLearners();
     } catch(e) { Toast.err(e.message); }
+    finally { if (btn) { btn.disabled = false; btn.textContent = orig; } }
   },
   openEditLearner(id, name, teamId, role) {
     App._editLearnerId = id;
@@ -359,7 +363,9 @@ const Admin = {
     const el = $$('br-font-custom');
     if (el) el.classList.toggle('hidden', !show);
   },
-  async saveBrand() {
+  async saveBrand(btn) {
+    const orig = btn?.textContent;
+    if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
     try {
       const hex  = $$('br-c1')?.value || CONFIG.DEFAULT_C1;
       const hex2 = $$('br-c2')?.value || CONFIG.DEFAULT_C2;
@@ -384,6 +390,7 @@ const Admin = {
       applyBrand();
       Toast.ok('Brand saved.');
     } catch(e) { Toast.err(e.message); }
+    finally { if (btn) { btn.disabled = false; btn.textContent = orig; } }
   },
 
   // ─── COMPLETIONS ───
@@ -545,7 +552,15 @@ const Admin = {
   async submitResetPw() {
     const pw = $$('rp-pw1').value;
     if (!pw || pw.length < 8) return Toast.err('Password must be at least 8 characters.');
-    try { await api(`/api/learners/${App._resetPwId}/password`, { method:'PUT', body:JSON.stringify({ password:pw }) }); Admin.closeResetPw(); Toast.ok('Password reset.'); } catch(e) { Toast.err(e.message); }
+    const btn = $$('reset-pw-overlay')?.querySelector('.btn-primary');
+    const orig = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+    try {
+      await api(`/api/learners/${App._resetPwId}/password`, { method:'PUT', body:JSON.stringify({ password:pw }) });
+      Admin.closeResetPw();
+      Toast.ok('Password reset.');
+    } catch(e) { Toast.err(e.message); }
+    finally { if (btn) { btn.disabled = false; btn.textContent = orig; } }
   },
 
   exportCSV(scope) { Toast.info('Exporting data...'); },
@@ -939,6 +954,7 @@ const Admin = {
     }
 
     Admin.isGenerating = true;
+    try {
     Admin.goPhase(3);
 
     const qCount   = parseInt($$('q-per-mod')?.value   || '5');
@@ -1029,6 +1045,13 @@ const Admin = {
     Admin.renderReview();
     Admin.goPhase(4);
     Admin.isGenerating = false;
+    } catch(fatalErr) {
+      console.error('Generation failed:', fatalErr);
+      Admin.isGenerating = false;
+      Admin.generatedCourse = null;
+      Admin.goPhase(2);
+      Toast.err('Generation failed: ' + fatalErr.message + '. Please try again.');
+    }
   },
 
   _buildQuestionPrompt(title, content, qCount, difficulty, focus) {

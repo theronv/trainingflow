@@ -87,7 +87,7 @@ const Builder = {
     Builder.renderBuilderMods();
   },
   delQuestion(i, j) { cbState.mods[i].questions.splice(j, 1); Builder.renderBuilderMods(); },
-  async saveCourse() {
+  async saveCourse(btn) {
     const title = $$('cb-title').value.trim();
     if(!title) return Toast.err('Title required.');
     for (let mi = 0; mi < cbState.mods.length; mi++) {
@@ -109,6 +109,8 @@ const Builder = {
       reference_url: $$('cb-ref-url').value.trim() || null,
       modules: cbState.mods
     };
+    const origText = btn?.textContent;
+    if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
     try {
       if(cbState.editId) await api(`/api/courses/${cbState.editId}`, { method: 'PUT', body: JSON.stringify(body) });
       else await api('/api/courses', { method: 'POST', body: JSON.stringify(body) });
@@ -116,6 +118,7 @@ const Builder = {
       if (curManager) Manager.init(); else Admin.init();
       Toast.ok('Course saved.');
     } catch(e) { Toast.err(e.message); }
+    finally { if (btn) { btn.disabled = false; if (origText) btn.textContent = origText; } }
   },
 
   // ─── ASSIGN INDIVIDUAL (ADMIN) ───

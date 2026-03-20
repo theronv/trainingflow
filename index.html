@@ -807,7 +807,7 @@ if (typeof marked !== 'undefined') {
           </div>
         </div>
         <div style="display:flex;gap:var(--space-3);">
-          <button class="btn btn-primary" onclick="App.saveBrand()">Save Branding</button>
+          <button class="btn btn-primary" onclick="App.saveBrand(this)">Save Branding</button>
           <button class="btn btn-outline" onclick="App.resetBrand()">Reset to Defaults</button>
         </div>
       </div>
@@ -997,7 +997,7 @@ if (typeof marked !== 'undefined') {
     <div class="modal-body">
       <div style="display:flex;justify-content:flex-end;gap:var(--space-2);margin-bottom:var(--space-4);">
         <button class="btn btn-ghost" onclick="App.closeBuilder()">Cancel</button>
-        <button class="btn btn-primary" onclick="App.saveCourse()">Save Course</button>
+        <button class="btn btn-primary" onclick="App.saveCourse(this)">Save Course</button>
       </div>
       <div class="field-row">
         <div class="field"><label>Title</label><input type="text" id="cb-title" placeholder="e.g. Q2 Compliance Training"></div>
@@ -1020,7 +1020,7 @@ if (typeof marked !== 'undefined') {
     </div>
     <div class="modal-foot">
       <button class="btn btn-ghost" onclick="App.closeBuilder()">Cancel</button>
-      <button class="btn btn-primary" onclick="App.saveCourse()">Save Course</button>
+      <button class="btn btn-primary" onclick="App.saveCourse(this)">Save Course</button>
     </div>
   </div>
 </div>

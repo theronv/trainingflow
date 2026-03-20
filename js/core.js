@@ -58,7 +58,7 @@ async function api(path, opts = {}) {
   const token = getToken();
   if (token) headers['Authorization'] = `Bearer ${token}`;
   const res = await fetch(WORKER_URL + path, { ...opts, headers });
-  if (res.status === 401 && token) { clearToken(); App.show('screen-landing'); throw new Error('Session expired'); }
+  if (res.status === 401 && token) { clearToken(); curCourse = null; curModIdx = 0; quizSt = {}; Toast.err('Session expired. Please sign in again.'); App.show('screen-landing'); throw new Error('Session expired'); }
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: res.statusText }));
     throw Object.assign(new Error(body.error || res.statusText), { status: res.status, detail: body.detail });
@@ -71,7 +71,7 @@ async function managerApi(path, opts = {}) {
   const token = getManagerToken();
   if (token) headers['Authorization'] = `Bearer ${token}`;
   const res = await fetch(WORKER_URL + path, { ...opts, headers });
-  if (res.status === 401 && token) { clearManagerToken(); clearManagerUser(); App.show('screen-landing'); throw new Error('Session expired'); }
+  if (res.status === 401 && token) { clearManagerToken(); clearManagerUser(); curManager = null; curCourse = null; curModIdx = 0; quizSt = {}; Toast.err('Session expired. Please sign in again.'); App.show('screen-landing'); throw new Error('Session expired'); }
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: res.statusText }));
     throw Object.assign(new Error(body.error || res.statusText), { status: res.status, detail: body.detail });
@@ -84,7 +84,7 @@ async function learnerApi(path, opts = {}) {
   const token = getLearnerToken();
   if (token) headers['Authorization'] = `Bearer ${token}`;
   const res = await fetch(WORKER_URL + path, { ...opts, headers });
-  if (res.status === 401 && token) { clearLearnerToken(); App.show('screen-landing'); throw new Error('Session expired'); }
+  if (res.status === 401 && token) { clearLearnerToken(); curLearner = null; curCourse = null; curModIdx = 0; quizSt = {}; Toast.err('Session expired. Please sign in again.'); App.show('screen-landing'); throw new Error('Session expired'); }
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: res.statusText }));
     throw Object.assign(new Error(body.error || res.statusText), { status: res.status, detail: body.detail });

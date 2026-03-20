@@ -108,18 +108,24 @@ const Manager = {
           <input type="checkbox" id="chk-${l.id}" ${exists?'disabled checked':'checked'}>
           <label style="margin:0;">${esc(l.name)} ${exists?'(Already assigned)':''}</label>
         </div>`;
-      }).join('') + `<button class="btn btn-primary w-full" style="margin-top:12px;" onclick="Manager.submitTeamAssign()">Assign Now</button>`;
+      }).join('') + `<button class="btn btn-primary w-full" id="team-assign-btn" style="margin-top:12px;" onclick="Manager.submitTeamAssign()">Assign Now</button>`;
     } catch(e) { }
   },
   async submitTeamAssign() {
-    const due_at = $$('team-due-date').value || null;
-    const checks = $$('assign-list').querySelectorAll('input[type=checkbox]:not(:disabled):checked');
-    for(const chk of checks) {
-      const lid = chk.id.replace('chk-','');
-      await managerApi('/api/assignments', { method:'POST', body:JSON.stringify({ course_id:App._assignCourseId, learner_id:lid, due_at }) });
-    }
-    Toast.ok('Team assigned.');
-    $$('assign-overlay').classList.add('hidden');
+    const btn = $$('team-assign-btn');
+    const orig = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.textContent = 'Assigning…'; }
+    try {
+      const due_at = $$('team-due-date').value || null;
+      const checks = $$('assign-list').querySelectorAll('input[type=checkbox]:not(:disabled):checked');
+      for(const chk of checks) {
+        const lid = chk.id.replace('chk-','');
+        await managerApi('/api/assignments', { method:'POST', body:JSON.stringify({ course_id:App._assignCourseId, learner_id:lid, due_at }) });
+      }
+      Toast.ok('Team assigned.');
+      $$('assign-overlay').classList.add('hidden');
+    } catch(e) { Toast.err(e.message); }
+    finally { if (btn) { btn.disabled = false; btn.textContent = orig; } }
   },
 
   // ─── CSV IMPORT ───

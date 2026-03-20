@@ -22,7 +22,7 @@ const AppProxy = {
   openBuilder: (id) => Builder.openBuilder(id),
   closeBuilder: () => Builder.closeBuilder(),
   addMod: () => Builder.addMod(),
-  saveCourse: () => Builder.saveCourse(),
+  saveCourse: (btn) => Builder.saveCourse(btn),
   openAssign: (id, t) => Builder.openAssign(id, t),
   closeAssign: () => $$('assign-overlay').classList.add('hidden'),
   
@@ -48,7 +48,7 @@ const AppProxy = {
   openAddManager: (teamId, teamName) => Admin.openAddManager(teamId, teamName),
   openCreateTeam: () => Admin.openCreateTeam(),
   renderComps: (cid) => Admin.renderComps(cid),
-  saveBrand: () => Admin.saveBrand(),
+  saveBrand: (btn) => Admin.saveBrand(btn),
   clearRecords: () => Admin.clearRecords(),
   openResetPw: (id, n) => Admin.openResetPw(id, n),
   closeResetPw: () => Admin.closeResetPw(),
@@ -195,12 +195,56 @@ const AppProxy = {
 
   // Manager
   renderMComps: () => Manager.renderComps(),
-  updateManagerName: () => Toast.info('Coming soon'),
-  changeManagerPw: () => Toast.info('Coming soon'),
+  updateManagerName: async () => {
+    const name = $$('mcp-name').value.trim();
+    if (!name) return Toast.err('Name is required.');
+    try {
+      await managerApi('/api/managers/me', { method: 'PATCH', body: JSON.stringify({ name }) });
+      curManager = { ...curManager, name };
+      const u = getManagerUser(); if (u) setManagerUser({ ...u, user: { ...(u.user || {}), name } });
+      $$('m-team-badge').textContent = curManager.team_name || 'My Team';
+      Toast.ok('Name updated.');
+    } catch(e) { Toast.err(e.message); }
+  },
+  changeManagerPw: async () => {
+    const cur = $$('mcp-cur').value;
+    const pw = $$('mcp-new').value;
+    const conf = $$('mcp-confirm').value;
+    if (!cur) return Toast.err('Enter your current password.');
+    if (pw.length < 8) return Toast.err('New password must be at least 8 characters.');
+    if (pw !== conf) return Toast.err('Passwords do not match.');
+    try {
+      await managerApi('/api/managers/me', { method: 'PATCH', body: JSON.stringify({ current_password: cur, password: pw }) });
+      $$('mcp-cur').value = ''; $$('mcp-new').value = ''; $$('mcp-confirm').value = '';
+      Toast.ok('Password updated.');
+    } catch(e) { Toast.err(e.message); }
+  },
 
   // Learner account
-  updateLearnerName: () => Toast.info('Coming soon'),
-  changeLearnerPw: () => Toast.info('Coming soon'),
+  updateLearnerName: async () => {
+    const name = $$('lcp-name').value.trim();
+    if (!name) return Toast.err('Name is required.');
+    try {
+      await learnerApi('/api/learners/me', { method: 'PATCH', body: JSON.stringify({ name }) });
+      curLearner = { ...curLearner, name };
+      $$('l-name-display').textContent = name;
+      $$('l-avatar').textContent = name[0];
+      Toast.ok('Name updated.');
+    } catch(e) { Toast.err(e.message); }
+  },
+  changeLearnerPw: async () => {
+    const cur = $$('lcp-cur').value;
+    const pw = $$('lcp-new').value;
+    const conf = $$('lcp-confirm').value;
+    if (!cur) return Toast.err('Enter your current password.');
+    if (pw.length < 8) return Toast.err('New password must be at least 8 characters.');
+    if (pw !== conf) return Toast.err('Passwords do not match.');
+    try {
+      await learnerApi('/api/learners/me', { method: 'PATCH', body: JSON.stringify({ current_password: cur, password: pw }) });
+      $$('lcp-cur').value = ''; $$('lcp-new').value = ''; $$('lcp-confirm').value = '';
+      Toast.ok('Password updated.');
+    } catch(e) { Toast.err(e.message); }
+  },
 
   // Assign overlay tabs & search
   setAssignTab: (tab) => {
@@ -254,12 +298,30 @@ const AppProxy = {
   // Settings backup
   exportBackup: async () => {
     try {
-      const [courses, learners, comps] = await Promise.all([api('/api/courses'), api('/api/learners'), api('/api/admin/completions')]);
+      const [summaries, learners, comps] = await Promise.all([api('/api/courses'), api('/api/learners'), api('/api/admin/completions')]);
+      const courses = await Promise.all(summaries.map(c => api(`/api/courses/${c.id}`)));
       const blob = new Blob([JSON.stringify({ courses, learners, completions: comps }, null, 2)], { type: 'application/json' });
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'trainflow-backup.json'; a.click();
     } catch(e) { Toast.err(e.message); }
   },
-  importBackup: () => Toast.info('Import feature coming soon'),
+  importBackup: () => {
+    const inp = document.createElement('input');
+    inp.type = 'file'; inp.accept = '.json,application/json';
+    inp.onchange = async e => {
+      const file = e.target.files[0]; if (!file) return;
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        if (!data.courses || !Array.isArray(data.courses)) return Toast.err('Invalid backup file — no courses array found.');
+        // Enrich backup with full course details if modules are missing
+        const courses = data.courses;
+        const res = await api('/api/admin/backup/restore', { method: 'POST', body: JSON.stringify({ courses }) });
+        Toast.ok(`Restored ${res.imported} course(s). ${res.skipped} already existed and were skipped.`);
+        Admin.renderCourses();
+      } catch(e) { Toast.err('Restore failed: ' + e.message); }
+    };
+    inp.click();
+  },
 
   // CSV import (for course builder)
   csvImportOpen: () => { csvParsed = null; $$('csv-preview').classList.add('hidden'); $$('csv-confirm').disabled = true; $$('csv-overlay').classList.remove('hidden'); },
