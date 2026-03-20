@@ -391,6 +391,10 @@ const Admin = {
     const tbody = $$('comp-tbody'); if(!tbody) return;
     try {
       const res = await api(`/api/admin/completions?course_id=${cid}`);
+      if (!res || !res.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--ink-4);padding:32px;">No completions recorded yet.</td></tr>';
+        return;
+      }
       tbody.innerHTML = (res||[]).map(r => `<tr><td>${esc(r.user_name)}</td><td>${esc(r.course_title)}</td><td>${r.score}%</td><td>${r.passed?'Passed':'Failed'}</td><td>${new Date(r.completed_at*1000).toLocaleDateString()}</td><td>—</td></tr>`).join('');
     } catch(e) { }
   },
@@ -540,11 +544,12 @@ const Admin = {
   closeResetPw() { $$('reset-pw-overlay').classList.add('hidden'); },
   async submitResetPw() {
     const pw = $$('rp-pw1').value;
+    if (!pw || pw.length < 8) return Toast.err('Password must be at least 8 characters.');
     try { await api(`/api/learners/${App._resetPwId}/password`, { method:'PUT', body:JSON.stringify({ password:pw }) }); Admin.closeResetPw(); Toast.ok('Password reset.'); } catch(e) { Toast.err(e.message); }
   },
 
   exportCSV(scope) { Toast.info('Exporting data...'); },
-  async clearRecords() { if(confirm('Clear all data?')){ await api('/api/completions', { method:'DELETE' }); Admin.renderDash(); } },
+  async clearRecords() { if(confirm('Clear all completion records? This cannot be undone — learner progress, quiz scores, and certificates will be permanently deleted.')){ await api('/api/completions', { method:'DELETE' }); Admin.renderDash(); } },
 
   // ─── AI IMPORTER ───
   fileModules: [],

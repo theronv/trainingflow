@@ -53,7 +53,7 @@ const Builder = {
             </div>
             <div class="field">
               <label>Learning Objectives <span style="font-weight:400;color:var(--ink-4);">(one per line)</span></label>
-              <textarea style="min-height:80px;" oninput="cbState.mods[${i}].learning_objectives=this.value.split('\\n').filter(l=>l.trim())" placeholder="Understand how authentication works&#10;Apply token-based access patterns&#10;Identify common API errors">${esc((m.learning_objectives || []).join('\n'))}</textarea>
+              <textarea style="min-height:80px;" oninput="cbState.mods[${i}].learning_objectives=this.value.split('\n').filter(l=>l.trim())" placeholder="Understand how authentication works&#10;Apply token-based access patterns&#10;Identify common API errors">${esc((m.learning_objectives || []).join('\n'))}</textarea>
             </div>
           </div>
         </details>
@@ -90,6 +90,18 @@ const Builder = {
   async saveCourse() {
     const title = $$('cb-title').value.trim();
     if(!title) return Toast.err('Title required.');
+    for (let mi = 0; mi < cbState.mods.length; mi++) {
+      const m = cbState.mods[mi];
+      for (let qi = 0; qi < m.questions.length; qi++) {
+        const q = m.questions[qi];
+        const filled = (q.options || []).filter(o => o && o.trim());
+        if (!q.question?.trim()) return Toast.err(`Module ${mi+1}, Q${qi+1}: question text is required.`);
+        if (filled.length < 2) return Toast.err(`Module ${mi+1}, Q${qi+1}: at least 2 options are required.`);
+        if (q.correct_index == null || q.correct_index < 0 || q.correct_index >= (q.options||[]).length || !(q.options[q.correct_index]||'').trim()) {
+          return Toast.err(`Module ${mi+1}, Q${qi+1}: correct answer must point to a filled option.`);
+        }
+      }
+    }
     const body = {
       title,
       icon: $$('cb-icon').value || '📋',

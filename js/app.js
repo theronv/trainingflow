@@ -67,21 +67,23 @@ const AppProxy = {
   downloadCertPDF: () => {
     const jspdf = window.jspdf;
     if (!jspdf) { Toast.err('PDF library not loaded.'); return; }
+    if (typeof html2canvas !== 'function') { Toast.err('Canvas library not loaded.'); return; }
     const { jsPDF } = jspdf;
     const doc = new jsPDF('l', 'mm', 'a4');
     const sheet = $$('cert-sheet');
     if (!sheet) { Toast.err('Certificate sheet not found.'); return; }
-    
+
     Toast.info('Generating PDF...');
     html2canvas(sheet, { scale: 2, useCORS: true, logging: false }).then(canvas => {
       const img = canvas.toDataURL('image/png');
       doc.addImage(img, 'PNG', 0, 0, 297, 210);
-      
+
       // Official Filename: Certificate_CourseName_LearnerName.pdf
-      const cName = ($$('c-course')?.textContent || 'Course').replace(/[^a-z0-9]/gi, '_');
-      const lName = ($$('c-name')?.textContent || 'Learner').replace(/[^a-z0-9]/gi, '_');
+      const slug = s => s.replace(/[^a-z0-9]+/gi, '_').replace(/^_|_$/g, '');
+      const cName = slug($$('c-course')?.textContent || 'Course');
+      const lName = slug($$('c-name')?.textContent || 'Learner');
       const filename = `Certificate_${cName}_${lName}.pdf`;
-      
+
       doc.save(filename);
       Toast.ok('Certificate downloaded.');
     }).catch(e => {
@@ -236,8 +238,17 @@ const AppProxy = {
     reader.readAsDataURL(file);
   },
   syncHex: (colorId, hexId) => {
-    const hex = $$(hexId).value;
-    if(/^#[0-9a-fA-F]{6}$/.test(hex)) { $$(colorId).value = hex; App.previewBrand(); }
+    const el = $$(hexId);
+    const hex = el.value;
+    if (/^#[0-9a-fA-F]{6}$/.test(hex)) {
+      el.style.borderColor = '';
+      el.title = '';
+      $$(colorId).value = hex;
+      App.previewBrand();
+    } else {
+      el.style.borderColor = 'var(--fail)';
+      el.title = 'Enter a valid hex color, e.g. #2563eb';
+    }
   },
 
   // Settings backup

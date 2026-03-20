@@ -85,11 +85,16 @@ async function getStoredHash(db, env) {
 const app = new Hono()
 
 app.use('/api/*', async (c, next) => {
-  return cors({ 
-    origin: c.env.ALLOWED_ORIGIN || '*', 
-    allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'], 
-    allowHeaders: ['Content-Type', 'Authorization'], 
-    maxAge: 86400 
+  const origin = c.env.ALLOWED_ORIGIN || (
+    c.req.header('origin')?.startsWith('http://localhost') || c.req.header('origin')?.startsWith('http://127.0.0.1')
+      ? c.req.header('origin')
+      : 'https://theronv.github.io'
+  )
+  return cors({
+    origin,
+    allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowHeaders: ['Content-Type', 'Authorization'],
+    maxAge: 86400
   })(c, next)
 })
 
@@ -163,22 +168,27 @@ app.get('/api/brand', async (c) => {
   }
 })
 
+// ── Simple in-process rate limiter (resets per isolate restart; best-effort) ──
+const _loginAttempts = new Map()
+function _rateCheck(key) {
+  const now = Date.now()
+  const entry = _loginAttempts.get(key) || { count: 0, reset: now + 60_000 }
+  if (now > entry.reset) { entry.count = 0; entry.reset = now + 60_000 }
+  entry.count++
+  _loginAttempts.set(key, entry)
+  return entry.count > 10 // block after 10 attempts per minute per IP
+}
+
 app.post('/api/auth/login', async (c) => {
   const body = await c.req.json().catch(() => ({}))
+  const ip = c.req.header('CF-Connecting-IP') || 'unknown'
+  if (_rateCheck(`admin:${ip}`)) return c.json({ error: 'Too many attempts. Try again in a minute.' }, 429)
   const db = getDb(c.env)
-  
-  // MASTER BYPASS
-  if (body?.password === 'admin123') {
-    if (!c.env.JWT_SECRET) return c.json({ error: 'JWT_SECRET not initialised' }, 503)
-    const now = Math.floor(Date.now() / 1000)
-    const token = await sign({ role: 'admin', iat: now, exp: now + CONSTANTS.ADMIN_JWT_EXP_SEC }, c.env.JWT_SECRET, 'HS256')
-    return c.json({ token })
-  }
 
   const hash = await getStoredHash(db, c.env)
   if (!hash) return c.json({ error: 'Admin not initialised' }, 503)
   if (!c.env.JWT_SECRET) return c.json({ error: 'JWT_SECRET not initialised' }, 503)
-  
+
   const ok = await pbkdf2Verify(body.password, hash)
   if (!ok) return c.json({ error: 'Unauthorized' }, 401)
 
@@ -390,6 +400,9 @@ app.post('/api/auth/manager/register', async (c) => {
   const invRes = await db.execute({ sql: 'SELECT * FROM invite_codes WHERE code = ? AND used = 0', args: [body.code.toUpperCase()] })
   const inv = toObj(invRes)
   if (!inv) return c.json({ error: 'Invalid or expired invite code' }, 400)
+  if (inv.expires_at && inv.expires_at < Math.floor(Date.now() / 1000)) {
+    return c.json({ error: 'Invite code has expired' }, 400)
+  }
 
   const hash = await pbkdf2Hash(body.password)
   const id = uid()
@@ -467,17 +480,25 @@ app.get('/api/admin/stats', requireManager, async (c) => {
   const wa = st ? [st] : []
 
   try {
-    const [lc, cc, lr] = await Promise.all([
-      db.execute({ sql: `SELECT COUNT(*) AS n FROM users WHERE role = 'learner' ${st ? ' AND team_id = ?' : ''}`, args: wa }),
+    const now = Math.floor(Date.now() / 1000)
+    const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0)
+    const monthStart = Math.floor(d.getTime() / 1000)
+    const teamFilter = st ? ' AND c.learner_id IN (SELECT id FROM users WHERE team_id = ?)' : ''
+    const [lc, cc, lr, cm, pr] = await Promise.all([
+      db.execute({ sql: `SELECT COUNT(*) AS n FROM users WHERE role = 'learner'${st ? ' AND team_id = ?' : ''}`, args: wa }),
       db.execute('SELECT COUNT(*) AS n FROM courses'),
-      db.execute({ sql: `SELECT * FROM users WHERE role = 'learner' ${st ? ' AND team_id = ?' : ''} LIMIT 5`, args: wa })
+      db.execute({ sql: `SELECT * FROM users WHERE role = 'learner'${st ? ' AND team_id = ?' : ''} LIMIT 5`, args: wa }),
+      db.execute({ sql: `SELECT COUNT(*) AS n FROM completions c WHERE c.completed_at >= ?${teamFilter}`, args: st ? [monthStart, st] : [monthStart] }),
+      db.execute({ sql: `SELECT COUNT(*) AS total, SUM(CASE WHEN c.passed = 1 THEN 1 ELSE 0 END) AS passed FROM completions c WHERE 1=1${teamFilter}`, args: st ? [st] : [] }),
     ])
+    const prRow = toObj(pr)
+    const passRate = prRow?.total > 0 ? Math.round((prRow.passed / prRow.total) * 100) : 0
     return c.json({
       summary: {
         total_learners: toObj(lc)?.n || 0,
         total_courses: toObj(cc)?.n || 0,
-        completions_this_month: 0,
-        pass_rate: 100
+        completions_this_month: toObj(cm)?.n || 0,
+        pass_rate: passRate
       },
       learners: toObjs(lr)
     })
@@ -932,6 +953,8 @@ app.delete('/api/assignments', requireManager, async (c) => {
 
 app.post('/api/auth/manager/login', async (c) => {
   const body = await c.req.json()
+  const ip = c.req.header('CF-Connecting-IP') || 'unknown'
+  if (_rateCheck(`manager:${ip}`)) return c.json({ error: 'Too many attempts. Try again in a minute.' }, 429)
   const db = getDb(c.env)
   const res = await db.execute({ sql: "SELECT * FROM users WHERE name = ? AND role = 'manager'", args: [body.name] })
   const user = toObj(res)
@@ -944,6 +967,8 @@ app.post('/api/auth/manager/login', async (c) => {
 
 app.post('/api/learners/login', async (c) => {
   const body = await c.req.json()
+  const ip = c.req.header('CF-Connecting-IP') || 'unknown'
+  if (_rateCheck(`learner:${ip}`)) return c.json({ error: 'Too many attempts. Try again in a minute.' }, 429)
   const db = getDb(c.env)
   const res = await db.execute({ sql: "SELECT * FROM users WHERE name = ? AND role = 'learner'", args: [body.name] })
   const user = toObj(res)

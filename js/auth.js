@@ -18,7 +18,7 @@ const Auth = {
       else Toast.err(e.message);
     }
   },
-  adminLogout() { clearToken(); App.show('screen-landing'); },
+  adminLogout() { clearToken(); curCourse = null; curModIdx = 0; quizSt = {}; App.show('screen-landing'); },
 
   // ─── MANAGER ───
   toggleManagerReg(show) {
@@ -44,7 +44,7 @@ const Auth = {
       Manager.init();
     } catch(e) { Toast.err(e.message); }
   },
-  managerLogout() { clearManagerToken(); clearManagerUser(); curManager = null; App.show('screen-landing'); },
+  managerLogout() { clearManagerToken(); clearManagerUser(); curManager = null; curCourse = null; curModIdx = 0; quizSt = {}; App.show('screen-landing'); },
 
   // ─── LEARNER ───
   async doLearnerLogin() {
@@ -55,5 +55,5 @@ const Auth = {
       Learner.init();
     } catch(e) { $$('l-login-error').textContent = e.message; $$('l-login-error').style.display='block'; }
   },
-  learnerLogout() { clearLearnerToken(); curLearner = null; App.show('screen-landing'); }
+  learnerLogout() { clearLearnerToken(); curLearner = null; curCourse = null; curModIdx = 0; quizSt = {}; App.show('screen-landing'); }
 };

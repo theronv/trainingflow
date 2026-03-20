@@ -210,7 +210,12 @@ const Learner = {
     </div>`;
   },
 
-  startQuiz(mi) { quizSt[mi] = { ans: [] }; Learner.renderQ(mi, 0); },
+  startQuiz(mi) {
+    quizSt[mi] = { ans: [] };
+    const nav = $$('mod-nav-list');
+    if (nav) { nav.style.pointerEvents = 'none'; nav.style.opacity = '0.5'; nav.title = 'Complete the quiz to navigate modules'; }
+    Learner.renderQ(mi, 0);
+  },
 
   renderQ(mi, qi) {
     const q = curCourse.mods[mi].questions[qi];
@@ -273,6 +278,8 @@ const Learner = {
   },
 
   async showModResults(mi) {
+    const nav = $$('mod-nav-list');
+    if (nav) { nav.style.pointerEvents = ''; nav.style.opacity = ''; nav.title = ''; }
     const answers = quizSt[mi].ans;
     const correct = answers.filter(a => a.ok).length;
     const total = answers.length;
@@ -321,6 +328,8 @@ const Learner = {
 
   retryMod(mi) {
     quizSt[mi] = { ans: [] };
+    const nav = $$('mod-nav-list');
+    if (nav) { nav.style.pointerEvents = 'none'; nav.style.opacity = '0.5'; nav.title = 'Complete the quiz to navigate modules'; }
     Learner.renderQ(mi, 0);
   },
 
