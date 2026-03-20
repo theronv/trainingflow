@@ -140,7 +140,13 @@ async function requireLearner(c, next) {
 // ── Routes: Core ──────────────────────────────────────────────────────────────
 
 async function setupBrand(db) {
-  try { await db.execute("ALTER TABLE brand ADD COLUMN accent_color TEXT NOT NULL DEFAULT '#0891b2'") } catch {}
+  // Nullable columns are universally safe for ALTER TABLE in SQLite/libSQL.
+  // These are additive migrations — each is silently skipped if the column already exists.
+  try { await db.execute("ALTER TABLE brand ADD COLUMN tagline TEXT DEFAULT 'Training & Certification Platform'") } catch {}
+  try { await db.execute("ALTER TABLE brand ADD COLUMN logo_url TEXT DEFAULT ''") } catch {}
+  try { await db.execute("ALTER TABLE brand ADD COLUMN primary_color TEXT DEFAULT '#2563eb'") } catch {}
+  try { await db.execute("ALTER TABLE brand ADD COLUMN secondary_color TEXT DEFAULT '#1d4ed8'") } catch {}
+  try { await db.execute("ALTER TABLE brand ADD COLUMN accent_color TEXT DEFAULT '#0891b2'") } catch {}
 }
 
 app.get('/api/brand', async (c) => {
@@ -261,8 +267,17 @@ app.put('/api/brand', requireAdmin, async (c) => {
   try {
     await setupBrand(db)
     await db.execute({
-      sql: 'UPDATE brand SET org_name = ?, tagline = ?, primary_color = ?, secondary_color = ?, accent_color = ?, logo_url = ?, pass_threshold = ? WHERE id = "default"',
-      args: [body.org_name, body.tagline || '', body.primary_color || '#2563eb', body.secondary_color || '#7c3aed', body.accent_color || '#0891b2', body.logo_url || '', body.pass_threshold || 80]
+      sql: `INSERT INTO brand (id, org_name, tagline, primary_color, secondary_color, accent_color, logo_url, pass_threshold)
+            VALUES ('default', ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+              org_name        = excluded.org_name,
+              tagline         = excluded.tagline,
+              primary_color   = excluded.primary_color,
+              secondary_color = excluded.secondary_color,
+              accent_color    = excluded.accent_color,
+              logo_url        = excluded.logo_url,
+              pass_threshold  = excluded.pass_threshold`,
+      args: [body.org_name, body.tagline || '', body.primary_color || '#2563eb', body.secondary_color || '#7c3aed', body.accent_color || '#0891b2', body.logo_url || '', body.pass_threshold ?? 80]
     })
     return c.json({ ok: true })
   } catch (e) {
