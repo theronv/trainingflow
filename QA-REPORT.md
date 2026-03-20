@@ -56,19 +56,12 @@
 
 ---
 
-### B-05 · Manager and learner account settings are stubs
+### B-05 · Manager and learner account settings are stubs ✅ FIXED
 
-**File:** `js/app.js:196–201`
+**File:** `js/app.js`, `worker/index.js`
 **Impact:** High — Feature broken
 
-**Reproduction:**
-1. Log in as manager → Account section → "Update Name" or "Change Password"
-2. Log in as learner → Account section → same buttons
-
-**Expected:** Working name/password update forms.
-**Actual:** All four buttons fire `Toast.info('Coming soon')`.
-
-> ⚠️ Not fixed in this pass — requires backend API endpoints for manager/learner self-service updates plus frontend form wiring.
+**Fix:** Added `PATCH /api/managers/me` and `PATCH /api/learners/me` backend endpoints. Both verify the current password before allowing a password change, and accept an optional `name` field for display name updates. The four frontend stub functions (`updateManagerName`, `changeManagerPw`, `updateLearnerName`, `changeLearnerPw`) now make real API calls. On success, `curManager`/`curLearner` global state and visible UI elements (avatar, name display) are updated immediately.
 
 ---
 
@@ -97,18 +90,12 @@
 
 ---
 
-### B-08 · Backup import is non-functional
+### B-08 · Backup import is non-functional ✅ FIXED
 
-**File:** `js/app.js:251`
+**File:** `js/app.js`, `worker/index.js`
 **Impact:** Medium — Feature broken
 
-**Reproduction:**
-1. Admin → Settings → "Import Backup"
-
-**Expected:** File picker to restore a JSON backup.
-**Actual:** `Toast.info('Import feature coming soon')`. Export works; import does not.
-
-> ⚠️ Not fixed in this pass — requires file picker, JSON validation, and course/learner upsert API.
+**Fix:** Replaced the stub with a full implementation. `importBackup()` opens a native file picker, reads the JSON file, validates the `courses` array is present, and POSTs to a new `POST /api/admin/backup/restore` endpoint. The endpoint inserts each course (with all modules and questions) that doesn't already exist by ID — existing courses are skipped to prevent overwriting edits. Returns `{ imported, skipped }` counts for user feedback. The export side was also improved: `exportBackup()` now fetches full course detail (with modules and questions) rather than just course summaries, so the backup file is complete and can be fully restored.
 
 ---
 
@@ -141,16 +128,11 @@
 
 ---
 
-### D-02 · No loading state on any async button
+### D-02 · No loading state on any async button ✅ FIXED (key actions)
 
-**Files:** `js/admin.js`, `js/manager.js`, `js/builder.js`
+**Files:** `js/admin.js`, `js/manager.js`, `js/builder.js`, `index.html`
 
-Affects every action: Save Course, Save Brand, Reset Password, Add Learner, Delete Team, Generate AI, Submit CSV Import.
-
-**Expected:** Button disables + shows "Saving…" during the API call.
-**Actual:** Button stays clickable. Users can fire duplicate requests. No feedback that anything is happening on slow connections.
-
-> ⚠️ Not fixed in this pass — high-effort, affects ~15 async actions across 3 files.
+**Fix:** Added `disabled` + `"Saving…"` loading state with `finally` restore to the five highest-impact async actions: `saveCourse` (Course Builder save), `saveBrand` (Branding save), `submitAddLearner` (Add/Edit User modal), `submitResetPw` (Reset Password modal), and `submitTeamAssign` (Manager team assignment). The `onclick` handlers in `index.html` for Save Course and Save Brand now pass `this` so the function can reference the triggering button without needing IDs. Minor actions (delete team, delete section, rename) retain their current inline style.
 
 ---
 
@@ -186,18 +168,11 @@ Affects every action: Save Course, Save Brand, Reset Password, Add Learner, Dele
 
 ---
 
-### D-07 · 401 token-expired handler does not redirect visually
+### D-07 · 401 token-expired handler does not redirect visually ✅ FIXED
 
-**File:** `js/core.js:61`
+**File:** `js/core.js`
 
-**Reproduction:**
-1. Log in as admin; let JWT expire
-2. Trigger any API call
-
-**Expected:** Screen switches to login page with "Session expired" message.
-**Actual:** Token is cleared and `App.show('screen-landing')` is called. However, the admin screen `div` remains in the DOM and partially visible. The user is logged out but may not realise it.
-
-> ⚠️ Not fixed in this pass — requires adding `App.show('screen-landing')` to also force-hide all `.screen` elements and ensure the landing screen is visible/active. Low risk in practice since sessionStorage is cleared.
+**Fix:** All three 401 handlers (`api`, `managerApi`, `learnerApi`) now: (1) clear the relevant user token and state variables (`curManager`, `curLearner`, `curCourse`, `curModIdx`, `quizSt`), (2) call `Toast.err('Session expired. Please sign in again.')` so the user sees an explicit message, and (3) call `App.show('screen-landing')` which removes `active` from all screens. The user is now immediately and visibly returned to the landing page with a clear explanation.
 
 ---
 
@@ -244,15 +219,11 @@ Affects every action: Save Course, Save Brand, Reset Password, Add Learner, Dele
 
 ---
 
-### D-13 · AI generation partial failure leaves corrupt course state
+### D-13 · AI generation partial failure leaves corrupt course state ✅ FIXED
 
 **File:** `js/admin.js` — `startGeneration()`
 
-**Reproduction:** Start AI generation with 5 modules; simulate network failure after module 3.
-**Expected:** Full rollback with clear error: "Generation failed — please try again."
-**Actual:** `Admin.generatedCourse` is half-populated. User sees a mix of AI-generated and empty modules with no guidance.
-
-> ⚠️ Not fixed in this pass — requires wrapping the generation loop in a try/catch that resets `Admin.generatedCourse = null` and `Admin.fileModules = []` on failure, then re-renders the UI to the initial state.
+**Fix:** Wrapped the entire generation body (both Pass 1 and Pass 2 loops) in a top-level `try/catch`. On any unhandled fatal error (network drop, unexpected throw), the `catch` block: resets `Admin.isGenerating = false`, clears `Admin.generatedCourse = null`, calls `Admin.goPhase(2)` to return the user to the configure step, and shows `Toast.err('Generation failed: <message>. Please try again.')`. Individual per-module failures (caught inside each loop iteration) still show `✗ Failed` inline and allow generation to continue for remaining modules.
 
 ---
 
@@ -272,14 +243,11 @@ Affects every action: Save Course, Save Brand, Reset Password, Add Learner, Dele
 
 ---
 
-### D-16 · No warning before JWT expiry — unsaved work is lost silently
+### D-16 · No warning before JWT expiry — unsaved work is lost silently ✅ FIXED
 
-**Files:** All auth token consumers
+**File:** `js/auth.js`
 
-**Expected:** Warning dialog 5 minutes before expiry, offering session renewal.
-**Actual:** Next API call after expiry returns 401, work in the course builder is lost.
-
-> ⚠️ Not fixed in this pass — requires decoding the JWT client-side, scheduling a `setTimeout` for (exp - 5min), and showing a renewal prompt. Medium complexity.
+**Fix:** Added `scheduleExpiryWarning(token)` function that base64-decodes the JWT payload, reads the `exp` claim, and calls `setTimeout` for `(exp * 1000 - Date.now() - 5 * 60 * 1000)` milliseconds. When the timer fires, `Toast.info('Your session expires in 5 minutes. Save your work and sign in again to continue.')` is shown. The function is called after every successful login: admin (`doLogin`), manager (`doManagerLogin`), and manager registration (`doManagerRegister`). If the expiry is less than 5 minutes away (e.g. a token restored from sessionStorage on reload), the warning is skipped gracefully.
 
 ---
 
@@ -291,14 +259,11 @@ Affects every action: Save Course, Save Brand, Reset Password, Add Learner, Dele
 
 ---
 
-### D-18 · Modal overlays have no backdrop — modals blend into page
+### D-18 · Modal overlays have no backdrop — modals blend into page ✅ ALREADY HANDLED
 
-**File:** Various modal overlays in `index.html`
+**File:** `css/style.css`, `index.html`
 
-**Expected:** Semi-transparent dark backdrop behind each modal to focus attention and block background interaction.
-**Actual:** Several modals lack a full-screen backdrop. Background content remains visible and partially interactive.
-
-> ⚠️ Not fixed in this pass — requires CSS audit of all overlay elements and adding `backdrop` class or pseudo-element styling.
+**Audit finding revision:** All modals in `index.html` use the `.overlay` class, which already has `background: rgba(0,0,0,0.7)` and `backdrop-filter: blur(4px)` applied in the CSS. The certificate overlay has its own equivalent rule (`.cert-overlay-wrap, #cert-overlay`). Every modal correctly blocks and dims the background. This was a false positive.
 
 ---
 
@@ -367,8 +332,8 @@ Affects every action: Save Course, Save Brand, Reset Password, Add Learner, Dele
 | 5 | B-02 | Implement real stats query | 30 min | ✅ FIXED |
 | 6 | B-03 | Enforce invite code expiry | 15 min | ✅ FIXED |
 | 7 | D-01 | Inline theme init in `<head>` to kill flash | 10 min | ✅ FIXED |
-| 8 | D-02 | Add loading states to async buttons | 1 hr | ⚠️ PENDING |
-| 9 | D-07 | Fix 401 redirect to fully hide admin screen | 20 min | ⚠️ PENDING |
+| 8 | D-02 | Add loading states to async buttons | 1 hr | ✅ FIXED (saveCourse, saveBrand, submitAddLearner, submitResetPw, submitTeamAssign) |
+| 9 | D-07 | Fix 401 redirect to fully hide admin screen | 20 min | ✅ FIXED |
 | 10 | D-05 | CORS fail-closed when `ALLOWED_ORIGIN` unset | 5 min | ✅ FIXED |
 | 11 | D-06 | Rate limit login endpoints | 30 min | ✅ FIXED |
 | 12 | D-11/D-12 | Validate quiz options + correct_index | 20 min | ✅ FIXED |
@@ -381,11 +346,11 @@ Affects every action: Save Course, Save Brand, Reset Password, Add Learner, Dele
 | 19 | D-17 | Validate html2canvas before PDF | 5 min | ✅ FIXED |
 | 20 | D-19 | Lock sidebar during quiz | 15 min | ✅ FIXED |
 | 21 | D-20 | Collapse underscores in PDF filename | 5 min | ✅ FIXED |
-| 22 | B-04 | CSV import into builder | 2 hr | ⚠️ PENDING |
-| 23 | B-05 | Manager/learner account self-service | 2 hr | ⚠️ PENDING |
-| 24 | B-06 | Tags feature | 3 hr | ⚠️ PENDING |
-| 25 | B-08 | Backup import | 1 hr | ⚠️ PENDING |
-| 26 | D-10 | Learner list pagination | 1 hr | ⚠️ PENDING |
-| 27 | D-13 | AI generation partial failure rollback | 30 min | ⚠️ PENDING |
-| 28 | D-16 | JWT expiry warning | 45 min | ⚠️ PENDING |
-| 29 | D-18 | Modal backdrops | 30 min | ⚠️ PENDING |
+| 22 | B-05 | Manager/learner account self-service | 2 hr | ✅ FIXED |
+| 23 | B-08 | Backup import | 1 hr | ✅ FIXED |
+| 24 | D-13 | AI generation partial failure rollback | 30 min | ✅ FIXED |
+| 25 | D-16 | JWT expiry warning | 45 min | ✅ FIXED |
+| 26 | B-04 | CSV import into builder | 2 hr | ⚠️ PENDING |
+| 27 | B-06 | Tags feature | 3 hr | ⚠️ PENDING |
+| 28 | D-10 | Learner list pagination | 1 hr | ⚠️ PENDING |
+| 29 | D-18 | Modal backdrops | 30 min | ✅ ALREADY HANDLED (`.overlay` CSS class covers all modals) |
