@@ -158,10 +158,10 @@ const AppProxy = {
     set('br-c1', c1); set('br-c1-hex', c1); set('br-c2', c2); set('br-c2-hex', c2); set('br-c3', c3); set('br-c3-hex', c3);
     App.previewBrand();
   },
-  openTagsModal: () => { $$('tags-modal').classList.remove('hidden'); },
+  openTagsModal: () => { $$('tags-modal').classList.remove('hidden'); Admin.loadTagsList(); },
   closeTagsModal: () => $$('tags-modal').classList.add('hidden'),
   closeLearnerTagsModal: () => $$('learner-tags-modal').classList.add('hidden'),
-  createTag: () => Toast.info('Tags coming soon'),
+  createTag: () => Admin.createTag(),
   closeConfirmDelete: () => $$('confirm-delete-overlay').classList.add('hidden'),
   copyInviteCode: () => {
     const code = $$('generated-code').textContent;
@@ -328,18 +328,87 @@ const AppProxy = {
   csvDrop: (e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if(f) App._handleCsvFile(f); },
   csvFileSelected: (e) => { const f = e.target.files[0]; if(f) App._handleCsvFile(f); e.target.value = ''; },
   csvClose: () => $$('csv-overlay').classList.add('hidden'),
-  csvConfirm: () => Toast.info('CSV import into builder coming soon'),
+  csvConfirm: () => {
+    if (!csvParsed || !csvParsed.length) return;
+    csvParsed.forEach(m => cbState.mods.push(m));
+    Builder.renderBuilderMods();
+    App.csvClose();
+    Toast.ok(`Added ${csvParsed.length} module(s) to the builder.`);
+    csvParsed = null;
+  },
   _handleCsvFile: (file) => {
     const reader = new FileReader();
     reader.onload = ev => {
       try {
-        csvParsed = JSON.parse(ev.target.result);
-        $$('csv-preview').innerHTML = `<div class="card">${Array.isArray(csvParsed) ? csvParsed.length : 1} module(s) ready to import</div>`;
+        const text = ev.target.result;
+        if (file.name.toLowerCase().endsWith('.json')) {
+          const raw = JSON.parse(text);
+          csvParsed = App._normImportData(raw);
+        } else {
+          csvParsed = App._parseCsvImport(text);
+        }
+        const qCount = csvParsed.reduce((s, m) => s + m.questions.length, 0);
+        $$('csv-preview').innerHTML = `<div class="card" style="color:var(--pass);">✓ ${csvParsed.length} module(s) · ${qCount} question(s) ready to import</div>`;
         $$('csv-preview').classList.remove('hidden');
         $$('csv-confirm').disabled = false;
-      } catch { Toast.err('Invalid JSON file.'); }
+      } catch(e) { Toast.err('Could not parse file: ' + e.message); }
     };
     reader.readAsText(file);
+  },
+  _parseCsvImport: (text) => {
+    const parseRow = line => {
+      const vals = []; let cur = '', inQ = false;
+      for (let i = 0; i < line.length; i++) {
+        const c = line[i];
+        if (c === '"') { inQ = !inQ; }
+        else if (c === ',' && !inQ) { vals.push(cur); cur = ''; }
+        else cur += c;
+      }
+      vals.push(cur);
+      return vals.map(v => v.replace(/^"|"$/g, '').trim());
+    };
+    const lines = text.trim().split('\n').filter(l => l.trim());
+    if (!lines.length) throw new Error('File is empty');
+    const header = parseRow(lines[0]).map(h => h.toLowerCase().replace(/\s+/g,''));
+    const rows = lines.slice(1).map(l => {
+      const vals = parseRow(l);
+      return Object.fromEntries(header.map((h, i) => [h, vals[i] || '']));
+    });
+    // Group by module name
+    const modMap = new Map();
+    const modOrder = [];
+    rows.forEach(r => {
+      const modName = r.module || r.title || 'Imported Module';
+      if (!modMap.has(modName)) { modMap.set(modName, []); modOrder.push(modName); }
+      const correctLetter = (r.correct || 'a').toUpperCase();
+      const correctIdx = ['A','B','C','D'].includes(correctLetter)
+        ? ['A','B','C','D'].indexOf(correctLetter)
+        : (parseInt(r.correct) || 0);
+      modMap.get(modName).push({
+        id: uid(), question: r.question || '',
+        options: [r.optiona||r.opta||'', r.optionb||r.optb||'', r.optionc||r.optc||'', r.optiond||r.optd||''],
+        correct_index: correctIdx, explanation: r.explanation || ''
+      });
+    });
+    return modOrder.map(name => ({ id: uid(), title: name, content: '', summary: '', reference_url: '', learning_objectives: [], questions: modMap.get(name) }));
+  },
+  _normImportData: (raw) => {
+    const arr = Array.isArray(raw) ? raw : [raw];
+    return arr.map(m => ({
+      id: uid(),
+      title: m.module || m.title || 'Imported Module',
+      content: m.content || '',
+      summary: m.summary || '',
+      reference_url: m.reference_url || '',
+      learning_objectives: Array.isArray(m.learning_objectives) ? m.learning_objectives : [],
+      questions: (m.questions || []).map(q => ({
+        id: uid(),
+        question: q.question || '',
+        options: Array.isArray(q.options) ? q.options : [q.optionA||q.optiona||'', q.optionB||q.optionb||'', q.optionC||q.optionc||'', q.optionD||q.optiond||''],
+        correct_index: typeof q.correct_index === 'number' ? q.correct_index : (['A','B','C','D'].indexOf((q.correct||'A').toUpperCase()) >= 0 ? ['A','B','C','D'].indexOf((q.correct||'A').toUpperCase()) : 0),
+        explanation: q.explanation || ''
+      }))
+    }));
   },
 
   // Theme toggle

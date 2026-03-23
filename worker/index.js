@@ -156,10 +156,16 @@ async function setupBrand(db) {
   try { await db.execute("ALTER TABLE brand ADD COLUMN font_url TEXT DEFAULT ''") } catch {}
 }
 
+async function setupTags(db) {
+  try { await db.execute(`CREATE TABLE IF NOT EXISTS tags (id TEXT PRIMARY KEY, name TEXT UNIQUE NOT NULL, created_at INTEGER DEFAULT (unixepoch()))`) } catch {}
+  try { await db.execute(`CREATE TABLE IF NOT EXISTS user_tags (user_id TEXT NOT NULL, tag_id TEXT NOT NULL, PRIMARY KEY (user_id, tag_id))`) } catch {}
+}
+
 app.get('/api/brand', async (c) => {
   const db = getDb(c.env)
   try {
     await setupBrand(db)
+    await setupTags(db)
     const res = await db.execute({ sql: 'SELECT * FROM brand WHERE id = ?', args: ['default'] })
     const brand = toObj(res)
     return brand ? c.json(brand) : c.json({ org_name: 'TrainFlow' })
@@ -451,10 +457,12 @@ app.get('/api/learners', requireManager, async (c) => {
   const user = c.get('user')
   const db = getDb(c.env)
   const tid = c.req.query('team_id')
-  
+  const page = parseInt(c.req.query('page') || '0')
+  const PAGE_SIZE = 50
+
   let where = ["role = 'learner'"]
   let args = []
-  
+
   if (user.scopedToTeam) {
     where.push('team_id = ?'); args.push(user.scopedToTeam)
   } else if (tid && tid !== 'null') {
@@ -463,8 +471,18 @@ app.get('/api/learners', requireManager, async (c) => {
     where.push('team_id IS NULL')
   }
 
-  const sql = `SELECT * FROM users WHERE ${where.join(' AND ')} ORDER BY name`
-  const res = await db.execute({ sql, args })
+  const baseWhere = `WHERE ${where.join(' AND ')}`
+
+  if (page > 0) {
+    const [countRes, rowsRes] = await Promise.all([
+      db.execute({ sql: `SELECT COUNT(*) AS n FROM users ${baseWhere}`, args }),
+      db.execute({ sql: `SELECT * FROM users ${baseWhere} ORDER BY name LIMIT ${PAGE_SIZE} OFFSET ${(page - 1) * PAGE_SIZE}`, args })
+    ])
+    const total = toObj(countRes)?.n || 0
+    return c.json({ rows: toObjs(rowsRes), total, page, pages: Math.ceil(total / PAGE_SIZE) })
+  }
+
+  const res = await db.execute({ sql: `SELECT * FROM users ${baseWhere} ORDER BY name`, args })
   return c.json(toObjs(res))
 })
 
@@ -1044,6 +1062,58 @@ app.post('/api/admin/backup/restore', requireAdmin, async (c) => {
     imported++
   }
   return c.json({ ok: true, imported, skipped })
+})
+
+// ── Tags ─────────────────────────────────────────────────────────────────────
+
+app.get('/api/admin/tags', requireManager, async (c) => {
+  const db = getDb(c.env)
+  await setupTags(db)
+  const res = await db.execute('SELECT * FROM tags ORDER BY name')
+  return c.json(toObjs(res))
+})
+
+app.post('/api/admin/tags', requireAdmin, async (c) => {
+  const body = await c.req.json()
+  if (!body.name?.trim()) return c.json({ error: 'Name required' }, 400)
+  const db = getDb(c.env)
+  await setupTags(db)
+  const id = uid()
+  await db.execute({ sql: 'INSERT INTO tags (id, name) VALUES (?, ?)', args: [id, body.name.trim()] })
+  return c.json({ id, name: body.name.trim() }, 201)
+})
+
+app.delete('/api/admin/tags/:id', requireAdmin, async (c) => {
+  const db = getDb(c.env)
+  const id = c.req.param('id')
+  await db.execute({ sql: 'DELETE FROM user_tags WHERE tag_id = ?', args: [id] })
+  await db.execute({ sql: 'DELETE FROM tags WHERE id = ?', args: [id] })
+  return c.json({ ok: true })
+})
+
+app.get('/api/admin/learners/:id/tags', requireManager, async (c) => {
+  const db = getDb(c.env)
+  await setupTags(db)
+  const res = await db.execute({
+    sql: `SELECT t.* FROM tags t JOIN user_tags ut ON t.id = ut.tag_id WHERE ut.user_id = ? ORDER BY t.name`,
+    args: [c.req.param('id')]
+  })
+  return c.json(toObjs(res))
+})
+
+app.post('/api/admin/learners/:id/tags', requireManager, async (c) => {
+  const body = await c.req.json()
+  const db = getDb(c.env)
+  try {
+    await db.execute({ sql: 'INSERT INTO user_tags (user_id, tag_id) VALUES (?, ?)', args: [c.req.param('id'), body.tag_id] })
+  } catch {}
+  return c.json({ ok: true })
+})
+
+app.delete('/api/admin/learners/:id/tags/:tagId', requireManager, async (c) => {
+  const db = getDb(c.env)
+  await db.execute({ sql: 'DELETE FROM user_tags WHERE user_id = ? AND tag_id = ?', args: [c.req.param('id'), c.req.param('tagId')] })
+  return c.json({ ok: true })
 })
 
 export default app

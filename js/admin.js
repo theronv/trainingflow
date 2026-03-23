@@ -196,23 +196,113 @@ const Admin = {
     } catch(e) { Toast.err(e.message); }
   },
 
+  // ─── TAGS ───
+  _tagsCache: [],
+  async loadTagsList() {
+    try {
+      const tags = await api('/api/admin/tags');
+      Admin._tagsCache = tags || [];
+      const el = $$('tags-list'); if (!el) return;
+      if (!tags.length) {
+        el.innerHTML = '<div style="color:var(--ink-4);font-size:var(--text-sm);padding:var(--space-2);">No tags yet. Create one above.</div>';
+        return;
+      }
+      el.innerHTML = tags.map(t => `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:var(--space-2) 0;border-bottom:1px solid var(--rule);">
+          <span class="chip chip-blue">${esc(t.name)}</span>
+          <button class="btn btn-ghost btn-sm" style="color:var(--fail);" onclick="Admin.deleteTag('${t.id}')">✕</button>
+        </div>`).join('');
+    } catch(e) { Toast.err(e.message); }
+  },
+  async createTag() {
+    const input = $$('new-tag-name');
+    const name = input?.value.trim();
+    if (!name) return Toast.err('Enter a tag name.');
+    try {
+      await api('/api/admin/tags', { method: 'POST', body: JSON.stringify({ name }) });
+      if (input) input.value = '';
+      await Admin.loadTagsList();
+    } catch(e) { Toast.err(e.message); }
+  },
+  async deleteTag(id) {
+    if (!confirm('Delete this tag? It will be removed from all learners.')) return;
+    try {
+      await api(`/api/admin/tags/${id}`, { method: 'DELETE' });
+      await Admin.loadTagsList();
+      Toast.ok('Tag deleted.');
+    } catch(e) { Toast.err(e.message); }
+  },
+  async openLearnerTagsModal(learnerId, learnerName) {
+    const sub = $$('lt-subtitle'); if (sub) sub.textContent = learnerName;
+    const list = $$('lt-tags-list'); if (list) list.innerHTML = '<div class="spinner" style="width:20px;height:20px;margin:16px auto;"></div>';
+    $$('learner-tags-modal').classList.remove('hidden');
+    try {
+      const [allTags, learnerTags] = await Promise.all([
+        api('/api/admin/tags'),
+        api(`/api/admin/learners/${learnerId}/tags`)
+      ]);
+      Admin._tagsCache = allTags || [];
+      const assigned = new Set((learnerTags || []).map(t => t.id));
+      if (!allTags.length) {
+        list.innerHTML = '<div style="color:var(--ink-4);font-size:var(--text-sm);">No tags created yet. Use "Manage Tags" to create some.</div>';
+        return;
+      }
+      list.innerHTML = allTags.map(t => `
+        <div style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-2) 0;border-bottom:1px solid var(--rule);">
+          <input type="checkbox" id="lt-${t.id}" ${assigned.has(t.id) ? 'checked' : ''}
+            onchange="Admin.toggleLearnerTag('${learnerId}','${t.id}',this.checked)">
+          <label for="lt-${t.id}" style="margin:0;">${esc(t.name)}</label>
+        </div>`).join('');
+    } catch(e) { if(list) list.innerHTML = `<div style="color:var(--fail);">${esc(e.message)}</div>`; }
+  },
+  async toggleLearnerTag(learnerId, tagId, checked) {
+    try {
+      if (checked) {
+        await api(`/api/admin/learners/${learnerId}/tags`, { method: 'POST', body: JSON.stringify({ tag_id: tagId }) });
+      } else {
+        await api(`/api/admin/learners/${learnerId}/tags/${tagId}`, { method: 'DELETE' });
+      }
+    } catch(e) { Toast.err(e.message); }
+  },
+
   // ─── LEARNERS ───
-  async renderLearners() {
+  async renderLearners(page = 1) {
+    Admin._learnersPage = page;
     const tbody = $$('learners-tbody'); if(!tbody) return;
     try {
       const tid = $$('l-team-filter').value;
-      const path = tid ? `/api/learners?team_id=${tid==='unassigned'?'null':tid}` : '/api/learners';
+      let path = tid ? `/api/learners?team_id=${tid==='unassigned'?'null':tid}` : '/api/learners';
+      path += `${path.includes('?') ? '&' : '?'}page=${page}`;
       const [apiRes, teams] = await Promise.all([api(path), api('/api/admin/teams')]);
-      _allLearners = Array.isArray(apiRes) ? apiRes : (apiRes.rows || []);
+
+      // Handle both paginated { rows, total, pages } and legacy plain array
+      const isPaginated = apiRes && !Array.isArray(apiRes) && apiRes.rows;
+      _allLearners = isPaginated ? apiRes.rows : (Array.isArray(apiRes) ? apiRes : (apiRes.rows || []));
+      const totalPages = isPaginated ? apiRes.pages : 1;
+      const totalCount = isPaginated ? apiRes.total : _allLearners.length;
+
       teamsCache = teams || [];
-      
-      const filter = $$('l-team-filter'); 
+      const filter = $$('l-team-filter');
       if (filter && filter.options.length <= 2) {
-        teamsCache.forEach(t => { 
-          const o = document.createElement('option'); o.value = t.id; o.textContent = t.name; filter.appendChild(o); 
+        teamsCache.forEach(t => {
+          const o = document.createElement('option'); o.value = t.id; o.textContent = t.name; filter.appendChild(o);
         });
       }
       Admin.filterLearners($$('learners-search') ? $$('learners-search').value : '');
+
+      // Render pagination controls
+      let pgEl = $$('learners-pagination');
+      if (!pgEl) {
+        pgEl = document.createElement('div');
+        pgEl.id = 'learners-pagination';
+        pgEl.style.cssText = 'display:flex;align-items:center;gap:var(--space-3);justify-content:flex-end;margin-top:var(--space-4);flex-wrap:wrap;';
+        tbody.closest('.table-wrap')?.after(pgEl);
+      }
+      if (totalPages <= 1) { pgEl.innerHTML = ''; return; }
+      pgEl.innerHTML = `
+        <span style="font-size:var(--text-sm);color:var(--ink-3);">${totalCount} learners · Page ${page} of ${totalPages}</span>
+        <button class="btn btn-outline btn-sm" ${page <= 1 ? 'disabled' : ''} onclick="Admin.renderLearners(${page - 1})">← Prev</button>
+        <button class="btn btn-outline btn-sm" ${page >= totalPages ? 'disabled' : ''} onclick="Admin.renderLearners(${page + 1})">Next →</button>`;
     } catch(e) { tbody.innerHTML = `<tr><td colspan="6">${esc(e.message)}</td></tr>`; }
   },
   filterLearners(q) {
@@ -223,12 +313,11 @@ const Admin = {
     tbody.innerHTML = filtered.map(l => {
       const team = (teamsCache||[]).find(t => t.id === l.team_id);
       const teamHtml = team ? esc(team.name) : '<span class="chip chip-amber" style="font-size:9px;">Unassigned</span>';
-      const tagsHtml = (l.tags||[]).map(t => `<span class="chip chip-blue" style="font-size:9px;">${esc(t.name)}</span>`).join(' ');
       const roleChip = l.role === 'manager' ? '<span class="chip chip-blue" style="font-size:9px;">Mgr</span> ' : '';
       return `<tr>
         <td>${roleChip}${esc(l.name || 'Unnamed')} ${l.overdue_count ? `<span class="chip chip-red" style="font-size:9px;">⚠️ ${l.overdue_count}</span>` : ''}</td>
         <td><button class="btn btn-ghost btn-sm" onclick="App.openEditLearner('${l.id}','${esc(l.name)}','${l.team_id||''}','${l.role||'learner'}')">${teamHtml}</button></td>
-        <td>${tagsHtml}</td>
+        <td><button class="btn btn-ghost btn-sm" onclick="Admin.openLearnerTagsModal('${l.id}','${esc(l.name)}')" title="Manage tags">🏷️ Tags</button></td>
         <td>${l.last_login_at ? new Date(l.last_login_at*1000).toLocaleDateString() : '—'}</td>
         <td>${l.completion_count || 0}</td>
         <td style="white-space:nowrap;">
