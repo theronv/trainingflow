@@ -72,12 +72,19 @@ async function pbkdf2Verify(password, stored) {
   }
 }
 
-async function getStoredHash(db, env) {
+async function getStoredHashes(db, env) {
+  const hashes = []
   try {
     const res = await db.execute({ sql: 'SELECT password_hash FROM admin WHERE id = ?', args: ['default'] })
-    if (res.rows.length) return String(res.rows[0][0])
+    if (res.rows.length && res.rows[0][0]) {
+      const h = String(res.rows[0][0])
+      if (h.startsWith('pbkdf2v1:')) hashes.push(h)
+    }
   } catch { }
-  return env.ADMIN_PASSWORD_HASH ?? null
+  if (env.ADMIN_PASSWORD_HASH && env.ADMIN_PASSWORD_HASH.startsWith('pbkdf2v1:')) {
+    hashes.push(env.ADMIN_PASSWORD_HASH)
+  }
+  return [...new Set(hashes)] // Unique hashes only
 }
 
 // ── App & Middleware ──────────────────────────────────────────────────────────
@@ -191,11 +198,17 @@ app.post('/api/auth/login', async (c) => {
   if (_rateCheck(`admin:${ip}`)) return c.json({ error: 'Too many attempts. Try again in a minute.' }, 429)
   const db = getDb(c.env)
 
-  const hash = await getStoredHash(db, c.env)
-  if (!hash) return c.json({ error: 'Admin not initialised' }, 503)
+  const hashes = await getStoredHashes(db, c.env)
+  if (!hashes.length) return c.json({ error: 'Admin not initialised' }, 503)
   if (!c.env.JWT_SECRET) return c.json({ error: 'JWT_SECRET not initialised' }, 503)
 
-  const ok = await pbkdf2Verify(body.password, hash)
+  let ok = false
+  for (const h of hashes) {
+    if (await pbkdf2Verify(body.password, h)) {
+      ok = true; break
+    }
+  }
+
   if (!ok) return c.json({ error: 'Unauthorized' }, 401)
 
   const now = Math.floor(Date.now() / 1000)
