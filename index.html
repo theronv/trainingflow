@@ -1004,15 +1004,28 @@ if (typeof marked !== 'undefined') {
 
 <!-- ══════════ MODAL: LEARNER CSV IMPORT ══════════ -->
 <div class="overlay hidden" id="learner-csv-overlay">
-  <div class="modal" style="max-width:600px;">
+  <div class="modal" style="max-width:620px;">
     <div class="modal-head">
       <div class="modal-title">Import Learners from CSV</div>
       <div class="modal-sub" id="lcsv-sub">Upload a CSV file to add multiple learners at once.</div>
     </div>
     <div class="modal-body">
-      <div style="display:flex;gap:var(--space-3);margin-bottom:var(--space-5);">
+      <!-- Auto-generate toggle -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:var(--space-3) var(--space-4);background:var(--brand-glow);border:1px solid var(--brand);border-radius:var(--radius-md);margin-bottom:var(--space-4);">
+        <div>
+          <div style="font-weight:600;font-size:var(--text-sm);">Auto-generate passwords</div>
+          <div style="font-size:var(--text-xs);color:var(--ink-3);margin-top:2px;">Your CSV only needs a <code>name</code> column — secure temp passwords are created automatically.</div>
+        </div>
+        <label style="position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0;">
+          <input type="checkbox" id="lcsv-autogen" onchange="App.lCsvToggleAutogen()" style="opacity:0;width:0;height:0;">
+          <span id="lcsv-autogen-track" style="position:absolute;cursor:pointer;inset:0;background:var(--border-2);border-radius:24px;transition:background 0.2s;">
+            <span id="lcsv-autogen-thumb" style="position:absolute;height:18px;width:18px;left:3px;bottom:3px;background:white;border-radius:50%;transition:transform 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.3);"></span>
+          </span>
+        </label>
+      </div>
+      <div style="display:flex;gap:var(--space-3);margin-bottom:var(--space-5);align-items:center;">
         <button class="btn btn-outline btn-sm" onclick="App.downloadLearnerTemplate()">↓ Download Template</button>
-        <span style="font-size:var(--text-sm);color:var(--ink-4);align-self:center;">Columns: <code>name, password</code></span>
+        <span id="lcsv-col-hint" style="font-size:var(--text-sm);color:var(--ink-4);">Columns: <code>name, password</code></span>
       </div>
       <div class="upload-zone" id="lcsv-drop-zone"
         onclick="document.getElementById('lcsv-file-input').click()"
@@ -1029,6 +1042,56 @@ if (typeof marked !== 'undefined') {
     <div class="modal-foot">
       <button class="btn btn-ghost" onclick="App.closeCsvImport()">Cancel</button>
       <button class="btn btn-primary" id="lcsv-import-btn" disabled onclick="App.submitCsvImport()">Import Learners</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ MODAL: CREDENTIALS SHEET ══════════ -->
+<div class="overlay hidden" id="creds-overlay">
+  <div class="modal" style="max-width:620px;">
+    <div class="modal-head">
+      <div class="modal-title">Team Credentials</div>
+      <div class="modal-sub" id="creds-sub">Share these temporary passwords with your team. They can change them in their Account settings after logging in.</div>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;gap:var(--space-3);margin-bottom:var(--space-4);">
+        <button class="btn btn-outline btn-sm" onclick="App.downloadCredsCSV()">↓ Download CSV</button>
+        <button class="btn btn-outline btn-sm" onclick="window.print()">🖨 Print</button>
+      </div>
+      <div id="creds-table-wrap" class="table-wrap" style="max-height:340px;overflow-y:auto;">
+        <table id="creds-table">
+          <thead><tr><th>#</th><th>Name</th><th>Temporary Password</th></tr></thead>
+          <tbody id="creds-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="App.skipPostImportAssign()">Done</button>
+      <button class="btn btn-primary" id="creds-assign-btn" onclick="App.proceedToAssign()">Assign a Course →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ MODAL: POST-IMPORT COURSE ASSIGN ══════════ -->
+<div class="overlay hidden" id="post-import-assign-overlay">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-head">
+      <div class="modal-title">Assign a Course</div>
+      <div class="modal-sub" id="pia-sub">Assign a course to your newly imported learners.</div>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label>Course</label>
+        <select id="pia-course"></select>
+      </div>
+      <div class="field">
+        <label>Due Date <span style="font-weight:400;color:var(--ink-4);">(optional)</span></label>
+        <input type="date" id="pia-due">
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="App.skipPostImportAssign()">Skip</button>
+      <button class="btn btn-primary" id="pia-submit-btn" onclick="App.submitPostImportAssign()">Assign to All</button>
     </div>
   </div>
 </div>

@@ -365,7 +365,7 @@ app.post('/api/learners/bulk', requireManager, async (c) => {
       errors.push({ name, error: e.message.includes('UNIQUE') ? 'Name already exists' : e.message })
     }
   }
-  return c.json({ created: created.length, errors }, 201)
+  return c.json({ created: created.length, created_learners: created, errors }, 201)
 })
 
 app.post('/api/learners', requireManager, async (c) => {

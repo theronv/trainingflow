@@ -163,10 +163,11 @@ const AppProxy = {
   closeLearnerTagsModal: () => $$('learner-tags-modal').classList.add('hidden'),
   createTag: () => Admin.createTag(),
   closeConfirmDelete: () => $$('confirm-delete-overlay').classList.add('hidden'),
-  copyInviteCode: () => {
-    const code = $$('generated-code').textContent;
-    navigator.clipboard.writeText(code).then(() => Toast.ok('Code copied!')).catch(() => Toast.info(code));
+  copyInviteCode: (code) => {
+    const c = code || $$('generated-code').textContent;
+    navigator.clipboard.writeText(c).then(() => Toast.ok('Code copied!')).catch(() => Toast.info(c));
   },
+  copyInviteMessage: (code, teamName) => Admin.copyInviteMessage(code, teamName),
   submitGenerateInvite: async () => {
     const code = Math.random().toString(36).substring(2, 10).toUpperCase();
     try {
@@ -183,7 +184,12 @@ const AppProxy = {
   downloadLearnerTemplate: () => Manager.downloadLearnerTemplate(),
   lCsvDrop: (e) => Manager.lCsvDrop(e),
   lCsvSelected: (e) => Manager.lCsvSelected(e),
+  lCsvToggleAutogen: () => Manager.lCsvToggleAutogen(),
   submitCsvImport: () => Manager.submitCsvImport(),
+  downloadCredsCSV: () => Manager.downloadCredsCSV(),
+  proceedToAssign: () => Manager.proceedToAssign(),
+  skipPostImportAssign: () => Manager.skipPostImportAssign(),
+  submitPostImportAssign: () => Manager.submitPostImportAssign(),
 
   // Navigation & screen switching
   exitCourse: () => {

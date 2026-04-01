@@ -176,17 +176,36 @@ const Admin = {
           : `<span class="chip chip-blue"  style="font-size:9px;">Active</span>`;
         const created = inv.created_at ? new Date(inv.created_at).toLocaleDateString() : '—';
         const expires = inv.expires_at  ? new Date(inv.expires_at).toLocaleDateString()  : '—';
+        const teamName = inv.team_name ? esc(inv.team_name) : '';
         return `<tr>
           <td style="font-family:monospace;letter-spacing:0.08em;font-weight:600;">${esc(inv.code)}</td>
-          <td>${inv.team_name ? esc(inv.team_name) : '<span style="color:var(--ink-4);">—</span>'}</td>
+          <td>${teamName || '<span style="color:var(--ink-4);">—</span>'}</td>
           <td>${statusChip}</td>
           <td>${created}</td>
           <td>${expires}</td>
-          <td>${!inv.used ? `<button class="btn btn-ghost btn-sm" style="color:var(--fail)" onclick="Admin.revokeInvite(${inv.id})">Revoke</button>` : '—'}</td>
+          <td style="white-space:nowrap;">
+            ${!inv.used ? `
+              <button class="btn btn-outline btn-sm" onclick="Admin.copyInviteCode('${esc(inv.code)}')">Copy Code</button>
+              <button class="btn btn-ghost btn-sm" onclick="Admin.copyInviteMessage('${esc(inv.code)}','${teamName}')" title="Copy a ready-to-send onboarding message">Copy Message</button>
+              <button class="btn btn-ghost btn-sm" style="color:var(--fail)" onclick="Admin.revokeInvite(${inv.id})">Revoke</button>
+            ` : '—'}
+          </td>
         </tr>`;
       }).join('');
     } catch(e) { if(tbody) tbody.innerHTML = `<tr><td colspan="6" style="color:var(--fail);">${esc(e.message)}</td></tr>`; }
   },
+  copyInviteCode(code) {
+    navigator.clipboard.writeText(code).then(() => Toast.ok(`Code "${code}" copied to clipboard.`)).catch(() => Toast.err('Copy failed — please copy manually: ' + code));
+  },
+
+  copyInviteMessage(code, teamName) {
+    const orgName = brandCache.name || 'TrainFlow';
+    const url = window.location.origin + window.location.pathname;
+    const team = teamName ? ` (${teamName})` : '';
+    const msg = `Hi,\n\nYou've been added as a manager on ${orgName}${team}.\n\nTo set up your account:\n1. Go to: ${url}\n2. Click Manager → Register with Invite Code\n3. Enter your invite code: ${code}\n\nOnce registered you can add your team and assign training.\n\nWelcome aboard!`;
+    navigator.clipboard.writeText(msg).then(() => Toast.ok('Onboarding message copied to clipboard.')).catch(() => Toast.err('Copy failed.'));
+  },
+
   async revokeInvite(id) {
     if(!confirm('Revoke this invite code?')) return;
     try {

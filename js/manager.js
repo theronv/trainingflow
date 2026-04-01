@@ -132,14 +132,29 @@ const Manager = {
   // ─── CSV IMPORT ───
   _csvRows: null,
 
+  _csvRows: null,
+  _credsRows: null,   // [{name, password}] for the credentials sheet
+  _importedIds: null, // [{id, name}] returned from the API after bulk import
+
+  _generatePassword() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+    const arr = new Uint8Array(10);
+    crypto.getRandomValues(arr);
+    return Array.from(arr).map(n => chars[n % chars.length]).join('');
+  },
+
   openCsvImport() {
     Manager._csvRows = null;
+    Manager._credsRows = null;
+    Manager._importedIds = null;
     $$('lcsv-preview').classList.add('hidden');
     $$('lcsv-preview').innerHTML = '';
     $$('lcsv-import-btn').disabled = true;
     $$('lcsv-import-btn').textContent = 'Import Learners';
     $$('lcsv-sub').textContent = 'Upload a CSV file to add multiple learners at once.';
     $$('lcsv-file-input').value = '';
+    const cb = $$('lcsv-autogen');
+    if (cb) { cb.checked = false; Manager.lCsvToggleAutogen(); }
     $$('learner-csv-overlay').classList.remove('hidden');
   },
 
@@ -147,8 +162,26 @@ const Manager = {
     $$('learner-csv-overlay').classList.add('hidden');
   },
 
+  lCsvToggleAutogen() {
+    const on = $$('lcsv-autogen')?.checked;
+    const track = $$('lcsv-autogen-track');
+    const thumb = $$('lcsv-autogen-thumb');
+    if (track) track.style.background = on ? 'var(--brand)' : 'var(--border-2)';
+    if (thumb) thumb.style.transform = on ? 'translateX(20px)' : 'translateX(0)';
+    const hint = $$('lcsv-col-hint');
+    if (hint) hint.innerHTML = on ? 'Column needed: <code>name</code> only' : 'Columns: <code>name, password</code>';
+    // Re-parse if a file is already loaded
+    if (Manager._csvRows !== null) {
+      const fi = $$('lcsv-file-input');
+      if (fi && fi.files[0]) Manager._handleCsvFile(fi.files[0]);
+    }
+  },
+
   downloadLearnerTemplate() {
-    const csv = 'name,password\nJane Smith,welcome123\nJohn Doe,securepass';
+    const autogen = $$('lcsv-autogen')?.checked;
+    const csv = autogen
+      ? 'name\nJane Smith\nJohn Doe\nAlex Johnson'
+      : 'name,password\nJane Smith,welcome123\nJohn Doe,securepass';
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
     a.download = 'trainflow-learners-template.csv';
@@ -187,15 +220,21 @@ const Manager = {
   _handleCsvFile(file) {
     const reader = new FileReader();
     reader.onload = ev => {
-      const rows = Manager._parseCsv(ev.target.result);
-      if(!rows.length) { Toast.err('No data rows found. Check the file format.'); return; }
+      const autogen = $$('lcsv-autogen')?.checked;
+      const parsed = Manager._parseCsv(ev.target.result);
+      if (!parsed.length) { Toast.err('No data rows found. Check the file format.'); return; }
+
+      // In auto-gen mode generate passwords now so the preview is accurate
+      const rows = parsed.map(r => ({
+        ...r,
+        password: autogen ? Manager._generatePassword() : (r.password || '')
+      }));
       Manager._csvRows = rows;
 
-      // Validate and build preview
       const valid = [], invalid = [];
       rows.forEach(r => {
-        if(!r.name) invalid.push({ ...r, _err: 'Missing name' });
-        else if(!r.password || r.password.length < 8) invalid.push({ ...r, _err: 'Password missing or < 8 chars' });
+        if (!r.name) invalid.push({ ...r, _err: 'Missing name' });
+        else if (!r.password || r.password.length < 8) invalid.push({ ...r, _err: 'Password too short' });
         else valid.push(r);
       });
 
@@ -203,10 +242,10 @@ const Manager = {
       previewEl.classList.remove('hidden');
       previewEl.innerHTML = `
         <div style="margin-bottom:var(--space-3);font-size:var(--text-sm);">
-          <span class="chip chip-green">${valid.length} valid</span>
+          <span class="chip chip-green">${valid.length} ready</span>
           ${invalid.length ? `<span class="chip chip-red" style="margin-left:4px;">${invalid.length} error${invalid.length > 1 ? 's' : ''}</span>` : ''}
         </div>
-        <div class="table-wrap" style="max-height:260px;overflow-y:auto;">
+        <div class="table-wrap" style="max-height:240px;overflow-y:auto;">
           <table>
             <thead><tr><th>Name</th><th>Password</th><th>Status</th></tr></thead>
             <tbody>
@@ -214,13 +253,14 @@ const Manager = {
                 const err = !r.name ? 'Missing name' : (!r.password || r.password.length < 8) ? 'Password < 8 chars' : null;
                 return `<tr>
                   <td>${esc(r.name || '—')}</td>
-                  <td style="color:var(--ink-4);">${r.password ? '••••••••' : '—'}</td>
+                  <td style="font-family:monospace;font-size:12px;color:${autogen ? 'var(--brand)' : 'var(--ink-4)'};">${r.password || '—'}</td>
                   <td>${err ? `<span class="chip chip-red" style="font-size:9px;">${esc(err)}</span>` : '<span class="chip chip-green" style="font-size:9px;">✓ OK</span>'}</td>
                 </tr>`;
               }).join('')}
             </tbody>
           </table>
-        </div>`;
+        </div>
+        ${autogen ? `<div style="font-size:var(--text-xs);color:var(--ink-4);margin-top:var(--space-3);">⚠ Save or print the credentials sheet shown after import — passwords cannot be recovered later.</div>` : ''}`;
 
       $$('lcsv-import-btn').disabled = valid.length === 0;
       $$('lcsv-import-btn').textContent = valid.length ? `Import ${valid.length} Learner${valid.length > 1 ? 's' : ''}` : 'Import Learners';
@@ -230,8 +270,9 @@ const Manager = {
   },
 
   async submitCsvImport() {
+    const autogen = $$('lcsv-autogen')?.checked;
     const validRows = (Manager._csvRows || []).filter(r => r.name && r.password && r.password.length >= 8);
-    if(!validRows.length) return;
+    if (!validRows.length) return;
     const btn = $$('lcsv-import-btn');
     btn.disabled = true; btn.textContent = 'Importing…';
     try {
@@ -240,12 +281,110 @@ const Manager = {
         body: JSON.stringify({ learners: validRows, team_id: curManager.team_id })
       });
       Manager.closeCsvImport();
-      Toast.ok(`${res.created} learner${res.created !== 1 ? 's' : ''} imported${res.errors.length ? `, ${res.errors.length} skipped` : ''}.`);
       Manager.renderTeam();
+      Manager._importedIds = res.created_learners || [];
+
+      if (autogen && res.created_learners && res.created_learners.length) {
+        // Map IDs back to the plaintext passwords used
+        const idMap = Object.fromEntries(res.created_learners.map(l => [l.name, l]));
+        Manager._credsRows = validRows
+          .filter(r => idMap[r.name])
+          .map(r => ({ id: idMap[r.name].id, name: r.name, password: r.password }));
+        Manager.showCredentialsSheet(res.created, res.errors.length);
+      } else {
+        Toast.ok(`${res.created} learner${res.created !== 1 ? 's' : ''} imported${res.errors.length ? `, ${res.errors.length} skipped` : ''}.`);
+        if (Manager._importedIds.length) Manager.proceedToAssign();
+      }
     } catch(e) {
       Toast.err(e.message);
       btn.disabled = false;
       btn.textContent = `Import ${validRows.length} Learners`;
+    }
+  },
+
+  showCredentialsSheet(createdCount, skippedCount) {
+    const rows = Manager._credsRows || [];
+    $$('creds-sub').textContent = `${createdCount} learner${createdCount !== 1 ? 's' : ''} imported${skippedCount ? `, ${skippedCount} skipped` : ''}. Share these temporary passwords — learners can update them in Account settings.`;
+    $$('creds-tbody').innerHTML = rows.map((r, i) => `<tr>
+      <td style="color:var(--ink-4);">${i + 1}</td>
+      <td style="font-weight:600;">${esc(r.name)}</td>
+      <td style="font-family:monospace;font-size:13px;letter-spacing:0.04em;">${esc(r.password)}</td>
+    </tr>`).join('');
+    $$('creds-overlay').classList.remove('hidden');
+  },
+
+  downloadCredsCSV() {
+    const rows = Manager._credsRows || [];
+    if (!rows.length) return;
+    const orgName = brandCache.name || 'TrainFlow';
+    const csv = [
+      [`${orgName} — Team Credentials`, '', ''],
+      ['Generated', new Date().toLocaleDateString(), ''],
+      ['', '', ''],
+      ['#', 'Name', 'Temporary Password'],
+      ...rows.map((r, i) => [i + 1, r.name, r.password])
+    ].map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+    a.download = `team-credentials-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  },
+
+  async proceedToAssign() {
+    $$('creds-overlay').classList.add('hidden');
+    const ids = Manager._importedIds || [];
+    if (!ids.length) return;
+    const overlay = $$('post-import-assign-overlay');
+    if (!overlay) return;
+    $$('pia-sub').textContent = `Assign mandatory training to the ${ids.length} learner${ids.length !== 1 ? 's' : ''} you just imported.`;
+    $$('pia-due').value = '';
+    // Populate course dropdown
+    const sel = $$('pia-course');
+    sel.innerHTML = '<option value="">Loading…</option>';
+    try {
+      const courses = await managerApi('/api/courses');
+      sel.innerHTML = courses.length
+        ? courses.map(c => `<option value="${c.id}">${esc(c.title)}</option>`).join('')
+        : '<option value="">No courses available</option>';
+    } catch { sel.innerHTML = '<option value="">Could not load courses</option>'; }
+    overlay.classList.remove('hidden');
+  },
+
+  skipPostImportAssign() {
+    $$('creds-overlay')?.classList.add('hidden');
+    $$('post-import-assign-overlay')?.classList.add('hidden');
+    const count = (Manager._importedIds || []).length;
+    if (count) Toast.ok(`${count} learner${count !== 1 ? 's' : ''} imported successfully.`);
+    Manager._importedIds = null;
+    Manager._credsRows = null;
+  },
+
+  async submitPostImportAssign() {
+    const courseId = $$('pia-course')?.value;
+    if (!courseId) return Toast.err('Please select a course.');
+    const dueRaw = $$('pia-due')?.value;
+    const dueAt = dueRaw ? Math.floor(new Date(dueRaw).getTime() / 1000) : null;
+    const ids = Manager._importedIds || [];
+    if (!ids.length) return;
+    const btn = $$('pia-submit-btn');
+    const orig = btn.textContent;
+    btn.disabled = true; btn.textContent = 'Assigning…';
+    try {
+      await Promise.all(ids.map(l =>
+        managerApi('/api/assignments', {
+          method: 'POST',
+          body: JSON.stringify({ course_id: courseId, learner_id: l.id, due_at: dueAt })
+        }).catch(() => null) // skip already-assigned
+      ));
+      $$('post-import-assign-overlay').classList.add('hidden');
+      Toast.ok(`Course assigned to ${ids.length} learner${ids.length !== 1 ? 's' : ''}.`);
+      Manager._importedIds = null;
+      Manager._credsRows = null;
+    } catch(e) {
+      Toast.err(e.message);
+    } finally {
+      btn.disabled = false; btn.textContent = orig;
     }
   },
 
