@@ -30,6 +30,7 @@ const Learner = {
     if(p==='courses') Learner.renderCourses();
     if(p==='progress') Learner.renderProgress();
     if(p==='certs') Learner.renderCerts();
+    if(p==='account' && curLearner) { const n = $$('lcp-name'); if(n) n.value = curLearner.name || ''; }
   },
 
   // ─── COURSES ───
@@ -64,9 +65,15 @@ const Learner = {
         if (passed) chip = '<span class="chip chip-green">✓ Passed</span>';
         else if (prog) chip = `<span class="chip chip-blue">▶ In Progress${totalMods ? ` (${modsDone}/${totalMods})` : ''}</span>`;
         else if (assigned) chip = '<span class="chip chip-amber">Mandatory</span>';
+        const modCount = totalMods ? `<span style="font-size:var(--text-xs);color:var(--ink-4);">${totalMods} module${totalMods!==1?'s':''}</span>` : '';
+        const desc = nc.desc ? `<div style="font-size:var(--text-sm);color:var(--ink-3);margin-top:6px;line-height:1.4;">${esc(nc.desc.length > 100 ? nc.desc.slice(0,100)+'…' : nc.desc)}</div>` : '';
         return `<div class="course-card" onclick="Learner.startCourse('${nc.id}')">
-          <div style="font-weight:700;">${esc(nc.title)}</div>
-          <div style="margin-top:8px;">${chip}</div>
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
+            <div style="font-weight:700;">${esc(nc.title)}</div>
+            ${modCount}
+          </div>
+          ${desc}
+          <div style="margin-top:10px;">${chip}</div>
         </div>`;
       };
 
@@ -99,8 +106,40 @@ const Learner = {
 
   // ─── PROGRESS ───
   async renderProgress() {
-    const res = await learnerApi('/api/assignments/me');
-    $$('l-progress-content').innerHTML = `<h3>Mandatory Training</h3>` + res.map(a => `<div class="card">${esc(a.course_title)} - ${a.completed ? 'Done' : 'Pending'}</div>`).join('');
+    const el = $$('l-progress-content'); if(!el) return;
+    el.innerHTML = '<div style="display:flex;justify-content:center;padding:40px;"><div class="spinner"></div></div>';
+    try {
+      const res = await learnerApi('/api/assignments/me');
+      if (!res || !res.length) {
+        el.innerHTML = '<div class="card" style="text-align:center;padding:40px;color:var(--ink-4);">No training assigned yet. Check back later or contact your manager.</div>';
+        return;
+      }
+      const pending = res.filter(a => !a.completed);
+      const done = res.filter(a => a.completed);
+      let html = '';
+      if (pending.length) {
+        html += `<div style="font-weight:700;margin-bottom:var(--space-3);">In Progress (${pending.length})</div>`;
+        html += pending.map(a => {
+          const overdue = a.due_at && !a.completed && (a.due_at * 1000) < Date.now();
+          const dueStr = a.due_at ? `<span style="font-size:var(--text-xs);color:${overdue ? 'var(--fail)' : 'var(--ink-4)'};">Due ${new Date(a.due_at*1000).toLocaleDateString()}</span>` : '';
+          return `<div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);margin-bottom:var(--space-3);">
+            <div>
+              <div style="font-weight:600;">${esc(a.course_title)}</div>
+              ${dueStr}
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="Learner.startCourse('${a.course_id}')">Start →</button>
+          </div>`;
+        }).join('');
+      }
+      if (done.length) {
+        html += `<div style="font-weight:700;margin-bottom:var(--space-3);margin-top:var(--space-6);">Completed (${done.length})</div>`;
+        html += done.map(a => `<div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);margin-bottom:var(--space-3);opacity:0.75;">
+          <div style="font-weight:600;">${esc(a.course_title)}</div>
+          <span class="chip chip-green">✓ Done</span>
+        </div>`).join('');
+      }
+      el.innerHTML = html;
+    } catch(e) { el.innerHTML = `<div class="card" style="color:var(--fail);">${esc(e.message)}</div>`; }
   },
 
   // ─── CERTS ───
@@ -109,9 +148,15 @@ const Learner = {
     try {
       const res = await learnerApi('/api/completions/me');
       Learner._certsCache = (res || []).filter(r => r.passed);
-      $$('l-certs-content').innerHTML = Learner._certsCache.length 
-        ? Learner._certsCache.map(r => `<div class="card">📜 ${esc(r.course_title)} <button class="btn btn-outline btn-sm" onclick="Learner.viewCert('${r.cert_id}')">Download</button></div>`).join('')
-        : '<div class="card" style="color:var(--ink-4);text-align:center;">No certificates earned yet. Complete a course to earn one!</div>';
+      $$('l-certs-content').innerHTML = Learner._certsCache.length
+        ? Learner._certsCache.map(r => `<div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);margin-bottom:var(--space-3);">
+            <div>
+              <div style="font-weight:600;">📜 ${esc(r.course_title)}</div>
+              <div style="font-size:var(--text-xs);color:var(--ink-4);margin-top:4px;">Passed ${r.score}% · ${new Date(r.completed_at*1000).toLocaleDateString()} · ID: <span style="font-family:monospace;">${r.cert_id || '—'}</span></div>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="Learner.viewCert('${r.cert_id}')">↓ Download PDF</button>
+          </div>`).join('')
+        : '<div class="card" style="text-align:center;padding:40px;color:var(--ink-4);">No certificates yet — complete a course and pass the quiz to earn your first one!</div>';
     } catch(e) { $$('l-certs-content').innerHTML = `<div class="card" style="color:var(--fail);">${esc(e.message)}</div>`; }
   },
 

@@ -303,13 +303,13 @@ const Admin = {
         <span style="font-size:var(--text-sm);color:var(--ink-3);">${totalCount} learners · Page ${page} of ${totalPages}</span>
         <button class="btn btn-outline btn-sm" ${page <= 1 ? 'disabled' : ''} onclick="Admin.renderLearners(${page - 1})">← Prev</button>
         <button class="btn btn-outline btn-sm" ${page >= totalPages ? 'disabled' : ''} onclick="Admin.renderLearners(${page + 1})">Next →</button>`;
-    } catch(e) { tbody.innerHTML = `<tr><td colspan="6">${esc(e.message)}</td></tr>`; }
+    } catch(e) { tbody.innerHTML = `<tr><td colspan="5">${esc(e.message)}</td></tr>`; }
   },
   filterLearners(q) {
     const tbody = $$('learners-tbody'); if(!tbody) return;
     const query = (q || '').toLowerCase().trim();
     const filtered = _allLearners.filter(l => (l.name || '').toLowerCase().includes(query));
-    if(!filtered.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;">No matches.</td></tr>'; return; }
+    if(!filtered.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;">No matches.</td></tr>'; return; }
     tbody.innerHTML = filtered.map(l => {
       const team = (teamsCache||[]).find(t => t.id === l.team_id);
       const teamHtml = team ? esc(team.name) : '<span class="chip chip-amber" style="font-size:9px;">Unassigned</span>';
@@ -317,7 +317,6 @@ const Admin = {
       return `<tr>
         <td>${roleChip}${esc(l.name || 'Unnamed')} ${l.overdue_count ? `<span class="chip chip-red" style="font-size:9px;">⚠️ ${l.overdue_count}</span>` : ''}</td>
         <td><button class="btn btn-ghost btn-sm" onclick="App.openEditLearner('${l.id}','${esc(l.name)}','${l.team_id||''}','${l.role||'learner'}')">${teamHtml}</button></td>
-        <td><button class="btn btn-ghost btn-sm" onclick="Admin.openLearnerTagsModal('${l.id}','${esc(l.name)}')" title="Manage tags">🏷️ Tags</button></td>
         <td>${l.last_login_at ? new Date(l.last_login_at*1000).toLocaleDateString() : '—'}</td>
         <td>${l.completion_count || 0}</td>
         <td style="white-space:nowrap;">
@@ -491,7 +490,7 @@ const Admin = {
         tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--ink-4);padding:32px;">No completions recorded yet.</td></tr>';
         return;
       }
-      tbody.innerHTML = (res||[]).map(r => `<tr><td>${esc(r.user_name)}</td><td>${esc(r.course_title)}</td><td>${r.score}%</td><td>${r.passed?'Passed':'Failed'}</td><td>${new Date(r.completed_at*1000).toLocaleDateString()}</td><td>—</td></tr>`).join('');
+      tbody.innerHTML = (res||[]).map(r => `<tr><td>${esc(r.user_name)}</td><td>${esc(r.course_title)}</td><td>${r.score}%</td><td>${r.passed?'<span class="chip chip-green">Passed</span>':'<span class="chip chip-red">Failed</span>'}</td><td>${new Date(r.completed_at*1000).toLocaleDateString()}</td><td style="font-family:monospace;font-size:11px;">${r.cert_id || '—'}</td></tr>`).join('');
     } catch(e) { }
   },
 
@@ -652,7 +651,35 @@ const Admin = {
     finally { if (btn) { btn.disabled = false; btn.textContent = orig; } }
   },
 
-  exportCSV(scope) { Toast.info('Exporting data...'); },
+  async exportCSV(scope) {
+    try {
+      const isTeam = scope === 'team';
+      const filterId = isTeam
+        ? ($$('m-comp-filter')?.value || '')
+        : ($$('comp-filter')?.value || '');
+      const url = `/api/admin/completions${filterId ? `?course_id=${encodeURIComponent(filterId)}` : ''}`;
+      const res = isTeam ? await managerApi(url) : await api(url);
+      if (!res || !res.length) return Toast.info('No completions to export.');
+      const rows = [
+        ['Learner', 'Course', 'Score (%)', 'Status', 'Date', 'Certificate ID'],
+        ...res.map(r => [
+          r.user_name,
+          r.course_title,
+          r.score,
+          r.passed ? 'Passed' : 'Failed',
+          new Date(r.completed_at * 1000).toLocaleDateString(),
+          r.cert_id || ''
+        ])
+      ];
+      const csv = rows.map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `trainflow-completions-${new Date().toISOString().slice(0,10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } catch(e) { Toast.err(e.message); }
+  },
   async clearRecords() { if(confirm('Clear all completion records? This cannot be undone — learner progress, quiz scores, and certificates will be permanently deleted.')){ await api('/api/completions', { method:'DELETE' }); Admin.renderDash(); } },
 
   // ─── AI IMPORTER ───
@@ -1031,9 +1058,14 @@ const Admin = {
 
   async startGeneration() {
     if (Admin.isGenerating) return;
+    // Auto-save any keys currently typed in the input fields
+    const claudeInput = $$('claude-api-key')?.value.trim();
+    const geminiInput = $$('gemini-api-key')?.value.trim();
+    if (claudeInput) localStorage.setItem('trainflow_claude_key', claudeInput);
+    if (geminiInput) localStorage.setItem('trainflow_gemini_key', geminiInput);
     const claudeKey = localStorage.getItem('trainflow_claude_key');
     const geminiKey = localStorage.getItem('trainflow_gemini_key');
-    if (!claudeKey && !geminiKey) return Toast.err('Enter an API key in the AI Settings card.');
+    if (!claudeKey && !geminiKey) return Toast.err('Enter a Claude or Gemini API key in the AI Settings card.');
 
     // Gate 3: warn about content truncation for long modules
     const CHAR_LIMIT = 4000;

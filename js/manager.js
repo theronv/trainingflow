@@ -19,6 +19,7 @@ const Manager = {
     if(p==='courses')   Manager.renderCourses();
     if(p==='team')      Manager.renderTeam();
     if(p==='completions') Manager.renderComps();
+    if(p==='account' && curManager) { const n = $$('mcp-name'); if(n) n.value = curManager.name || ''; }
   },
 
   // ─── DASHBOARD ───

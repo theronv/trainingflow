@@ -48,10 +48,13 @@ const Auth = {
     } catch(e) { Toast.err(e.message); }
   },
   async doManagerRegister() {
-    const name = $$('m-reg-name').value.trim(), pw1 = $$('m-reg-pw1').value, pw2 = $$('m-reg-pw2').value, invite_code = $$('m-reg-code').value.trim();
-    if(!name || pw1.length < 8 || pw1 !== pw2 || !invite_code) return Toast.err('Please check all fields.');
+    const name = $$('m-reg-name').value.trim(), pw1 = $$('m-reg-pw1').value, pw2 = $$('m-reg-pw2').value, code = $$('m-reg-code').value.trim();
+    if (!name) return Toast.err('Please enter your full name.');
+    if (pw1.length < 8) return Toast.err('Password must be at least 8 characters.');
+    if (pw1 !== pw2) return Toast.err('Passwords do not match.');
+    if (!code) return Toast.err('Please enter your invite code.');
     try {
-      const data = await api('/api/auth/manager/register', { method: 'POST', body: JSON.stringify({ name, password: pw1, invite_code }) });
+      const data = await api('/api/auth/manager/register', { method: 'POST', body: JSON.stringify({ name, password: pw1, code }) });
       setManagerToken(data.token); scheduleExpiryWarning(data.token); setManagerUser(data); curManager = data;
       Manager.init();
     } catch(e) { Toast.err(e.message); }
