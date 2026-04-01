@@ -262,11 +262,19 @@ app.delete('/api/admin/invites/:id', requireAdmin, async (c) => {
 app.post('/api/admin/invites', requireAdmin, async (c) => {
   const body = await c.req.json()
   const db = getDb(c.env)
-  await db.execute({
-    sql: 'INSERT INTO invite_codes (code, team_id) VALUES (?, ?)',
-    args: [body.code.toUpperCase(), body.team_id]
-  })
-  return c.json({ ok: true }, 201)
+  try {
+    const expiresAt = body.expires_at || null
+    await db.execute({
+      sql: 'INSERT INTO invite_codes (code, team_id, expires_at) VALUES (?, ?, ?)',
+      args: [body.code.toUpperCase(), body.team_id || null, expiresAt]
+    })
+    return c.json({ ok: true }, 201)
+  } catch(e) {
+    if (e.message && e.message.includes('UNIQUE')) {
+      return c.json({ error: 'Code collision — please try again.' }, 409)
+    }
+    return c.json({ error: e.message }, 500)
+  }
 })
 
 app.patch('/api/admin/teams/:id', requireAdmin, async (c) => {
@@ -279,10 +287,14 @@ app.patch('/api/admin/teams/:id', requireAdmin, async (c) => {
 app.delete('/api/admin/teams/:id', requireAdmin, async (c) => {
   const db = getDb(c.env)
   const tid = c.req.param('id')
-  await db.execute({ sql: 'UPDATE learners SET team_id = NULL WHERE team_id = ?', args: [tid] })
-  await db.execute({ sql: 'UPDATE managers SET team_id = NULL WHERE team_id = ?', args: [tid] })
-  await db.execute({ sql: 'DELETE FROM teams WHERE id = ?', args: [tid] })
-  return c.json({ ok: true })
+  try {
+    await db.execute({ sql: 'UPDATE users SET team_id = NULL WHERE team_id = ?', args: [tid] })
+    await db.execute({ sql: 'DELETE FROM invite_codes WHERE team_id = ?', args: [tid] })
+    await db.execute({ sql: 'DELETE FROM teams WHERE id = ?', args: [tid] })
+    return c.json({ ok: true })
+  } catch(e) {
+    return c.json({ error: e.message }, 500)
+  }
 })
 
 app.patch('/api/admin/learners/:lid/team', requireAdmin, async (c) => {

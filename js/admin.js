@@ -121,7 +121,15 @@ const Admin = {
     $$('team-modal-btn').onclick = Admin.submitCreateTeam;
     $$('team-modal').classList.remove('hidden');
   },
-  async submitCreateTeam() { try { await api('/api/admin/teams', { method:'POST', body:JSON.stringify({ name: $$('team-name-input').value.trim() }) }); $$('team-modal').classList.add('hidden'); Admin.renderTeams(); } catch(e){ Toast.err(e.message); } },
+  async submitCreateTeam() {
+    const name = $$('team-name-input').value.trim();
+    if (!name) return Toast.err('Please enter a team name.');
+    try {
+      await api('/api/admin/teams', { method: 'POST', body: JSON.stringify({ name }) });
+      $$('team-modal').classList.add('hidden');
+      await Admin.renderTeams();
+    } catch(e) { Toast.err(e.message); }
+  },
   openRenameTeam(id, name) {
     $$('team-modal-title').textContent = 'Rename Team';
     $$('team-name-input').value = name;
@@ -141,6 +149,9 @@ const Admin = {
     $$('invite-subtitle').textContent = `For team: ${esc(teamName)}`;
     $$('invite-form').classList.remove('hidden');
     $$('invite-result').classList.add('hidden');
+    const expiry = $$('invite-expiry'); if (expiry) expiry.value = '';
+    const btn = $$('invite-form')?.querySelector('.btn-primary');
+    if (btn) { btn.disabled = false; btn.textContent = 'Generate Code'; }
     $$('invite-modal').classList.remove('hidden');
   },
   openAddManager(teamId, teamName) {
@@ -160,7 +171,14 @@ const Admin = {
     $$('add-learner-overlay').classList.remove('hidden');
     setTimeout(() => $$('al-name').focus(), CONFIG.FOCUS_DELAY);
   },
-  async deleteTeam(id) { if(confirm('Delete team?')){ try { await api(`/api/admin/teams/${id}`, { method:'DELETE' }); Admin.renderTeams(); } catch(e){ Toast.err(e.message); } } },
+  async deleteTeam(id) {
+    if (!confirm('Delete this team? All members will become unassigned. This cannot be undone.')) return;
+    try {
+      await api(`/api/admin/teams/${id}`, { method: 'DELETE' });
+      Toast.ok('Team deleted.');
+      await Admin.renderTeams();
+    } catch(e) { Toast.err(e.message); }
+  },
 
   async renderInviteCodes() {
     const tbody = $$('invites-tbody'); if(!tbody) return;

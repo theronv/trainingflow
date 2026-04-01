@@ -169,13 +169,26 @@ const AppProxy = {
   },
   copyInviteMessage: (code, teamName) => Admin.copyInviteMessage(code, teamName),
   submitGenerateInvite: async () => {
-    const code = Math.random().toString(36).substring(2, 10).toUpperCase();
+    // Generate a cryptographically random 8-char uppercase alphanumeric code
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const arr = new Uint8Array(8);
+    crypto.getRandomValues(arr);
+    const code = Array.from(arr).map(n => chars[n % chars.length]).join('');
+    const expiryVal = $$('invite-expiry')?.value;
+    const expiresAt = expiryVal ? new Date(expiryVal).toISOString() : null;
+    const btn = $$('invite-form')?.querySelector('.btn-primary');
+    if (btn) { btn.disabled = true; btn.textContent = 'Generating…'; }
     try {
-      await api('/api/admin/invites', { method: 'POST', body: JSON.stringify({ code, team_id: App._inviteTeamId }) });
+      await api('/api/admin/invites', { method: 'POST', body: JSON.stringify({ code, team_id: App._inviteTeamId, expires_at: expiresAt }) });
       $$('generated-code').textContent = code;
+      $$('invite-expiry-label').textContent = expiresAt ? `Expires: ${new Date(expiresAt).toLocaleDateString()}` : '';
       $$('invite-form').classList.add('hidden');
       $$('invite-result').classList.remove('hidden');
-    } catch (e) { Toast.err(e.message); }
+      Admin.renderInviteCodes();
+    } catch (e) {
+      Toast.err(e.message);
+      if (btn) { btn.disabled = false; btn.textContent = 'Generate Code'; }
+    }
   },
 
   // Learner CSV import
