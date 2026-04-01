@@ -303,8 +303,90 @@ const Admin = {
   },
 
   // ─── LEARNERS ───
+  _selectedUsers: new Set(),
+
+  updateBulkBar() {
+    const sel = Admin._selectedUsers;
+    const bar = $$('bulk-bar');
+    const cb  = $$('select-all-cb');
+    if (!bar) return;
+    if (sel.size === 0) {
+      bar.classList.add('hidden');
+      if (cb) cb.checked = false;
+      return;
+    }
+    bar.classList.remove('hidden');
+    const countEl = $$('bulk-count');
+    if (countEl) countEl.textContent = `${sel.size} selected`;
+    // Sync select-all checkbox state
+    const visibleIds = Array.from($$('learners-tbody')?.querySelectorAll('input[type=checkbox]') || []).map(c => c.dataset.id);
+    if (cb) cb.checked = visibleIds.length > 0 && visibleIds.every(id => sel.has(id));
+  },
+
+  toggleSelectAll(checked) {
+    const checkboxes = $$('learners-tbody')?.querySelectorAll('input[type=checkbox]') || [];
+    checkboxes.forEach(cb => {
+      cb.checked = checked;
+      if (checked) Admin._selectedUsers.add(cb.dataset.id);
+      else Admin._selectedUsers.delete(cb.dataset.id);
+    });
+    Admin.updateBulkBar();
+  },
+
+  toggleUserSelect(id, checked) {
+    if (checked) Admin._selectedUsers.add(id);
+    else Admin._selectedUsers.delete(id);
+    Admin.updateBulkBar();
+  },
+
+  clearSelection() {
+    Admin._selectedUsers.clear();
+    $$('learners-tbody')?.querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = false);
+    Admin.updateBulkBar();
+  },
+
+  async bulkDelete() {
+    const ids = Array.from(Admin._selectedUsers);
+    if (!ids.length) return;
+    if (!confirm(`Permanently delete ${ids.length} user(s)? This cannot be undone.`)) return;
+    try {
+      await api('/api/learners/bulk', { method: 'DELETE', body: JSON.stringify({ ids }) });
+      Toast.ok(`${ids.length} user(s) deleted.`);
+      Admin._selectedUsers.clear();
+      Admin.renderLearners(Admin._learnersPage);
+    } catch(e) { Toast.err(e.message); }
+  },
+
+  async bulkChangeTeam(teamId) {
+    const ids = Array.from(Admin._selectedUsers);
+    if (!ids.length || !teamId) return;
+    const payload = { ids, team_id: teamId === '__unassign__' ? null : teamId };
+    try {
+      await api('/api/learners/bulk', { method: 'PATCH', body: JSON.stringify(payload) });
+      const label = teamId === '__unassign__' ? 'Unassigned' : (teamsCache.find(t => String(t.id) === teamId)?.name || teamId);
+      Toast.ok(`${ids.length} user(s) moved to ${label}.`);
+      Admin._selectedUsers.clear();
+      Admin.renderLearners(Admin._learnersPage);
+    } catch(e) { Toast.err(e.message); }
+    $$('bulk-team').value = '';
+  },
+
+  async bulkChangeRole(role) {
+    const ids = Array.from(Admin._selectedUsers);
+    if (!ids.length || !role) return;
+    try {
+      await api('/api/learners/bulk', { method: 'PATCH', body: JSON.stringify({ ids, role }) });
+      Toast.ok(`${ids.length} user(s) updated to ${role === 'manager' ? 'Manager' : 'User'}.`);
+      Admin._selectedUsers.clear();
+      Admin.renderLearners(Admin._learnersPage);
+    } catch(e) { Toast.err(e.message); }
+    $$('bulk-role').value = '';
+  },
+
   async renderLearners(page = 1) {
     Admin._learnersPage = page;
+    Admin._selectedUsers.clear();
+    Admin.updateBulkBar();
     const tbody = $$('learners-tbody'); if(!tbody) return;
     try {
       const tid = $$('l-team-filter').value;
@@ -329,6 +411,13 @@ const Admin = {
           const o = document.createElement('option'); o.value = t.id; o.textContent = t.name; filter.appendChild(o);
         });
       }
+      // Populate bulk-team dropdown with current teams
+      const bulkTeamSel = $$('bulk-team');
+      if (bulkTeamSel) {
+        bulkTeamSel.innerHTML = '<option value="">Move to team…</option><option value="__unassign__">Unassign</option>' +
+          teamsCache.map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join('');
+      }
+
       Admin.filterLearners($$('learners-search') ? $$('learners-search').value : '');
 
       // Render pagination controls
@@ -350,7 +439,7 @@ const Admin = {
     const tbody = $$('learners-tbody'); if(!tbody) return;
     const query = (q || '').toLowerCase().trim();
     const filtered = _allLearners.filter(l => (l.name || '').toLowerCase().includes(query));
-    if(!filtered.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;">No matches.</td></tr>'; return; }
+    if(!filtered.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:32px;">No matches.</td></tr>'; return; }
     tbody.innerHTML = filtered.map(l => {
       const team = (teamsCache||[]).find(t => t.id === l.team_id);
       const teamHtml = team ? esc(team.name) : '<span class="chip chip-amber" style="font-size:9px;">Unassigned</span>';
@@ -358,7 +447,9 @@ const Admin = {
       const roleChip = isManager
         ? '<span class="chip chip-blue" style="font-size:9px;">Manager</span>'
         : '<span class="chip chip-green" style="font-size:9px;">User</span>';
+      const isChecked = Admin._selectedUsers.has(l.id);
       return `<tr>
+        <td style="width:36px;"><input type="checkbox" data-id="${l.id}" ${isChecked ? 'checked' : ''} onchange="Admin.toggleUserSelect('${l.id}', this.checked)"></td>
         <td>${esc(l.name || 'Unnamed')} ${l.overdue_count ? `<span class="chip chip-red" style="font-size:9px;">⚠️ ${l.overdue_count}</span>` : ''}</td>
         <td>${roleChip}</td>
         <td><button class="btn btn-ghost btn-sm" onclick="App.openEditLearner('${l.id}','${esc(l.name)}','${l.team_id||''}','${l.role||'learner'}')">${teamHtml}</button></td>

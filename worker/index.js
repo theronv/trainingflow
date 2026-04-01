@@ -380,6 +380,35 @@ app.post('/api/learners/bulk', requireManager, async (c) => {
   return c.json({ created: created.length, created_learners: created, errors }, 201)
 })
 
+app.patch('/api/learners/bulk', requireAdmin, async (c) => {
+  const body = await c.req.json()
+  const ids = body.ids || []
+  if (!ids.length) return c.json({ error: 'No ids provided' }, 400)
+  const db = getDb(c.env)
+  const fields = [], args = []
+  if (body.team_id !== undefined) { fields.push('team_id = ?'); args.push(body.team_id || null) }
+  if (body.role) { fields.push('role = ?'); args.push(body.role) }
+  if (!fields.length) return c.json({ error: 'Nothing to update' }, 400)
+  args.push(...ids)
+  await db.execute({
+    sql: `UPDATE users SET ${fields.join(', ')} WHERE id IN (${ids.map(() => '?').join(',')})`,
+    args
+  })
+  return c.json({ ok: true, updated: ids.length })
+})
+
+app.delete('/api/learners/bulk', requireAdmin, async (c) => {
+  const body = await c.req.json()
+  const ids = body.ids || []
+  if (!ids.length) return c.json({ error: 'No ids provided' }, 400)
+  const db = getDb(c.env)
+  await db.execute({
+    sql: `DELETE FROM users WHERE id IN (${ids.map(() => '?').join(',')})`,
+    args: ids
+  })
+  return c.json({ ok: true, deleted: ids.length })
+})
+
 app.post('/api/learners', requireManager, async (c) => {
   const body = await c.req.json()
   if (!body.name || !body.password) return c.json({ error: 'Name and password are required' }, 400)

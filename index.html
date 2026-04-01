@@ -606,11 +606,25 @@ if (typeof marked !== 'undefined') {
             <button class="btn btn-primary" onclick="App.openAddLearner()">+ Add User</button>
           </div>
         </div>
-        <div class="field" style="margin-bottom:var(--space-5);">
+        <div class="field" style="margin-bottom:var(--space-3);">
           <input type="text" id="learners-search" placeholder="Search by name..." oninput="App.filterLearners(this.value)">
         </div>
+        <div id="bulk-bar" class="hidden" style="display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap;padding:var(--space-3) var(--space-4);margin-bottom:var(--space-3);background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius);font-size:var(--text-sm);">
+          <span id="bulk-count" style="font-weight:600;color:var(--ink-1);"></span>
+          <select id="bulk-team" class="btn btn-outline btn-sm" style="width:auto;" onchange="Admin.bulkChangeTeam(this.value)">
+            <option value="">Move to team…</option>
+            <option value="__unassign__">Unassign</option>
+          </select>
+          <select id="bulk-role" class="btn btn-outline btn-sm" style="width:auto;" onchange="Admin.bulkChangeRole(this.value)">
+            <option value="">Change role…</option>
+            <option value="learner">Set as User</option>
+            <option value="manager">Set as Manager</option>
+          </select>
+          <button class="btn btn-ghost btn-sm" style="color:var(--fail);margin-left:auto;" onclick="Admin.bulkDelete()">Delete Selected</button>
+          <button class="btn btn-ghost btn-sm" onclick="Admin.clearSelection()">Clear</button>
+        </div>
         <div class="table-wrap">
-          <table><thead><tr><th>Name</th><th>Role</th><th>Team</th><th>Last Login</th><th>Comps</th><th>Actions</th></tr></thead>
+          <table><thead><tr><th style="width:36px;"><input type="checkbox" id="select-all-cb" onchange="Admin.toggleSelectAll(this.checked)" title="Select all"></th><th>Name</th><th>Role</th><th>Team</th><th>Last Login</th><th>Comps</th><th>Actions</th></tr></thead>
           <tbody id="learners-tbody"></tbody></table>
         </div>
       </div>
