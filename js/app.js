@@ -435,8 +435,7 @@ const AppProxy = {
     const html = document.documentElement;
     const isLight = html.getAttribute('data-theme') === 'light';
     const next = isLight ? 'dark' : 'light';
-    if (next === 'dark') html.removeAttribute('data-theme');
-    else html.setAttribute('data-theme', 'light');
+    html.setAttribute('data-theme', next);
     localStorage.setItem('trainflow_theme', next);
     const icon = next === 'light' ? '☾' : '☀';
     document.querySelectorAll('.theme-toggle').forEach(btn => {
@@ -448,13 +447,12 @@ const AppProxy = {
   // Global
   init: async () => {
     const savedTheme = localStorage.getItem('trainflow_theme');
-    if (savedTheme === 'light') {
-      document.documentElement.setAttribute('data-theme', 'light');
-      document.querySelectorAll('.theme-toggle').forEach(btn => {
-        btn.textContent = '☾';
-        btn.title = 'Switch to dark mode';
-      });
-    }
+    const theme = savedTheme === 'dark' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', theme);
+    document.querySelectorAll('.theme-toggle').forEach(btn => {
+      btn.textContent = theme === 'light' ? '☾' : '☀';
+      btn.title = theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode';
+    });
     // Pre-apply saved brand color before API loads to prevent flash
     const savedBrand = localStorage.getItem('trainflow_brand_color');
     if (savedBrand && /^#[0-9a-fA-F]{6}$/.test(savedBrand)) {
