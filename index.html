@@ -409,7 +409,7 @@ if (typeof marked !== 'undefined') {
       <button class="nav-btn active" id="an-dashboard"   onclick="App.aNav('dashboard')"><span class="nav-icon">▦</span>Dashboard</button>
       <button class="nav-btn"        id="an-courses"     onclick="App.aNav('courses')"><span class="nav-icon">📚</span>Courses</button>
       <button class="nav-btn"        id="an-importer"    onclick="App.aNav('importer')"><span class="nav-icon">🪄</span>AI Importer</button>
-      <button class="nav-btn"        id="an-learners"    onclick="App.aNav('learners')"><span class="nav-icon">👥</span>Learners</button>
+      <button class="nav-btn"        id="an-learners"    onclick="App.aNav('learners')"><span class="nav-icon">👥</span>Users</button>
       <button class="nav-btn"        id="an-teams"       onclick="App.aNav('teams')"><span class="nav-icon">🏘️</span>Teams</button>
       <button class="nav-btn"        id="an-completions" onclick="App.aNav('completions')"><span class="nav-icon">✓</span>Completions</button>
       <div class="sidenav-section">
@@ -591,21 +591,26 @@ if (typeof marked !== 'undefined') {
         <div class="page-head page-head-row">
           <div>
             <div class="page-eyebrow">People</div>
-            <div class="page-title">Learners</div>
+            <div class="page-title">Users</div>
           </div>
-          <div style="display:flex;gap:var(--space-3);align-items:center;">
+          <div style="display:flex;gap:var(--space-3);align-items:center;flex-wrap:wrap;">
+            <select id="l-role-filter" class="btn btn-outline btn-sm" style="width:auto;" onchange="App.renderLearners()">
+              <option value="">All Roles</option>
+              <option value="learner">User</option>
+              <option value="manager">Manager</option>
+            </select>
             <select id="l-team-filter" class="btn btn-outline btn-sm" style="width:auto;" onchange="App.renderLearners()">
               <option value="">All Teams</option>
               <option value="unassigned">Unassigned</option>
             </select>
-            <button class="btn btn-primary" onclick="App.openAddLearner()">+ Add Learner</button>
+            <button class="btn btn-primary" onclick="App.openAddLearner()">+ Add User</button>
           </div>
         </div>
         <div class="field" style="margin-bottom:var(--space-5);">
           <input type="text" id="learners-search" placeholder="Search by name..." oninput="App.filterLearners(this.value)">
         </div>
         <div class="table-wrap">
-          <table><thead><tr><th>Name</th><th>Team</th><th>Last Login</th><th>Comps</th><th>Actions</th></tr></thead>
+          <table><thead><tr><th>Name</th><th>Role</th><th>Team</th><th>Last Login</th><th>Comps</th><th>Actions</th></tr></thead>
           <tbody id="learners-tbody"></tbody></table>
         </div>
       </div>

@@ -308,8 +308,12 @@ const Admin = {
     const tbody = $$('learners-tbody'); if(!tbody) return;
     try {
       const tid = $$('l-team-filter').value;
-      let path = tid ? `/api/learners?team_id=${tid==='unassigned'?'null':tid}` : '/api/learners';
-      path += `${path.includes('?') ? '&' : '?'}page=${page}`;
+      const role = $$('l-role-filter')?.value || '';
+      const params = new URLSearchParams();
+      if (tid) params.set('team_id', tid === 'unassigned' ? 'null' : tid);
+      if (role) params.set('role', role);
+      params.set('page', page);
+      let path = `/api/learners?${params.toString()}`;
       const [apiRes, teams] = await Promise.all([api(path), api('/api/admin/teams')]);
 
       // Handle both paginated { rows, total, pages } and legacy plain array
@@ -337,7 +341,7 @@ const Admin = {
       }
       if (totalPages <= 1) { pgEl.innerHTML = ''; return; }
       pgEl.innerHTML = `
-        <span style="font-size:var(--text-sm);color:var(--ink-3);">${totalCount} learners · Page ${page} of ${totalPages}</span>
+        <span style="font-size:var(--text-sm);color:var(--ink-3);">${totalCount} users · Page ${page} of ${totalPages}</span>
         <button class="btn btn-outline btn-sm" ${page <= 1 ? 'disabled' : ''} onclick="Admin.renderLearners(${page - 1})">← Prev</button>
         <button class="btn btn-outline btn-sm" ${page >= totalPages ? 'disabled' : ''} onclick="Admin.renderLearners(${page + 1})">Next →</button>`;
     } catch(e) { tbody.innerHTML = `<tr><td colspan="5">${esc(e.message)}</td></tr>`; }
@@ -346,13 +350,17 @@ const Admin = {
     const tbody = $$('learners-tbody'); if(!tbody) return;
     const query = (q || '').toLowerCase().trim();
     const filtered = _allLearners.filter(l => (l.name || '').toLowerCase().includes(query));
-    if(!filtered.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;">No matches.</td></tr>'; return; }
+    if(!filtered.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;">No matches.</td></tr>'; return; }
     tbody.innerHTML = filtered.map(l => {
       const team = (teamsCache||[]).find(t => t.id === l.team_id);
       const teamHtml = team ? esc(team.name) : '<span class="chip chip-amber" style="font-size:9px;">Unassigned</span>';
-      const roleChip = l.role === 'manager' ? '<span class="chip chip-blue" style="font-size:9px;">Mgr</span> ' : '';
+      const isManager = l.role === 'manager';
+      const roleChip = isManager
+        ? '<span class="chip chip-blue" style="font-size:9px;">Manager</span>'
+        : '<span class="chip chip-green" style="font-size:9px;">User</span>';
       return `<tr>
-        <td>${roleChip}${esc(l.name || 'Unnamed')} ${l.overdue_count ? `<span class="chip chip-red" style="font-size:9px;">⚠️ ${l.overdue_count}</span>` : ''}</td>
+        <td>${esc(l.name || 'Unnamed')} ${l.overdue_count ? `<span class="chip chip-red" style="font-size:9px;">⚠️ ${l.overdue_count}</span>` : ''}</td>
+        <td>${roleChip}</td>
         <td><button class="btn btn-ghost btn-sm" onclick="App.openEditLearner('${l.id}','${esc(l.name)}','${l.team_id||''}','${l.role||'learner'}')">${teamHtml}</button></td>
         <td>${l.last_login_at ? new Date(l.last_login_at*1000).toLocaleDateString() : '—'}</td>
         <td>${l.completion_count || 0}</td>
@@ -435,7 +443,7 @@ const Admin = {
     } catch(e) { Toast.err(e.message); }
   },
   openDeleteLearner(id, name, role) {
-    const label = role === 'manager' ? 'Manager' : 'Learner';
+    const label = role === 'manager' ? 'Manager' : 'User';
     $$('confirm-delete-title').textContent = `Delete ${label}`;
     $$('confirm-delete-msg').textContent = `Permanently delete "${name}"? This cannot be undone.`;
     $$('confirm-delete-btn').onclick = () => Admin.submitDeleteLearner(id);

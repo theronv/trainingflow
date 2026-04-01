@@ -487,21 +487,28 @@ app.get('/api/learners', requireManager, async (c) => {
   const user = c.get('user')
   const db = getDb(c.env)
   const tid = c.req.query('team_id')
+  const roleFilter = c.req.query('role')
   const page = parseInt(c.req.query('page') || '0')
   const PAGE_SIZE = 50
 
-  let where = ["role = 'learner'"]
+  let where = []
   let args = []
 
   if (user.scopedToTeam) {
+    // Managers only see their team's learners
+    where.push("role = 'learner'")
     where.push('team_id = ?'); args.push(user.scopedToTeam)
-  } else if (tid && tid !== 'null') {
-    where.push('team_id = ?'); args.push(tid)
-  } else if (tid === 'null') {
-    where.push('team_id IS NULL')
+  } else {
+    // Admins see all users; optional role filter
+    if (roleFilter) { where.push('role = ?'); args.push(roleFilter) }
+    if (tid && tid !== 'null') {
+      where.push('team_id = ?'); args.push(tid)
+    } else if (tid === 'null') {
+      where.push('team_id IS NULL')
+    }
   }
 
-  const baseWhere = `WHERE ${where.join(' AND ')}`
+  const baseWhere = where.length ? `WHERE ${where.join(' AND ')}` : ''
 
   if (page > 0) {
     const [countRes, rowsRes] = await Promise.all([
