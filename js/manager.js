@@ -81,14 +81,22 @@ const Manager = {
 
   // ─── TEAM ───
   async renderTeam() {
+    const tbody = $$('m-team-tbody'); if (!tbody) return;
     try {
       const learners = await managerApi(`/api/learners?team_id=${curManager.team_id}`);
-      $$('m-team-tbody').innerHTML = learners.map(l => `<tr>
-        <td>${esc(l.name)} ${l.overdue_count?`<span class="chip chip-red">⚠️ ${l.overdue_count} overdue</span>`:''}</td>
-        <td>${l.completion_count}</td>
+      const rows = Array.isArray(learners) ? learners : (learners.rows || []);
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--ink-4);">No learners yet. Use "+ Add Learner" to get started.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = rows.map(l => `<tr>
+        <td>${esc(l.name)} ${l.overdue_count ? `<span class="chip chip-red" style="font-size:9px;">⚠️ ${l.overdue_count} overdue</span>` : ''}</td>
+        <td>${l.assignment_count || 0}</td>
+        <td>${l.completion_count || 0}</td>
+        <td>${l.pass_rate != null ? l.pass_rate + '%' : '—'}</td>
         <td><button class="btn btn-ghost btn-sm" onclick="Admin.openResetPw('${l.id}','${esc(l.name)}')">Reset PW</button></td>
       </tr>`).join('');
-    } catch(e) { }
+    } catch(e) { tbody.innerHTML = `<tr><td colspan="5" style="color:var(--fail);padding:16px;">${esc(e.message)}</td></tr>`; }
   },
 
   // ─── TEAM ASSIGN ───

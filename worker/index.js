@@ -525,30 +525,42 @@ app.get('/api/learners', requireManager, async (c) => {
 
   if (user.scopedToTeam) {
     // Managers only see their team's learners
-    where.push("role = 'learner'")
-    where.push('team_id = ?'); args.push(user.scopedToTeam)
+    where.push("u.role = 'learner'")
+    where.push('u.team_id = ?'); args.push(user.scopedToTeam)
   } else {
     // Admins see all users; optional role filter
-    if (roleFilter) { where.push('role = ?'); args.push(roleFilter) }
+    if (roleFilter) { where.push('u.role = ?'); args.push(roleFilter) }
     if (tid && tid !== 'null') {
-      where.push('team_id = ?'); args.push(tid)
+      where.push('u.team_id = ?'); args.push(tid)
     } else if (tid === 'null') {
-      where.push('team_id IS NULL')
+      where.push('u.team_id IS NULL')
     }
   }
 
   const baseWhere = where.length ? `WHERE ${where.join(' AND ')}` : ''
 
+  // Per-learner stats computed via subqueries
+  const stats = `,
+    (SELECT COUNT(*) FROM assignments a WHERE a.learner_id = u.id) AS assignment_count,
+    (SELECT COUNT(*) FROM completions c WHERE c.learner_id = u.id) AS completion_count,
+    CASE WHEN (SELECT COUNT(*) FROM completions c WHERE c.learner_id = u.id) > 0
+      THEN CAST(ROUND(100.0 *
+        (SELECT COUNT(*) FROM completions c WHERE c.learner_id = u.id AND c.passed = 1) /
+        (SELECT COUNT(*) FROM completions c WHERE c.learner_id = u.id)
+      ) AS INTEGER)
+      ELSE 0
+    END AS pass_rate`
+
   if (page > 0) {
     const [countRes, rowsRes] = await Promise.all([
-      db.execute({ sql: `SELECT COUNT(*) AS n FROM users ${baseWhere}`, args }),
-      db.execute({ sql: `SELECT * FROM users ${baseWhere} ORDER BY name LIMIT ${PAGE_SIZE} OFFSET ${(page - 1) * PAGE_SIZE}`, args })
+      db.execute({ sql: `SELECT COUNT(*) AS n FROM users u ${baseWhere}`, args }),
+      db.execute({ sql: `SELECT u.*${stats} FROM users u ${baseWhere} ORDER BY u.name LIMIT ${PAGE_SIZE} OFFSET ${(page - 1) * PAGE_SIZE}`, args })
     ])
     const total = toObj(countRes)?.n || 0
     return c.json({ rows: toObjs(rowsRes), total, page, pages: Math.ceil(total / PAGE_SIZE) })
   }
 
-  const res = await db.execute({ sql: `SELECT * FROM users ${baseWhere} ORDER BY name`, args })
+  const res = await db.execute({ sql: `SELECT u.*${stats} FROM users u ${baseWhere} ORDER BY u.name`, args })
   return c.json(toObjs(res))
 })
 
