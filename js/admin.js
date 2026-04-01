@@ -28,45 +28,77 @@ const Admin = {
   async renderDash() {
     const statsEl = $$('a-stats'); if(!statsEl) return;
     statsEl.innerHTML = '<div style="display:flex;justify-content:center;padding:40px;width:100%;"><div class="spinner"></div></div>';
-    
+
     try {
-      const [stats, teams] = await Promise.all([
+      const [stats, teams, recent] = await Promise.all([
         api('/api/admin/stats').catch(e => ({ error: e.message, summary: { total_learners:'N/A', total_courses:'N/A', completions_this_month:'N/A', pass_rate:'N/A' }, learners:[] })),
-        api('/api/admin/teams').catch(() => [])
+        api('/api/admin/teams').catch(() => []),
+        api('/api/admin/completions').catch(() => [])
       ]);
 
       const summary = stats.summary || { total_learners:'N/A', total_courses:'N/A', completions_this_month:'N/A', pass_rate:'N/A' };
       const learners = stats.learners || [];
       teamsCache = teams || [];
-      
+
+      // ── Stat tiles ──
       const pr = typeof summary.pass_rate === 'number' ? summary.pass_rate + '%' : 'N/A';
-      statsEl.innerHTML = [
-        ['Learners', summary.total_learners, '👥'],
-        ['Courses',  summary.total_courses, '📚'],
-        ['Month',    summary.completions_this_month, '🏆'],
-        ['Pass Rate', pr, '📈']
-      ].map(([l,v,i])=>`<div class="stat-tile">
-        <div style="font-size:24px;margin-bottom:var(--s-2);">${i}</div>
-        <div class="stat-value">${v}</div>
-        <div class="stat-label">${l}</div>
+      const tiles = [
+        { label: 'Learners',   value: summary.total_learners,         icon: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' },
+        { label: 'Courses',    value: summary.total_courses,           icon: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>' },
+        { label: 'This Month', value: summary.completions_this_month,  icon: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>' },
+        { label: 'Pass Rate',  value: pr,                              icon: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg>' },
+      ];
+      statsEl.innerHTML = tiles.map(({ label, value, icon }) => `<div class="stat-tile">
+        <div class="stat-icon">${icon}</div>
+        <div class="stat-value">${value}</div>
+        <div class="stat-label">${label}</div>
       </div>`).join('');
-      
-      const unassigned = (learners||[]).filter(l => !l.team_id).length;
-      let teamHtml = '<div style="font-weight:700;margin:var(--s-6) 0 var(--s-4);">Team Compliance</div><div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(200px, 1fr));gap:var(--space-4);align-items:stretch;">';
-      if (!teamsCache.length) {
-        teamHtml += '<div class="card" style="grid-column:1/-1;color:var(--ink-4);text-align:center;">No teams established.</div>';
-      } else {
-        teamHtml += teamsCache.map(t => `<div class="card" onclick="Admin.nav('teams')" style="cursor:pointer;margin-top:0;"><div style="font-weight:700;">${esc(t.name)}</div><div style="font-size:11px;">${t.learner_count || 0} members</div></div>`).join('');
+
+      // ── Recent activity ──
+      const recentEl = $$('a-recent');
+      if (recentEl) {
+        const items = (Array.isArray(recent) ? recent : []).slice(0, 6);
+        if (!items.length) {
+          recentEl.innerHTML = `<div class="dash-section-label">Recent Activity</div><div class="empty-state-sm">No completions recorded yet.</div>`;
+        } else {
+          recentEl.innerHTML = `<div class="dash-section-label">Recent Activity</div>
+            <div class="activity-list">${items.map(c => {
+              const date = new Date(c.completed_at * 1000).toLocaleDateString(undefined, { month:'short', day:'numeric' });
+              const chip = c.passed
+                ? '<span class="chip chip-green">Pass</span>'
+                : '<span class="chip chip-red">Fail</span>';
+              return `<div class="activity-item">
+                <div class="activity-info">
+                  <div class="activity-name">${esc(c.user_name)}</div>
+                  <div class="activity-course">${esc(c.course_title)}</div>
+                </div>
+                <div class="activity-meta">${chip}<span class="activity-date">${date}</span></div>
+              </div>`;
+            }).join('')}</div>`;
+        }
       }
-      teamHtml += '</div>';
-      if(unassigned > 0) teamHtml += `<div class="card" onclick="Admin.nav('learners')" style="margin-top:var(--space-4);background:var(--fail-lt);color:var(--fail);cursor:pointer;">⚠️ ${unassigned} unassigned learners found.</div>`;
+
+      // ── Team compliance table ──
+      const unassigned = (learners||[]).filter(l => !l.team_id).length;
+      let teamHtml = '<div class="dash-section-label">Team Compliance</div>';
+      if (!teamsCache.length) {
+        teamHtml += '<div class="empty-state-sm">No teams established yet.</div>';
+      } else {
+        teamHtml += `<div class="table-wrap"><table>
+          <thead><tr><th>Team</th><th>Members</th><th>Managers</th></tr></thead>
+          <tbody>${teamsCache.map(t => `<tr>
+            <td><span class="link-cell" onclick="Admin.nav('teams')">${esc(t.name)}</span></td>
+            <td>${t.learner_count || 0}</td>
+            <td>${t.manager_count || 0}</td>
+          </tr>`).join('')}</tbody>
+        </table></div>`;
+      }
+      if (unassigned > 0) teamHtml += `<div class="card" onclick="Admin.nav('learners')" style="margin-top:var(--space-3);background:var(--fail-lt);color:var(--fail);cursor:pointer;">⚠ ${unassigned} unassigned learner${unassigned !== 1 ? 's' : ''} found. Click to review.</div>`;
       $$('a-course-stats').innerHTML = teamHtml;
-      
+
       Admin.renderTroubleSpots();
-    } catch(e) { 
-      statsEl.innerHTML = `<div class="card" style="color:var(--fail);width:100%;">${esc(e.message)}</div>`; 
-    } finally {
-      // Spinner is already overwritten by content or error card
+    } catch(e) {
+      statsEl.innerHTML = `<div class="card" style="color:var(--fail);width:100%;">${esc(e.message)}</div>`;
     }
   },
 
@@ -75,44 +107,126 @@ const Admin = {
       const spots = await api('/api/admin/trouble-spots').catch(() => []);
       const el = $$('a-trouble-spots'); if(!el) return;
       if(!spots || !spots.length) { el.innerHTML = ''; return; }
-      el.innerHTML = `<div style="font-weight:700;margin-bottom:var(--space-4);color:var(--fail);">⚠️ Trouble Spots</div>
+      el.innerHTML = `<div class="dash-section-label" style="color:var(--fail);">Trouble Spots</div>
         <div class="table-wrap"><table><thead><tr><th>Question</th><th>Fail Rate</th></tr></thead>
         <tbody>${spots.map(s=>`<tr><td>${esc(s.question)}</td><td><span class="chip chip-red">${s.failure_rate}%</span></td></tr>`).join('')}</tbody></table></div>`;
     } catch(e) { }
   },
 
   // ─── TEAMS ───
+  _selectedTeamId: null,
+
   async renderTeams() {
     try {
-      const teams = await api('/api/admin/teams'); teamsCache = teams || [];
-      const grid = $$('teams-grid'); if(!grid) return;
-      if (!teams.length) { grid.innerHTML = '<div class="empty">No teams created yet.</div>'; }
-      else {
-        grid.innerHTML = teams.map(t => `<div class="card team-card">
-          <div style="font-weight:700;margin-bottom:4px;">${esc(t.name)}</div>
-          <div style="font-size:11px;color:var(--ink-meta);margin-bottom:12px;">${t.learner_count || 0} learner${t.learner_count !== 1 ? 's' : ''} · ${t.manager_count || 0} manager${t.manager_count !== 1 ? 's' : ''}</div>
-          <div class="team-card-actions">
-            <button class="btn btn-outline btn-sm" onclick="Admin.toggleTeamMembers('${t.id}')">View Members</button>
-            <button class="btn btn-outline btn-sm" onclick="Admin.openAddManager('${t.id}','${esc(t.name)}')">+ Manager</button>
-            <button class="btn btn-outline btn-sm" onclick="Admin.openGenerateInvite('${t.id}','${esc(t.name)}')">+ Invite</button>
-            <button class="btn btn-outline btn-sm" onclick="Admin.openRenameTeam('${t.id}','${esc(t.name)}')">Rename</button>
-            <button class="btn btn-outline btn-sm" style="color:var(--fail);border-color:var(--fail);" onclick="Admin.deleteTeam('${t.id}')">Delete</button>
-          </div>
-          <div id="team-members-${t.id}" class="hidden" style="margin-top:12px;padding-top:8px;border-top:1px solid var(--rule);"></div>
-        </div>`).join('');
+      const teams = await api('/api/admin/teams');
+      teamsCache = teams || [];
+      const listEl = $$('teams-list'); if (!listEl) return;
+
+      if (!teams.length) {
+        listEl.innerHTML = '<div class="empty-state-sm">No teams yet.</div>';
+        const detail = $$('team-detail');
+        if (detail) detail.innerHTML = '<div class="team-detail-empty">Create your first team to get started.</div>';
+        return;
       }
-      Admin.renderInviteCodes();
+
+      listEl.innerHTML = teams.map(t => `
+        <div class="team-list-item" id="tli-${t.id}" onclick="Admin.selectTeam('${t.id}')">
+          <div class="team-list-name">${esc(t.name)}</div>
+          <div class="team-list-meta">${t.learner_count || 0} member${t.learner_count !== 1 ? 's' : ''} · ${t.manager_count || 0} manager${t.manager_count !== 1 ? 's' : ''}</div>
+        </div>`).join('');
+
+      const toSelect = (Admin._selectedTeamId && teams.find(t => t.id === Admin._selectedTeamId))
+        ? Admin._selectedTeamId
+        : teams[0].id;
+      Admin.selectTeam(toSelect);
     } catch(e) { }
   },
-  async toggleTeamMembers(tid) {
-    const el = $$(`team-members-${tid}`); if(!el) return;
-    if(!el.classList.contains('hidden')) return el.classList.add('hidden');
-    el.classList.remove('hidden'); el.innerHTML = 'Loading...';
+
+  async selectTeam(tid) {
+    Admin._selectedTeamId = tid;
+    document.querySelectorAll('.team-list-item').forEach(el => el.classList.remove('active'));
+    const listItem = $$(`tli-${tid}`); if (listItem) listItem.classList.add('active');
+
+    const team = teamsCache.find(t => t.id === tid); if (!team) return;
+    const detail = $$('team-detail'); if (!detail) return;
+
+    detail.innerHTML = `
+      <div class="team-detail-head">
+        <div>
+          <div class="team-detail-name">${esc(team.name)}</div>
+          <div class="team-detail-meta">${team.learner_count || 0} learner${team.learner_count !== 1 ? 's' : ''} · ${team.manager_count || 0} manager${team.manager_count !== 1 ? 's' : ''}</div>
+        </div>
+        <div class="team-detail-actions">
+          <button class="btn btn-outline btn-sm" onclick="Admin.openAddManager('${tid}','${esc(team.name)}')">+ Manager</button>
+          <button class="btn btn-outline btn-sm" onclick="Admin.openGenerateInvite('${tid}','${esc(team.name)}')">+ Invite</button>
+          <button class="btn btn-outline btn-sm" onclick="Admin.openRenameTeam('${tid}','${esc(team.name)}')">Rename</button>
+          <button class="btn btn-outline btn-sm" style="color:var(--fail);border-color:var(--fail);" onclick="Admin.deleteTeam('${tid}')">Delete</button>
+        </div>
+      </div>
+      <div class="dash-section-label" style="margin-top:var(--space-5);margin-bottom:var(--space-3);">Members</div>
+      <div id="team-members-detail"><div style="display:flex;justify-content:center;padding:var(--space-6);"><div class="spinner"></div></div></div>
+      <div class="dash-section-label" style="margin-top:var(--space-6);margin-bottom:var(--space-3);">Invite Codes</div>
+      <div id="team-invites-detail"><div style="display:flex;justify-content:center;padding:var(--space-6);"><div class="spinner"></div></div></div>`;
+
+    // Load members
     try {
       const res = await api(`/api/learners?team_id=${tid}`);
       const rows = Array.isArray(res) ? res : (res.rows || []);
-      el.innerHTML = `<div class="table-wrap"><table><tbody>${rows.map(l=>`<tr><td>${esc(l.name)}</td><td><button class="btn btn-ghost btn-sm" onclick="Admin.moveLearner('${l.id}')">Move</button></td></tr>`).join('')}</tbody></table></div>`;
-    } catch(e) { el.innerHTML = `<div style="color:var(--fail);font-size:11px;">${esc(e.message)}</div>`; }
+      const membersEl = $$('team-members-detail'); if (!membersEl) return;
+      if (!rows.length) {
+        membersEl.innerHTML = '<div class="empty-state-sm">No members yet. Generate an invite code to add learners.</div>';
+      } else {
+        membersEl.innerHTML = `<div class="table-wrap"><table>
+          <thead><tr><th>Name</th><th>Role</th><th>Actions</th></tr></thead>
+          <tbody>${rows.map(l => {
+            const roleChip = l.role === 'manager'
+              ? '<span class="chip chip-blue" style="font-size:9px;">Manager</span>'
+              : '<span class="chip chip-green" style="font-size:9px;">Learner</span>';
+            return `<tr>
+              <td>${esc(l.name)}</td>
+              <td>${roleChip}</td>
+              <td><button class="btn btn-ghost btn-sm" onclick="Admin.moveLearner('${l.id}')">Move</button></td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table></div>`;
+      }
+    } catch(e) {
+      const el = $$('team-members-detail');
+      if (el) el.innerHTML = `<div style="color:var(--fail);font-size:var(--text-sm);">${esc(e.message)}</div>`;
+    }
+
+    // Load invite codes for this team
+    try {
+      const invites = await api('/api/admin/invites');
+      const teamInvites = (invites || []).filter(inv => inv.team_id === tid);
+      const invEl = $$('team-invites-detail'); if (!invEl) return;
+      if (!teamInvites.length) {
+        invEl.innerHTML = '<div class="empty-state-sm">No invite codes yet. Use "+ Invite" above to generate one.</div>';
+      } else {
+        invEl.innerHTML = `<div class="table-wrap"><table>
+          <thead><tr><th>Code</th><th>Status</th><th>Expires</th><th>Actions</th></tr></thead>
+          <tbody>${teamInvites.map(inv => {
+            const statusChip = inv.used
+              ? '<span class="chip chip-amber" style="font-size:9px;">Used</span>'
+              : '<span class="chip chip-blue" style="font-size:9px;">Active</span>';
+            const expires = inv.expires_at ? new Date(inv.expires_at).toLocaleDateString() : 'Never';
+            return `<tr>
+              <td style="font-family:monospace;letter-spacing:0.08em;font-weight:600;">${esc(inv.code)}</td>
+              <td>${statusChip}</td>
+              <td>${expires}</td>
+              <td style="white-space:nowrap;">${!inv.used ? `
+                <button class="btn btn-ghost btn-sm" onclick="Admin.copyInviteCode('${esc(inv.code)}')">Copy</button>
+                <button class="btn btn-ghost btn-sm" onclick="Admin.copyInviteMessage('${esc(inv.code)}','${esc(team.name)}')" title="Copy onboarding message">Copy Msg</button>
+                <button class="btn btn-ghost btn-sm" style="color:var(--fail)" onclick="Admin.revokeInvite(${inv.id})">Revoke</button>
+              ` : '—'}</td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table></div>`;
+      }
+    } catch(e) {
+      const el = $$('team-invites-detail');
+      if (el) el.innerHTML = `<div style="color:var(--fail);font-size:var(--text-sm);">${esc(e.message)}</div>`;
+    }
   },
   openCreateTeam() {
     $$('team-modal-title').textContent = 'New Team';
@@ -229,7 +343,7 @@ const Admin = {
     try {
       await api(`/api/admin/invites/${id}`, { method:'DELETE' });
       Toast.ok('Invite revoked.');
-      Admin.renderInviteCodes();
+      Admin.selectTeam(Admin._selectedTeamId);
     } catch(e) { Toast.err(e.message); }
   },
 
@@ -618,25 +732,71 @@ const Admin = {
   },
 
   // ─── COMPLETIONS ───
-  async renderComps(cid = '') {
+  async renderComps() {
     const tbody = $$('comp-tbody'); if(!tbody) return;
     try {
-      const res = await api(`/api/admin/completions?course_id=${cid}`);
+      const cid  = $$('comp-filter')?.value || '';
+      const from = $$('comp-from')?.value || '';
+      const to   = $$('comp-to')?.value || '';
+      const params = new URLSearchParams();
+      if (cid)  params.set('course_id', cid);
+      if (from) params.set('from', from);
+      if (to)   params.set('to', to);
+      const res = await api(`/api/admin/completions?${params.toString()}`);
+
+      // Populate course filter on first load
+      const filterEl = $$('comp-filter');
+      if (filterEl && filterEl.options.length <= 1) {
+        const courses = await api('/api/courses').catch(() => []);
+        courses.forEach(c => {
+          const o = document.createElement('option'); o.value = c.id; o.textContent = c.title; filterEl.appendChild(o);
+        });
+        if (cid) filterEl.value = cid;
+      }
+
       if (!res || !res.length) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--ink-4);padding:32px;">No completions recorded yet.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--ink-4);padding:32px;">No completions match these filters.</td></tr>';
+        $$('comp-pass-rate').textContent = '';
         return;
       }
-      tbody.innerHTML = (res||[]).map(r => `<tr><td>${esc(r.user_name)}</td><td>${esc(r.course_title)}</td><td>${r.score}%</td><td>${r.passed?'<span class="chip chip-green">Passed</span>':'<span class="chip chip-red">Failed</span>'}</td><td>${new Date(r.completed_at*1000).toLocaleDateString()}</td><td style="font-family:monospace;font-size:11px;">${r.cert_id || '—'}</td></tr>`).join('');
+
+      const passed = res.filter(r => r.passed).length;
+      const rate = Math.round((passed / res.length) * 100);
+      $$('comp-pass-rate').textContent = `${rate}% pass rate · ${res.length} records`;
+
+      tbody.innerHTML = res.map(r => `<tr>
+        <td>${esc(r.user_name)}</td>
+        <td>${esc(r.course_title)}</td>
+        <td>${r.score}%</td>
+        <td>${r.passed ? '<span class="chip chip-green">Passed</span>' : '<span class="chip chip-red">Failed</span>'}</td>
+        <td>${new Date(r.completed_at * 1000).toLocaleDateString()}</td>
+        <td style="font-family:monospace;font-size:11px;">${r.cert_id || '—'}</td>
+      </tr>`).join('');
     } catch(e) { }
+  },
+
+  clearCompFilters() {
+    const f = $$('comp-filter'); if (f) f.value = '';
+    const fr = $$('comp-from'); if (fr) fr.value = '';
+    const to = $$('comp-to'); if (to) to.value = '';
+    Admin.renderComps();
   },
 
   async renderCourses() {
     const grid = $$('a-courses-grid'); if(!grid) return;
     grid.innerHTML = '<div style="display:flex;justify-content:center;padding:40px;width:100%;grid-column:1/-1"><div class="spinner"></div></div>';
     try {
-      const [courses, sections] = await Promise.all([api('/api/courses'), api('/api/sections').catch(() => [])]);
+      const [courses, sections, assignments] = await Promise.all([
+        api('/api/courses'),
+        api('/api/sections').catch(() => []),
+        api('/api/assignments').catch(() => [])
+      ]);
       sectionsCache = sections || [];
       Admin._renderSectionsBar(sections);
+
+      // Count enrolled learners per course
+      const enrolled = {};
+      (assignments || []).forEach(a => { enrolled[a.course_id] = (enrolled[a.course_id] || 0) + 1; });
 
       if (!courses.length) {
         grid.innerHTML = '<div class="card" style="grid-column:1/-1;text-align:center;padding:40px;color:var(--ink-4);">No courses created yet. Use the Importer or Builder to start.</div>';
@@ -661,12 +821,12 @@ const Admin = {
         if(!bySec[s.id].length) {
           html += `<div style="grid-column:1/-1;color:var(--ink-4);font-size:var(--text-sm);padding:var(--space-3) 0;">No courses in this section yet.</div>`;
         } else {
-          html += bySec[s.id].map(c => Admin._courseCard(c, sections)).join('');
+          html += bySec[s.id].map(c => Admin._courseCard(c, sections, enrolled)).join('');
         }
       });
       if(unsec.length) {
         if(sections.length) html += `<div style="grid-column:1/-1;margin-top:var(--space-6);padding-bottom:var(--space-2);border-bottom:2px solid var(--rule);"><div style="font-weight:700;font-size:var(--text-lg);color:var(--ink-3);">Unsectioned</div></div>`;
-        html += unsec.map(c => Admin._courseCard(c, sections)).join('');
+        html += unsec.map(c => Admin._courseCard(c, sections, enrolled)).join('');
       }
       grid.innerHTML = html;
     } catch(e) {
@@ -685,10 +845,17 @@ const Admin = {
       </span>`).join('');
   },
 
-  _courseCard(c, sections) {
+  _courseCard(c, sections, enrolled = {}) {
     const secOpts = sections.map(s => `<option value="${s.id}" ${c.section_id===s.id?'selected':''}>${esc(s.name)}</option>`).join('');
+    const count = enrolled[c.id] || 0;
+    const enrollBadge = count > 0
+      ? `<span class="chip chip-green" style="font-size:9px;">${count} enrolled</span>`
+      : `<span class="chip" style="font-size:9px;color:var(--ink-4);">No learners</span>`;
     return `<div class="card">
-      <div style="font-weight:700;">${esc(c.title)}</div>
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:4px;">
+        <div style="font-weight:700;line-height:1.3;">${esc(c.title)}</div>
+        ${enrollBadge}
+      </div>
       ${sections.length ? `<select class="btn btn-ghost btn-sm" style="width:100%;margin-top:8px;text-align:left;" onchange="Admin.setCourseSection('${c.id}',this.value)">
         <option value="">No section</option>${secOpts}
       </select>` : ''}
@@ -793,7 +960,13 @@ const Admin = {
       const filterId = isTeam
         ? ($$('m-comp-filter')?.value || '')
         : ($$('comp-filter')?.value || '');
-      const url = `/api/admin/completions${filterId ? `?course_id=${encodeURIComponent(filterId)}` : ''}`;
+      const from = !isTeam ? ($$('comp-from')?.value || '') : '';
+      const to   = !isTeam ? ($$('comp-to')?.value || '') : '';
+      const params = new URLSearchParams();
+      if (filterId) params.set('course_id', filterId);
+      if (from) params.set('from', from);
+      if (to)   params.set('to', to);
+      const url = `/api/admin/completions?${params.toString()}`;
       const res = isTeam ? await managerApi(url) : await api(url);
       if (!res || !res.length) return Toast.info('No completions to export.');
       const rows = [

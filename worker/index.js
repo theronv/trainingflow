@@ -643,19 +643,23 @@ app.get('/api/admin/completions', requireManager, async (c) => {
   const user = c.get('user')
   const db = getDb(c.env)
   const cid = c.req.query('course_id')
-  
-  let sql = `SELECT c.*, co.title AS course_title, u.name AS user_name 
-             FROM completions c 
-             JOIN courses co ON c.course_id = co.id 
+  const from = c.req.query('from')
+  const to = c.req.query('to')
+
+  let sql = `SELECT c.*, co.title AS course_title, u.name AS user_name
+             FROM completions c
+             JOIN courses co ON c.course_id = co.id
              JOIN users u ON c.learner_id = u.id`
   let args = []
   let where = []
-  
+
   if (cid) { where.push('c.course_id = ?'); args.push(cid) }
   if (user.scopedToTeam) { where.push('u.team_id = ?'); args.push(user.scopedToTeam) }
-  
+  if (from) { where.push('c.completed_at >= ?'); args.push(Math.floor(new Date(from).getTime() / 1000)) }
+  if (to) { where.push('c.completed_at <= ?'); args.push(Math.floor(new Date(to + 'T23:59:59').getTime() / 1000)) }
+
   if (where.length) sql += ' WHERE ' + where.join(' AND ')
-  
+
   try {
     const res = await db.execute({ sql: sql + ' ORDER BY c.completed_at DESC', args })
     return c.json(toObjs(res).map(r => ({ ...r, passed: !!r.passed })))

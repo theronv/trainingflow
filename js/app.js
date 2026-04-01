@@ -47,7 +47,7 @@ const AppProxy = {
   openCreateSection: () => Admin.openCreateSection(),
   openAddManager: (teamId, teamName) => Admin.openAddManager(teamId, teamName),
   openCreateTeam: () => Admin.openCreateTeam(),
-  renderComps: (cid) => Admin.renderComps(cid),
+  renderComps: () => Admin.renderComps(),
   saveBrand: (btn) => Admin.saveBrand(btn),
   clearRecords: () => Admin.clearRecords(),
   openResetPw: (id, n) => Admin.openResetPw(id, n),
@@ -184,7 +184,7 @@ const AppProxy = {
       $$('invite-expiry-label').textContent = expiresAt ? `Expires: ${new Date(expiresAt).toLocaleDateString()}` : '';
       $$('invite-form').classList.add('hidden');
       $$('invite-result').classList.remove('hidden');
-      Admin.renderInviteCodes();
+      if (Admin._selectedTeamId) Admin.selectTeam(Admin._selectedTeamId);
     } catch (e) {
       Toast.err(e.message);
       if (btn) { btn.disabled = false; btn.textContent = 'Generate Code'; }
