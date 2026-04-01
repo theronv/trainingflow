@@ -431,24 +431,29 @@ app.post('/api/auth/manager/register', async (c) => {
   const invRes = await db.execute({ sql: 'SELECT * FROM invite_codes WHERE code = ? AND used = 0', args: [body.code.toUpperCase()] })
   const inv = toObj(invRes)
   if (!inv) return c.json({ error: 'Invalid or expired invite code' }, 400)
-  if (inv.expires_at && inv.expires_at < Math.floor(Date.now() / 1000)) {
+  if (inv.expires_at && new Date(inv.expires_at) < new Date()) {
     return c.json({ error: 'Invite code has expired' }, 400)
   }
 
   const hash = await pbkdf2Hash(body.password)
   const id = uid()
-  
-  await db.execute("BEGIN TRANSACTION")
+
   try {
-    await db.execute({
-      sql: "INSERT INTO users (id, name, password_hash, role, team_id) VALUES (?, ?, ?, 'manager', ?)",
-      args: [id, body.name, hash, inv.team_id]
-    })
-    await db.execute({ sql: 'UPDATE invite_codes SET used = 1, used_by = ? WHERE id = ?', args: [id, inv.id] })
-    await db.execute("COMMIT")
+    await db.batch([
+      {
+        sql: "INSERT INTO users (id, name, password_hash, role, team_id) VALUES (?, ?, ?, 'manager', ?)",
+        args: [id, body.name, hash, inv.team_id]
+      },
+      {
+        sql: 'UPDATE invite_codes SET used = 1, used_by = ? WHERE id = ?',
+        args: [id, inv.id]
+      }
+    ])
   } catch (e) {
-    await db.execute("ROLLBACK")
-    throw e
+    if (e.message && e.message.includes('UNIQUE')) {
+      return c.json({ error: 'A manager account with that name already exists.' }, 409)
+    }
+    return c.json({ error: 'Failed to create account. Please try again.' }, 500)
   }
 
   const now = Math.floor(Date.now() / 1000)
