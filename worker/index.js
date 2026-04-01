@@ -381,7 +381,7 @@ app.post('/api/learners/bulk', requireManager, async (c) => {
 })
 
 app.patch('/api/learners/bulk', requireAdmin, async (c) => {
-  const body = await c.req.json()
+  const body = await c.req.json().catch(() => ({}))
   const ids = body.ids || []
   if (!ids.length) return c.json({ error: 'No ids provided' }, 400)
   const db = getDb(c.env)
@@ -397,8 +397,8 @@ app.patch('/api/learners/bulk', requireAdmin, async (c) => {
   return c.json({ ok: true, updated: ids.length })
 })
 
-app.delete('/api/learners/bulk', requireAdmin, async (c) => {
-  const body = await c.req.json()
+app.post('/api/learners/bulk/delete', requireAdmin, async (c) => {
+  const body = await c.req.json().catch(() => ({}))
   const ids = body.ids || []
   if (!ids.length) return c.json({ error: 'No ids provided' }, 400)
   const db = getDb(c.env)

@@ -350,7 +350,7 @@ const Admin = {
     if (!ids.length) return;
     if (!confirm(`Permanently delete ${ids.length} user(s)? This cannot be undone.`)) return;
     try {
-      await api('/api/learners/bulk', { method: 'DELETE', body: JSON.stringify({ ids }) });
+      await api('/api/learners/bulk/delete', { method: 'POST', body: JSON.stringify({ ids }) });
       Toast.ok(`${ids.length} user(s) deleted.`);
       Admin._selectedUsers.clear();
       Admin.renderLearners(Admin._learnersPage);
