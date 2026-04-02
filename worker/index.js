@@ -337,7 +337,8 @@ app.put('/api/admin/password', requireAdmin, async (c) => {
   if (!body.new_password || body.new_password.length < 8)
     return c.json({ error: 'Password must be at least 8 characters' }, 400)
   if (body.current_password) {
-    const stored = await getStoredHash(db, c.env)
+    const hashes = await getStoredHashes(db, c.env)
+    const stored = hashes[0]
     if (stored && stored !== 'MOCK_HASH') {
       const ok = await pbkdf2Verify(body.current_password, stored)
       if (!ok) return c.json({ error: 'Current password is incorrect' }, 400)
@@ -554,7 +555,13 @@ app.get('/api/learners', requireManager, async (c) => {
         (SELECT COUNT(*) FROM completions c WHERE c.learner_id = u.id)
       ) AS INTEGER)
       ELSE 0
-    END AS pass_rate`
+    END AS pass_rate,
+    (SELECT COUNT(*) FROM assignments a
+      WHERE a.learner_id = u.id
+        AND a.due_at IS NOT NULL
+        AND a.due_at < strftime('%Y-%m-%d %H:%M:%S', 'now')
+        AND NOT EXISTS (SELECT 1 FROM completions c WHERE c.learner_id = u.id AND c.course_id = a.course_id AND c.passed = 1)
+    ) AS overdue_count`
 
   if (page > 0) {
     const [countRes, rowsRes] = await Promise.all([

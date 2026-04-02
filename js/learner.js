@@ -109,19 +109,24 @@ const Learner = {
     const el = $$('l-progress-content'); if(!el) return;
     el.innerHTML = '<div style="display:flex;justify-content:center;padding:40px;"><div class="spinner"></div></div>';
     try {
-      const res = await learnerApi('/api/assignments/me');
-      if (!res || !res.length) {
+      const [assignments, completions] = await Promise.all([
+        learnerApi('/api/assignments/me'),
+        learnerApi('/api/completions/me').catch(() => [])
+      ]);
+      if (!assignments || !assignments.length) {
         el.innerHTML = '<div class="card" style="text-align:center;padding:40px;color:var(--ink-4);">No training assigned yet. Check back later or contact your manager.</div>';
         return;
       }
-      const pending = res.filter(a => !a.completed);
-      const done = res.filter(a => a.completed);
+      const passedCourseIds = new Set((completions || []).filter(c => c.passed).map(c => c.course_id));
+      const pending = assignments.filter(a => !passedCourseIds.has(a.course_id));
+      const done = assignments.filter(a => passedCourseIds.has(a.course_id));
       let html = '';
       if (pending.length) {
         html += `<div style="font-weight:700;margin-bottom:var(--space-3);">In Progress (${pending.length})</div>`;
         html += pending.map(a => {
-          const overdue = a.due_at && !a.completed && (a.due_at * 1000) < Date.now();
-          const dueStr = a.due_at ? `<span style="font-size:var(--text-xs);color:${overdue ? 'var(--fail)' : 'var(--ink-4)'};">Due ${new Date(a.due_at*1000).toLocaleDateString()}</span>` : '';
+          const overdue = a.due_at && (new Date(a.due_at).getTime() || a.due_at * 1000) < Date.now();
+          const dueTs = a.due_at ? (isNaN(a.due_at) ? new Date(a.due_at).getTime() : a.due_at * 1000) : null;
+          const dueStr = dueTs ? `<span style="font-size:var(--text-xs);color:${overdue ? 'var(--fail)' : 'var(--ink-4)'};">Due ${new Date(dueTs).toLocaleDateString()}</span>` : '';
           return `<div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);margin-bottom:var(--space-3);">
             <div>
               <div style="font-weight:600;">${esc(a.course_title)}</div>

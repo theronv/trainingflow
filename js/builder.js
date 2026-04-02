@@ -131,7 +131,7 @@ const Builder = {
       const [learners, assigns] = await Promise.all([api('/api/learners'), api('/api/assignments')]);
       const cidAssigns = assigns.filter(a => a.course_id === cid).map(a => a.learner_id);
       $$('assign-list').innerHTML = learners.map(l => `
-        <div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--rule);">
+        <div data-name="${esc(l.name)}" style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--rule);">
           <input type="checkbox" id="chk-ind-${l.id}" ${cidAssigns.includes(l.id)?'checked':''} onchange="Builder.toggleAssign('${l.id}', this.checked)">
           <label for="chk-ind-${l.id}" style="margin:0;">${esc(l.name)}</label>
         </div>`).join('');

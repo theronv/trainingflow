@@ -419,8 +419,28 @@ const Manager = {
   },
 
   // ─── COMPLETIONS ───
-  async renderComps() {
-    const res = await managerApi('/api/admin/completions');
-    $$('m-comp-tbody').innerHTML = res.map(r => `<tr><td>${esc(r.user_name)}</td><td>${esc(r.course_title)}</td><td>${r.score}%</td><td>${r.passed?'Passed':'Failed'}</td><td>${new Date(r.completed_at*1000).toLocaleDateString()}</td></tr>`).join('');
+  async renderComps(courseId) {
+    const tbody = $$('m-comp-tbody'); if (!tbody) return;
+    try {
+      const params = new URLSearchParams();
+      if (courseId) params.set('course_id', courseId);
+      const res = await managerApi(`/api/admin/completions?${params.toString()}`);
+
+      // Populate course filter dropdown on first load
+      const filterEl = $$('m-comp-filter');
+      if (filterEl && filterEl.options.length <= 1) {
+        const courses = await managerApi('/api/courses').catch(() => []);
+        courses.forEach(c => {
+          const o = document.createElement('option'); o.value = c.id; o.textContent = c.title; filterEl.appendChild(o);
+        });
+        if (courseId) filterEl.value = courseId;
+      }
+
+      if (!res || !res.length) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--ink-4);">No completions yet.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = res.map(r => `<tr><td>${esc(r.user_name)}</td><td>${esc(r.course_title)}</td><td>${r.score}%</td><td>${r.passed?'<span class="chip chip-green">Passed</span>':'<span class="chip chip-red">Failed</span>'}</td><td>${new Date(r.completed_at*1000).toLocaleDateString()}</td></tr>`).join('');
+    } catch(e) { tbody.innerHTML = `<tr><td colspan="5" style="color:var(--fail);padding:16px;">${esc(e.message)}</td></tr>`; }
   }
 };

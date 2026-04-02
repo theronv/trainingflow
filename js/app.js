@@ -213,7 +213,7 @@ const AppProxy = {
   moveLearner: (id) => Admin.moveLearner(id),
 
   // Manager
-  renderMComps: () => Manager.renderComps(),
+  renderMComps: (courseId) => Manager.renderComps(courseId),
   updateManagerName: async () => {
     const name = $$('mcp-name').value.trim();
     if (!name) return Toast.err('Name is required.');
