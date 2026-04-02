@@ -5,3 +5,5 @@ node_modules/
 worker/local.db*
 worker/.wrangler/
 worker/.dev.vars.bak
+worker/private.pem
+worker/public.pem

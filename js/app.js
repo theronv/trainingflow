@@ -52,7 +52,7 @@ const AppProxy = {
   clearRecords: () => Admin.clearRecords(),
   openResetPw: (id, n) => Admin.openResetPw(id, n),
   closeResetPw: () => Admin.closeResetPw(),
-  submitResetPw: () => Admin.submitResetPw(),
+  submitResetPw: () => curManager ? Manager.submitResetPw() : Admin.submitResetPw(),
   exportCSV: (s) => Admin.exportCSV(s),
 
   // Manager Extra

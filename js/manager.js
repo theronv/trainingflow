@@ -94,9 +94,31 @@ const Manager = {
         <td>${l.assignment_count || 0}</td>
         <td>${l.completion_count || 0}</td>
         <td>${l.pass_rate != null ? l.pass_rate + '%' : '—'}</td>
-        <td><button class="btn btn-ghost btn-sm" onclick="Admin.openResetPw('${l.id}','${esc(l.name)}')">Reset PW</button></td>
+        <td><button class="btn btn-ghost btn-sm" onclick="Manager.openResetPw('${l.id}','${esc(l.name)}')">Reset PW</button></td>
       </tr>`).join('');
     } catch(e) { tbody.innerHTML = `<tr><td colspan="5" style="color:var(--fail);padding:16px;">${esc(e.message)}</td></tr>`; }
+  },
+
+  // ─── RESET PASSWORD ───
+  openResetPw(id, name) {
+    $$('reset-pw-subtitle').textContent = name;
+    App._resetPwId = id;
+    $$('rp-pw1').value = '';
+    $$('rp-pw2').value = '';
+    $$('reset-pw-overlay').classList.remove('hidden');
+  },
+  async submitResetPw() {
+    const pw = $$('rp-pw1').value;
+    if (!pw || pw.length < 8) return Toast.err('Password must be at least 8 characters.');
+    const btn = $$('reset-pw-overlay')?.querySelector('.btn-primary');
+    const orig = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+    try {
+      await managerApi(`/api/learners/${App._resetPwId}/password`, { method:'PUT', body:JSON.stringify({ password:pw }) });
+      Admin.closeResetPw();
+      Toast.ok('Password reset.');
+    } catch(e) { Toast.err(e.message); }
+    finally { if (btn) { btn.disabled = false; btn.textContent = orig; } }
   },
 
   // ─── TEAM ASSIGN ───

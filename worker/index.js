@@ -348,9 +348,14 @@ app.put('/api/admin/password', requireAdmin, async (c) => {
   return c.json({ ok: true })
 })
 
-app.put('/api/learners/:id/password', requireAdmin, async (c) => {
+app.put('/api/learners/:id/password', requireManager, async (c) => {
+  const user = c.get('user')
   const body = await c.req.json()
   const db = getDb(c.env)
+  if (user.scopedToTeam) {
+    const check = await db.execute({ sql: 'SELECT id FROM users WHERE id = ? AND team_id = ?', args: [c.req.param('id'), user.scopedToTeam] })
+    if (!check.rows.length) return c.json({ error: 'Not found' }, 404)
+  }
   const hash = await pbkdf2Hash(body.password)
   await db.execute({ sql: 'UPDATE users SET password_hash = ? WHERE id = ?', args: [hash, c.req.param('id')] })
   return c.json({ ok: true })
@@ -1037,7 +1042,7 @@ app.post('/api/assignments', requireManager, async (c) => {
     return c.json({ ok: true }, 201)
   } catch (e) {
     if (e.message.includes('UNIQUE')) return c.json({ error: 'Already assigned' }, 409)
-    throw e
+    return c.json({ error: e.message }, 500)
   }
 })
 
