@@ -1590,7 +1590,6 @@ RULES:
   async saveAiCourse() {
     const btn = document.querySelector('[onclick="App.saveAiCourse()"]');
 
-    // Gate 4: warn on large payloads before hitting the Worker
     const payload = JSON.stringify(Admin.generatedCourse);
     const payloadKB = Math.round(payload.length / 1024);
     if (payloadKB > 500) {
@@ -1599,14 +1598,20 @@ RULES:
     }
 
     if(btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
     try {
-      await api('/api/courses', { method: 'POST', body: payload });
+      await api('/api/courses', { method: 'POST', body: payload, signal: controller.signal });
       Toast.ok('Course saved!');
-      // Reset importer state
       Admin.fileModules = []; Admin.parsedModules = []; Admin.generatedCourse = null; Admin.isGenerating = false;
       Admin.nav('courses');
     } catch(e) {
-      Toast.err(e.message);
+      const msg = e.name === 'AbortError'
+        ? 'Save timed out — the course may be too large. Try reducing the number of modules and retry.'
+        : e.message;
+      Toast.err(msg);
+    } finally {
+      clearTimeout(timeout);
       if(btn) { btn.disabled = false; btn.textContent = 'Save to Database'; }
     }
   }
