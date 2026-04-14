@@ -1,10 +1,23 @@
 # TrainFlow QA Audit Report
-**Date:** 2026-03-20
+**Initial audit:** 2026-03-20 · **Last updated:** 2026-04-14
 **Auditor:** Claude Code (Sonnet 4.6) — full static code analysis
 **Scope:** All pages, interactive components, auth flows, API layer, visual/theme system
 **Method:** Complete read of all source files; every function and route audited
 
 > **Note on audit methodology:** The provided QA template referenced React/shadcn/ui/Supabase/React Query. This application is vanilla JavaScript with a Cloudflare Workers + Turso/libSQL backend and JWT auth. All methodology has been adapted to the actual stack. Since no browser session was available, reproduction steps are derived from code analysis; file:line references replace screenshots.
+
+---
+
+## Post-audit fixes (2026-03-20 → 2026-04-14)
+
+### D-21 · AI Importer save button hangs indefinitely on network failure ✅ FIXED
+
+**File:** `js/admin.js` — `saveAiCourse()`
+**Commit:** `249033b`
+
+**Problem:** `saveAiCourse()` used a bare `fetch` with no timeout. If the Cloudflare Worker or Turso connection stalled, the promise never settled — the button stayed in the "Saving…" state with no recovery path and no error shown.
+
+**Fix:** Added `AbortController` with a 30-second timeout passed as `signal` to the `api()` call. Moved button re-enable from the `catch` block to a `finally` block so it is guaranteed to reset on any outcome. On `AbortError`, surfaces a specific message: `"Save timed out — the course may be too large. Try reducing the number of modules and retry."` rather than a generic or missing error.
 
 ---
 

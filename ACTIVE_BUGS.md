@@ -1,55 +1,37 @@
-# Active Bug Report: TrainFlow "White Screen" Issues
+# TrainFlow — Active Issues
 
-**Status:** RESOLVED (2026-03-17)
-**Priority:** HIGH (Blocker for v1 Launch)
+**Last updated:** 2026-04-14
 
----
-
-## ✅ Fixes Applied
-
-### Root Cause: CSS/Class Mismatch in Nav Functions
-**Problem:** All three nav functions (`Admin.nav`, `Manager.nav`, `Learner.nav`) toggled the `.hidden` class on page elements. However, the CSS uses `.page { display: none }` / `.page.active { display: block }` — so removing `.hidden` alone never made a page visible because the base `.page` rule keeps it hidden.
-
-**Fix:** Added `pg.classList.toggle('active', k===p)` alongside the existing `hidden` toggle in all three nav functions.
-
-### Learner Login Crash
-**Problem:** `auth.js` set `curLearner = { id: data.id, name: data.name }` but the API returns `{ token, user: { id, name } }`. This caused `curLearner.name` to be `undefined`, making `Learner.init()` crash on `curLearner.name[0]`.
-
-**Fix:** Updated to use `data.user.id` / `data.user.name`.
-
-### Missing Backend Routes
-Added the following routes to `worker/index.js`:
-- `GET /api/courses/:id` — for `Learner.startCourse()`
-- `POST /api/completions` — for `Learner.completeCourse()`
-- `GET /api/assignments` — for `Builder.openAssign()` and `Manager.openTeamAssign()`
-- `PATCH /api/admin/teams/:id` — for team renaming
-
-### Missing App Proxy Methods
-Added the following to `js/app.js` AppProxy:
-- `exitCourse`, `showLearner`, `moveLearner`
-- `renderMComps`, `updateManagerName`, `changeManagerPw`
-- `updateLearnerName`, `changeLearnerPw`
-- `setAssignTab`, `filterAssignList`
-- `compPage` (completions pagination)
-- `uploadLogo`, `syncHex` (branding)
-- `exportBackup`, `importBackup` (settings)
-- `createTag`, `closeTagsModal`, `closeLearnerTagsModal`
-- `copyInviteCode`, `closeConfirmDelete`
-- `csvImportOpen`, `csvDrop`, `csvFileSelected`, `csvClose`, `csvConfirm`
-
-### Missing Admin Methods
-Added to `js/admin.js`:
-- `openRenameTeam` / `submitRenameTeam`
-- `openGenerateInvite`
-- Fixed `openCreateTeam` to wire up the submit button's `onclick`
+All bugs from the initial audit (AUDIT.md) and QA pass (QA-REPORT.md) have been resolved. This file tracks only current open issues and recently closed ones.
 
 ---
 
-## 📝 Remaining Known Limitations
+## ✅ Recently Closed
 
-- `updateManagerName`, `changeManagerPw`, `updateLearnerName`, `changeLearnerPw` show "Coming soon" toast — backend routes not yet implemented.
-- `csvConfirm` shows "Coming soon" toast — `Builder.importModulesFromCsv` not yet implemented.
-- `importBackup` shows "Coming soon" toast.
-- `createTag` shows "Coming soon" toast — tag system not yet built.
-- `exportCSV` in admin shows "Exporting..." toast but does not produce a file.
-- Manager registration uses `invite_code` field name but the API expects `code` — minor schema mismatch to verify.
+### AI Importer — Save button hangs indefinitely on network failure
+**Closed:** 2026-04-14 · `249033b`
+
+`saveAiCourse()` had no timeout on the `fetch` call. If the Worker or Turso connection hung, the "Saving…" state persisted forever with no recovery path.
+
+**Fix:** Added `AbortController` with 30s timeout. Moved button reset from `catch` to `finally` so it always recovers. On timeout, shows a clear actionable message rather than a generic error.
+
+---
+
+## ⚠️ Open — Known Limitations
+
+### CSV import into Course Builder (B-04)
+The "Confirm" button in the Course Builder CSV import modal shows a "coming soon" toast. Requires defining a CSV schema and building a parse + module-merge pipeline. **Effort: ~2hrs.**
+
+### Tags feature (B-06)
+Schema, DB tables, and API routes exist. The admin UI tag creation and learner tag assignment stubs show "coming soon" toasts. Full tag-based filtering not implemented. **Effort: ~3hrs.**
+
+### Learner list pagination (D-10)
+All learners are rendered to the DOM at once. Acceptable up to ~200 learners; will lag noticeably at 500+ and may freeze at 5000+. **Effort: ~1hr.**
+
+---
+
+## 📋 Backlog / Planned
+
+- **KB Scraper → AI Importer integration** — see `docs/kb-scraper-integration.md`
+- **Real-time dashboard updates** — currently manual refresh only; no SSE/WebSocket
+- **Logo CDN support** — currently base64 data URI; large logos inflate API response size
