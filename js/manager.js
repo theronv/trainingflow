@@ -440,7 +440,7 @@ const Manager = {
         tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--ink-4);">No completions yet.</td></tr>';
         return;
       }
-      tbody.innerHTML = res.map(r => `<tr><td>${esc(r.user_name)}</td><td>${esc(r.course_title)}</td><td>${r.score}%</td><td>${r.passed?'<span class="chip chip-green">Passed</span>':'<span class="chip chip-red">Failed</span>'}</td><td>${new Date(r.completed_at*1000).toLocaleDateString()}</td></tr>`).join('');
+      tbody.innerHTML = res.map(r => `<tr><td>${esc(r.user_name)}</td><td>${esc(r.course_title)}</td><td>${r.score}%</td><td>${r.passed?'<span class="chip chip-brand-accent">Passed</span>':'<span class="chip chip-red">Failed</span>'}</td><td>${new Date(r.completed_at*1000).toLocaleDateString()}</td></tr>`).join('');
     } catch(e) { tbody.innerHTML = `<tr><td colspan="5" style="color:var(--fail);padding:16px;">${esc(e.message)}</td></tr>`; }
   }
 };

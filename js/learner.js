@@ -62,9 +62,9 @@ const Learner = {
         const modsDone = prog ? prog.modules.length : 0;
         const totalMods = nc.mods ? nc.mods.length : null;
         let chip = '';
-        if (passed) chip = '<span class="chip chip-green">✓ Passed</span>';
+        if (passed) chip = '<span class="chip chip-brand-accent">✓ Passed</span>';
         else if (prog) chip = `<span class="chip chip-blue">▶ In Progress${totalMods ? ` (${modsDone}/${totalMods})` : ''}</span>`;
-        else if (assigned) chip = '<span class="chip chip-amber">Mandatory</span>';
+        else if (assigned) chip = '<span class="chip chip-brand-secondary">Mandatory</span>';
         const modCount = totalMods ? `<span style="font-size:var(--text-xs);color:var(--ink-4);">${totalMods} module${totalMods!==1?'s':''}</span>` : '';
         const desc = nc.desc ? `<div style="font-size:var(--text-sm);color:var(--ink-3);margin-top:6px;line-height:1.4;">${esc(nc.desc.length > 100 ? nc.desc.slice(0,100)+'…' : nc.desc)}</div>` : '';
         return `<div class="course-card" onclick="Learner.startCourse('${nc.id}')">
@@ -140,7 +140,7 @@ const Learner = {
         html += `<div style="font-weight:700;margin-bottom:var(--space-3);margin-top:var(--space-6);">Completed (${done.length})</div>`;
         html += done.map(a => `<div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);margin-bottom:var(--space-3);opacity:0.75;">
           <div style="font-weight:600;">${esc(a.course_title)}</div>
-          <span class="chip chip-green">✓ Done</span>
+          <span class="chip chip-brand-accent">✓ Done</span>
         </div>`).join('');
       }
       el.innerHTML = html;

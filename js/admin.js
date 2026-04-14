@@ -65,7 +65,7 @@ const Admin = {
             <div class="activity-list">${items.map(c => {
               const date = new Date(c.completed_at * 1000).toLocaleDateString(undefined, { month:'short', day:'numeric' });
               const chip = c.passed
-                ? '<span class="chip chip-green">Pass</span>'
+                ? '<span class="chip chip-brand-accent">Pass</span>'
                 : '<span class="chip chip-red">Fail</span>';
               return `<div class="activity-item">
                 <div class="activity-info">
@@ -768,7 +768,7 @@ const Admin = {
         <td>${esc(r.user_name)}</td>
         <td>${esc(r.course_title)}</td>
         <td>${r.score}%</td>
-        <td>${r.passed ? '<span class="chip chip-green">Passed</span>' : '<span class="chip chip-red">Failed</span>'}</td>
+        <td>${r.passed ? '<span class="chip chip-brand-accent">Passed</span>' : '<span class="chip chip-red">Failed</span>'}</td>
         <td>${new Date(r.completed_at * 1000).toLocaleDateString()}</td>
         <td style="font-family:monospace;font-size:11px;">${r.cert_id || '—'}</td>
       </tr>`).join('');
