@@ -58,7 +58,7 @@ if (typeof marked !== 'undefined') {
       </div>
     </div>
     <div style="margin-bottom:var(--space-8);">
-      <button class="btn btn-outline" onclick="App.startDemo()" style="width:100%;border-style:dashed;border-color:var(--brand-1);color:var(--brand-1);">
+      <button class="btn btn-outline" onclick="App.startDemo()" style="width:100%;border-style:dashed;border-color:var(--brand);color:var(--brand);">
         ✨ Explore with demo data →
       </button>
     </div>
@@ -128,7 +128,7 @@ if (typeof marked !== 'undefined') {
       </div>
       <div style="display:flex;flex-direction:column;gap:var(--space-3);">
         <button class="btn btn-primary" onclick="App.doLogin()">Sign In</button>
-        <button class="btn btn-outline" onclick="App.startDemo()" style="border-style:dashed;border-color:var(--brand-1);color:var(--brand-1);">Skip to Demo Mode ✨</button>
+        <button class="btn btn-outline" onclick="App.startDemo()" style="border-style:dashed;border-color:var(--brand);color:var(--brand);">Skip to Demo Mode ✨</button>
         <button class="btn btn-ghost btn-sm" onclick="App.show('screen-landing')">Back</button>
       </div>
     </div>
@@ -138,9 +138,9 @@ if (typeof marked !== 'undefined') {
 <!-- FIRST RUN REQUIRED OVERLAY -->
 <div id="first-run-overlay" class="overlay hidden">
   <div class="modal" style="max-width:500px;">
-    <h3 style="margin-bottom:var(--space-2);color:var(--fail);">Setup Required</h3>
+    <h3 style="margin-bottom:var(--space-2);color:var(--danger);">Setup Required</h3>
     <p style="margin-bottom:var(--space-4);">The worker is running but hasn't been initialized yet. Set the required secrets via Wrangler, then reload.</p>
-    <div style="background:var(--rule-2);padding:var(--space-4);border-radius:var(--r);font-family:monospace;font-size:12px;margin-bottom:var(--space-4);overflow-x:auto;">
+    <div style="background:var(--border-2);padding:var(--space-4);border-radius:var(--radius-md);font-family:monospace;font-size:var(--text-xs);margin-bottom:var(--space-4);overflow-x:auto;">
       npx wrangler secret put ADMIN_PASSWORD_HASH<br>
       npx wrangler secret put JWT_SECRET<br>
       npx wrangler secret put TURSO_TOKEN
@@ -160,7 +160,7 @@ if (typeof marked !== 'undefined') {
       <span id="m-brand">TrainFlow</span>
     </div>
     <div style="margin-left:var(--space-3);">
-      <span class="chip chip-blue" id="m-team-badge" style="font-size:10px;">Team</span>
+      <span class="chip chip-blue" id="m-team-badge">Team</span>
     </div>
     <div class="topbar-right">
       <button class="btn btn-ghost btn-sm" onclick="App.showLearner()" title="View as Learner">🎓 Learner View</button>
@@ -285,7 +285,7 @@ if (typeof marked !== 'undefined') {
         <div class="name-wrap">
           <div class="name-greeting">Sign in to your training.</div>
           <p class="name-hint">Enter the credentials your manager gave you.</p>
-          <div id="l-login-error" style="display:none;color:var(--fail);font-size:var(--text-sm);padding:var(--space-3);background:var(--fail-lt);border-radius:var(--r);margin-bottom:var(--space-3);"></div>
+          <div id="l-login-error" style="display:none;color:var(--danger);font-size:var(--text-sm);padding:var(--space-3);background:var(--fail-lt);border-radius:var(--radius-md);margin-bottom:var(--space-3);"></div>
           <div class="field">
             <input type="text" id="learner-name-input" placeholder="Your name…" autocomplete="username" onkeydown="if(event.key==='Enter')$$('learner-pw-input').focus()">
           </div>
@@ -398,7 +398,7 @@ if (typeof marked !== 'undefined') {
       <span id="a-brand">TrainFlow</span>
     </div>
     <div style="margin-left:var(--space-3);">
-      <span class="chip chip-amber" style="font-size:10px;">Admin</span>
+      <span class="chip chip-amber">Admin</span>
     </div>
     <div class="topbar-right">
       <button class="btn btn-ghost btn-sm" onclick="App.showLearner()" title="View as Learner">🎓 Learner View</button>
@@ -537,7 +537,7 @@ if (typeof marked !== 'undefined') {
             <div class="card">
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-1)">
                 <div class="card-title">Course details</div>
-                <button id="btn-ai-autofill" class="btn btn-ghost btn-sm" onclick="Admin.autofillCourseDetails()" style="color:var(--brand-1)">✨ Auto-fill with AI</button>
+                <button id="btn-ai-autofill" class="btn btn-ghost btn-sm" onclick="Admin.autofillCourseDetails()" style="color:var(--brand)">✨ Auto-fill with AI</button>
               </div>
               <div class="field"><label>Title</label><input type="text" id="ai-course-title" placeholder="e.g. Product Training"></div>
               <div class="field"><label>Icon (emoji)</label><input type="text" id="ai-course-icon" placeholder="📋" maxlength="4" style="max-width:80px"></div>
@@ -552,12 +552,12 @@ if (typeof marked !== 'undefined') {
               <div id="ai-keys-display" class="hidden" style="background:var(--bg-2);border-radius:var(--radius-md);padding:var(--space-4);margin-bottom:var(--space-2);border:1px solid var(--border);">
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4)">
                   <div>
-                    <div style="font-size:9px;font-weight:700;color:var(--ink-4);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">Claude (Primary)</div>
-                    <div id="claude-key-masked" style="font-family:monospace;font-size:11px;color:var(--pass)">••••••••••••••••</div>
+                    <div style="font-size:var(--text-xs);font-weight:700;color:var(--ink-4);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">Claude (Primary)</div>
+                    <div id="claude-key-masked" style="font-family:monospace;font-size:var(--text-xs);color:var(--success)">••••••••••••••••</div>
                   </div>
                   <div>
-                    <div style="font-size:9px;font-weight:700;color:var(--ink-4);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">Gemini (Fallback)</div>
-                    <div id="gemini-key-masked" style="font-family:monospace;font-size:11px;color:var(--ink-4)">Not set</div>
+                    <div style="font-size:var(--text-xs);font-weight:700;color:var(--ink-4);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">Gemini (Fallback)</div>
+                    <div id="gemini-key-masked" style="font-family:monospace;font-size:var(--text-xs);color:var(--ink-4)">Not set</div>
                   </div>
                 </div>
               </div>
@@ -572,7 +572,7 @@ if (typeof marked !== 'undefined') {
                   <input type="password" id="gemini-api-key" placeholder="AIza…" autocomplete="off">
                 </div>
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-top:var(--space-2)">
-                  <div style="font-size:10px;color:var(--ink-4)">Stored in browser only.</div>
+                  <div style="font-size:var(--text-xs);color:var(--ink-4)">Stored in browser only.</div>
                   <button class="btn btn-primary btn-sm" onclick="Admin.saveAiKeys()">Save Keys</button>
                 </div>
               </div>
@@ -684,7 +684,7 @@ if (typeof marked !== 'undefined') {
             <option value="learner">Set as User</option>
             <option value="manager">Set as Manager</option>
           </select>
-          <button class="btn btn-ghost btn-sm" style="color:var(--fail);margin-left:auto;" onclick="Admin.bulkDelete()">Delete Selected</button>
+          <button class="btn btn-ghost btn-sm" style="color:var(--danger);margin-left:auto;" onclick="Admin.bulkDelete()">Delete Selected</button>
           <button class="btn btn-ghost btn-sm" onclick="Admin.clearSelection()">Clear</button>
         </div>
         <div class="table-wrap">
@@ -839,7 +839,7 @@ if (typeof marked !== 'undefined') {
                 <span style="font-size:var(--text-xs);color:var(--ink-4);">.woff2 · .woff · .ttf · .otf · max 2MB</span>
               </label>
               <input type="file" id="br-font-file" accept=".woff,.woff2,.ttf,.otf" onchange="App.uploadFont(event)" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;">
-              <div id="br-font-custom-name" style="font-size:var(--text-xs);font-weight:600;color:var(--ok);margin-top:8px;min-height:18px;"></div>
+              <div id="br-font-custom-name" style="font-size:var(--text-xs);font-weight:600;color:var(--success);margin-top:8px;min-height:18px;"></div>
             </div>
           </div>
           <div style="margin-top:var(--space-5);padding:var(--space-4);background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-md);">
@@ -906,8 +906,8 @@ if (typeof marked !== 'undefined') {
               <input type="file" id="restore-file" accept=".json" class="hidden" onchange="App.importBackup(event)">
             </div>
           </div>
-          <div class="card" style="border-color:var(--fail);background:var(--fail-lt,rgba(239,68,68,0.06));">
-            <div class="card-title" style="color:var(--fail);">Danger Zone</div>
+          <div class="card" style="border-color:var(--danger);background:var(--fail-lt);">
+            <div class="card-title" style="color:var(--danger);">Danger Zone</div>
             <div class="card-sub" style="margin-bottom:var(--space-4);">These actions are permanent and cannot be undone.</div>
             <button class="btn btn-danger" onclick="App.clearRecords()">Clear All Completion Records</button>
           </div>
@@ -965,7 +965,7 @@ if (typeof marked !== 'undefined') {
       <div style="text-align:center;padding:var(--space-4) 0;">
         <div style="font-size:var(--text-xs);color:var(--ink-4);text-transform:uppercase;margin-bottom:var(--space-3);">Invite Code</div>
         <div style="display:flex;align-items:center;justify-content:center;gap:var(--space-3);margin-bottom:var(--space-5);">
-          <div id="generated-code" style="font-size:32px;font-family:monospace;letter-spacing:0.1em;background:var(--rule-2);padding:var(--space-3) var(--space-5);border-radius:var(--r);font-weight:700;"></div>
+          <div id="generated-code" style="font-size:32px;font-family:monospace;letter-spacing:0.1em;background:var(--border-2);padding:var(--space-3) var(--space-5);border-radius:var(--radius-md);font-weight:700;"></div>
           <button class="btn btn-outline" onclick="App.copyInviteCode()">Copy</button>
         </div>
         <p style="font-size:var(--text-sm);color:var(--ink-3);">Share this code with your new manager. It can only be used once.</p>
@@ -1019,7 +1019,7 @@ if (typeof marked !== 'undefined') {
       <div class="modal-title" id="confirm-delete-title">Delete User</div>
     </div>
     <div class="modal-body">
-      <p id="confirm-delete-msg" style="color:var(--fail);"></p>
+      <p id="confirm-delete-msg" style="color:var(--danger);"></p>
     </div>
     <div class="modal-foot">
       <button class="btn btn-ghost" onclick="App.closeConfirmDelete()">Cancel</button>

@@ -612,3 +612,389 @@ Plan approved 2026-05-20. 8 items executed. No code was written that required ap
 | 8 | Worker Init overlay — improved framing | `index.html` | Heading changed from "Worker Initialization Required" to "Setup Required"; body copy tightened; README reference added |
 
 **Nothing unexpected.** The `DEFAULT_TAGLINE` constant in `js/core.js` feeds both the HTML fallback (via `applyBrand()`) and the `normBrand()` coercion for new orgs without a saved tagline — so the single constant change propagates correctly to all surfaces without additional edits. The overdue chip reuses the existing `--fail` CSS token already used on the Progress tab; no new CSS was needed.
+
+---
+
+## Designer Review — Stage 1 — 2026-05-20
+
+**Stack context:** This is a vanilla JS SPA (no React, no Tailwind, no NativeWind yet). The review is conducted against the actual stack and its migration target: React Native via NativeWind. Every finding is evaluated on whether it will compound into debt in the native build.
+
+---
+
+### 1 — DESIGN SYSTEM INVENTORY
+
+#### Colors — DEFINED (with legacy debt)
+
+A full semantic token system exists in `css/style.css` `:root`:
+
+| Layer | Tokens | Notes |
+|---|---|---|
+| Background | `--bg`, `--bg-2` | Dark default; properly overridden in `[data-theme="light"]` |
+| Surface | `--surface`, `--surface-2` | Card and panel layers |
+| Border | `--border`, `--border-2` | Two-level border system |
+| Brand (primary) | `--brand`, `--brand-dark`, `--brand-glow`, `--shadow-brand` | Runtime-overridable |
+| Brand (secondary) | `--brand-secondary`, `--brand-secondary-dark`, `--brand-secondary-glow` | Runtime-overridable |
+| Brand (accent) | `--brand-accent`, `--brand-accent-dark`, `--brand-accent-glow` | Runtime-overridable |
+| Status | `--success`, `--warning`, `--danger`, `--muted` | Semantic, not overridable |
+| Text | `--ink-1`, `--ink-2`, `--ink-3`, `--ink-4` | 4-level ink hierarchy |
+
+**Dark/light mode:** Implemented correctly. `[data-theme="light"]` overrides the structural tokens. Token names are semantic (`--bg`, `--surface`, `--ink-1`), not literal (`--gray-900`). Dark mode is supported by design. **This is correctly done.**
+
+**Legacy alias debt:** 20+ legacy aliases exist for backwards compatibility: `--white`, `--r`, `--r-lg`, `--r-full`, `--rule`, `--rule-2`, `--pass`, `--fail`, `--warn`, `--pass-lt`, `--fail-lt`, `--warn-lt`, `--accent-lt`, `--brand-1`, `--brand-2`, `--s-1`, `--s-2`, `--s-4`, `--s-6`, `--ink-meta`, `--shadow-xs`. These are still referenced in `index.html` inline styles. When migrating to NativeWind these aliases will not survive — anything referencing them needs to be updated.
+
+#### Typography — DEFINED (with mobile-readability problem)
+
+| Token | Value | Issue |
+|---|---|---|
+| `--text-xs` | 11px | Below iOS minimum readable size |
+| `--text-sm` | 12px | Below iOS minimum readable size |
+| `--text-base` | 13px | Below iOS minimum readable size |
+| `--text-md` | 14px | Borderline; Apple HIG suggests 17pt for body |
+| `--text-lg` | 16px | Acceptable minimum for body |
+| `--text-xl` | 20px | Fine |
+| `--text-2xl` | 24px | Fine |
+| `--text-3xl` | 30px | Fine |
+
+**Critical:** The entire lower half of the scale (`xs` through `base`) is below the iOS minimum legible size. `--text-xs` (11px) is used heavily for labels, chips, nav section headers, table headers, and cert metadata. These will read as illegible on a physical iOS device. The scale needs an upward shift for mobile.
+
+**Fonts:** Inter (body) + JetBrains Mono (mono). Both are open source and available via expo-font. No mobile licensing issue.
+
+**Font loading:** Via Google Fonts CDN (`fonts.googleapis.com`). RN will require `expo-font` — CDN loading does not work in RN.
+
+#### Spacing — DEFINED (with inline escapes)
+
+4pt-base grid is formally defined: `--space-1` (4px) through `--space-16` (64px). The scale is clean and consistent.
+
+**Violations found in `style.css`:**
+- `.modal { padding: 28px 32px; }` — 28px is not on the scale (closest is 24 or 32)
+- `.login-card { padding: 36px 40px; }` — 36px not on scale
+- `.cert-body { padding: 52px 64px 48px; }` — all raw certificate values
+- `.cert-heading { margin-bottom: 28px; }` — raw
+- `gap: 6px` in `.btn` — not on scale
+- `margin-bottom: 6px` in several places
+- `padding: 7px 14px` in `.btn` — 7px not on scale
+
+**Violations in `index.html` inline styles:**
+- Arbitrary pixel values are common in inline `style="..."` attributes throughout the admin screens (e.g., `margin-top: -8px`, `padding: 4px`, `letter-spacing: 0.1em` on non-scale values)
+
+Overall the system exists; the escape rate is moderate but acceptable for this stage.
+
+#### Border Radius — PARTIAL
+
+Scale: `--radius-sm` (4px), `--radius-md` (6px), `--radius-lg` (10px), `--radius-xl` (14px), `--r-full` (50%).
+
+**Escapes:**
+- `.chip { border-radius: 4px; }` — should be `--radius-sm`
+- `.progress-track, .progress-fill { border-radius: 2px; }` — no token for 2px; intentional pill
+- `.mod-meta-chip { border-radius: 99px; }` — pill shape, no token
+- Toggle track `border-radius: 24px` — no token
+- `border-radius: 50%` hardcoded in several places (avatars) — should use `--r-full`
+
+Minor drift, correctable.
+
+---
+
+### 2 — TOKEN COMPLIANCE
+
+#### Hardcoded Color Values in CSS (not routed through token system)
+
+Every instance that should use a token but doesn't:
+
+| Location | Hardcoded Value | Correct Token |
+|---|---|---|
+| `.btn-danger` background | `rgba(239,68,68,0.1)` | `--fail-lt` |
+| `.btn-danger` border | `rgba(239,68,68,0.2)` | No token — needs one |
+| `.chip-green` background | `rgba(16,185,129,0.1)` | `--pass-lt` |
+| `.chip-green` border | `rgba(16,185,129,0.2)` | No token |
+| `.chip-red` background | `rgba(239,68,68,0.1)` | `--fail-lt` |
+| `.chip-red` border | `rgba(239,68,68,0.2)` | No token |
+| `.chip-amber` background | `rgba(245,158,11,0.1)` | `--warn-lt` |
+| `.chip-amber` border | `rgba(245,158,11,0.2)` | No token |
+| `.qr-item-pass` background | `rgba(16,185,129,0.05)` | No token |
+| `.qr-item-pass` border | `rgba(16,185,129,0.2)` | No token |
+| `.qr-item-fail` background | `rgba(239,68,68,0.05)` | No token |
+| `.qr-item-fail` border | `rgba(239,68,68,0.15)` | No token |
+| `.quiz-opt.correct` background | `rgba(16,185,129,0.08)` | No token |
+| `.quiz-opt.wrong` background | `rgba(239,68,68,0.08)` | No token |
+| `.quiz-feedback.fb-pass` background | `rgba(16,185,129,0.08)` | No token |
+| `.quiz-feedback.fb-fail` background | `rgba(239,68,68,0.08)` | No token |
+| `.source-banner-link:hover` background | `rgba(37,99,235,0.12)` | `--brand-glow` |
+| `.overlay` background | `rgba(0,0,0,0.7)` | No token — unthemed |
+| `#cert-overlay` background | `rgba(0,0,0,0.85)` | No token — unthemed |
+| Brand preview `style="background:white"` | `white` | Intentional cert preview, but unthemed |
+| Toggle thumb | `white` hardcoded | No token |
+| `font-size: 9px` (cert labels) | Raw | Below scale minimum |
+| `font-size: 10px` (various) | Raw | Below scale minimum |
+| `font-size: 11px` (various) | Raw | Equal to `--text-xs` but not using the token |
+
+**Pattern:** Status/quiz state colors (`pass`, `fail`, `warn`) are the biggest offenders. Each state generates 4-6 rgba variants that are all hardcoded rather than derived from the status tokens. In a NativeWind migration these would need to be explicit palette values in the Tailwind config.
+
+#### Contrast Ratios
+
+Checked against WCAG AA (4.5:1 for body text, 3:1 for large text):
+
+| Dark Mode | Foreground | Background | Ratio | Status |
+|---|---|---|---|---|
+| `--ink-1` (#f1f5f9) on `--bg` (#0f1117) | #f1f5f9 | #0f1117 | ~15:1 | PASSES |
+| `--ink-2` (#94a3b8) on `--bg` (#0f1117) | #94a3b8 | #0f1117 | ~7.7:1 | PASSES |
+| `--ink-3` (#64748b) on `--bg` (#0f1117) | #64748b | #0f1117 | ~4.2:1 | **FAILS AA** |
+| `--ink-4` (#475569) on `--bg` (#0f1117) | #475569 | #0f1117 | ~2.8:1 | **FAILS AA** |
+
+**`--ink-3` is used for body-level content** (page subtitles, button labels in `.btn-ghost`, nav labels, `page-sub` descriptors) and fails WCAG AA contrast in dark mode by a thin margin (~4.2:1 vs 4.5:1 minimum). This is a real accessibility defect, not just a design note.
+
+`--ink-4` is used for hint text and metadata — acceptable as decorative/non-critical at this ratio, but any meaningful label using it fails.
+
+---
+
+### 3 — PLATFORM CONVENTION AUDIT
+
+#### Navigation — WRONG PATTERN FOR IOS
+
+**Current pattern:** Left sidebar navigation (`sidenav`, 220px wide) with vertically stacked text buttons. This is a web/desktop SaaS pattern.
+
+**iOS HIG requires:** Tab bar at the bottom of the screen for top-level navigation (max 5 tabs). Drill-down into content uses a navigation stack with a back button at top-left.
+
+**Impact:** The entire navigation architecture needs to be replaced. The sidenav cannot be adapted — it must become a bottom TabNavigator. This affects three role views (Admin, Manager, Learner), each with 4–5 top-level nav items. The course viewer drill-down pattern (enter course from list → back button) maps well to a navigation stack. The page show/hide mechanism (`display: none / block`) needs to become React Navigation screen components.
+
+This is the highest-impact single structural decision in the entire migration.
+
+#### Touch Targets — FAILS iOS HIG ACROSS THE BOARD
+
+iOS Human Interface Guidelines: minimum interactive target 44×44pt.
+
+| Element | Approx. Height | Status |
+|---|---|---|
+| `.nav-btn` (sidebar) | ~26px | **FAILS** |
+| `.btn-sm` | ~20px | **FAILS** |
+| `.btn-icon` | ~28px | **FAILS** |
+| `.theme-toggle` | 32px | **FAILS** |
+| `.mod-item` | ~28px | **FAILS** |
+| `.team-list-item` | ~32px | **FAILS** |
+| `.quiz-opt` | ~48px | Passes |
+| `.quick-action-btn` | ~58px | Passes |
+| `.role-tile` | 200px wide | Passes |
+
+The majority of interactive elements fail the 44pt minimum. The `.btn` system needs to be resized across all variants before the RN build begins, or the token values will propagate incorrect sizing into 20+ components.
+
+#### Hover States — ALL MUST BE REPLACED
+
+**Complete list of hover interactions that do not exist on touch:**
+
+- `.btn-primary:hover` — background/border color shift
+- `.btn-outline:hover` — surface background, text color
+- `.btn-ghost:hover` — background fill
+- `.btn-danger:hover` — full background change from ghost to solid
+- `.theme-toggle:hover` — background + border
+- `.nav-btn:hover` — background + text color
+- `.quick-action-btn:hover` — brand-glow background + border color
+- `.course-card:hover` — border + shadow elevation
+- `.role-tile:hover` — border color + `box-shadow: var(--shadow-brand)` + `transform: translateY(-2px)` **[includes animation]**
+- `.team-list-item:hover` — background
+- `.mod-item:hover` — background + text
+- `.quiz-opt:hover` — border + background + text
+- `.link-cell:hover` — text decoration
+- `.prose-content a:hover` — opacity
+- `.ref-link:hover` — background
+- `.source-banner-link:hover` — background
+- `tbody tr:hover td` — row highlight
+- `[data-theme] .mod-builder-head:hover` — background
+- `::-webkit-scrollbar-thumb:hover` — scrollbar (irrelevant in RN)
+
+In React Native, all of these become press states via `Pressable` with `pressed` style argument or `TouchableOpacity`. The design decisions (what changes color, what elevates, what animates) must be explicitly re-mapped.
+
+#### Fixed Positioning
+
+All fixed-positioned elements need RN-specific replacement:
+
+| Element | CSS | RN Replacement |
+|---|---|---|
+| `#toast-root` | `position: fixed; top: 16px; right: 16px` | RN toast library (react-native-toast-message) |
+| `.theme-toggle` button | `position: fixed; bottom: 20px; right: 20px` | Floating action button with `position: absolute` in a SafeAreaView |
+| `.overlay` (all modals) | `position: fixed; inset: 0` | React Native `Modal` component |
+| `#cert-overlay` | `position: fixed; inset: 0` | `Modal` with `SafeAreaView` |
+
+**Safe area insets are not accounted for anywhere** — iOS notch/Dynamic Island and home indicator need SafeAreaView wrapping that does not exist in the current layout model.
+
+#### Swipe Gesture Conflicts
+
+No current swipe-based interactions found. The module sidebar (`module-nav`) is toggled via a button (focus mode), not swiped. No conflicts with iOS system gestures (back swipe, home swipe) identified.
+
+---
+
+### 4 — WEB-ONLY VISUAL PATTERNS
+
+#### CSS Animations — ALL NEED REANIMATED EQUIVALENTS
+
+| Keyframe / Transition | Usage | RN Equivalent Needed |
+|---|---|---|
+| `@keyframes fadeUp` | Page transitions, `.stagger` children | `react-native-reanimated` entering animation |
+| `@keyframes fadeIn` | General fade | `react-native-reanimated` `FadeIn` |
+| `@keyframes slideUp` | Module results | `SlideInDown` or custom |
+| `@keyframes slideIn` | Toast slide | `SlideInRight` |
+| `@keyframes shake` | Login error feedback | `react-native-reanimated` `useAnimatedStyle` with sequence |
+| `@keyframes pulse` | Button press feedback | `useAnimatedStyle` scale |
+| `@keyframes spin` | Spinner | `Animated.loop` or Reanimated |
+| `.stagger > * { animation-delay }` | Staggered list entry | Imperatively triggered in RN |
+| `transition: all 0.15s` | All button states | Implicit in Pressable; explicit Animated for color |
+| `transition: width 0.3s ease` | Progress bar fill | `Animated.Value` width |
+| `.module-nav { transition: all 0.3s cubic-bezier }` | Focus mode panel | `react-native-reanimated` layout animation |
+| `role-tile:hover transform: translateY(-2px)` | Card hover lift | Press animation with `useAnimatedStyle` |
+
+#### Box Shadows — MODEL IS INCOMPATIBLE
+
+CSS box-shadow supports offset X/Y, blur, spread, and color in a single property. React Native splits this across 5 properties (`shadowColor`, `shadowOffset`, `shadowOpacity`, `shadowRadius`, `elevation`), and **spread radius is not supported**.
+
+| Token | CSS Value | RN Problem |
+|---|---|---|
+| `--shadow-sm` | `0 1px 3px rgba(0,0,0,0.4)` | Translatable |
+| `--shadow-md` | `0 4px 12px rgba(0,0,0,0.5)` | Translatable |
+| `--shadow-lg` | `0 8px 32px rgba(0,0,0,0.6)` | Translatable |
+| `--shadow-brand` | `0 0 0 3px rgba(59,130,246,0.2)` | **Cannot translate** — zero-offset ring with spread; needs border workaround |
+
+The brand focus ring (`--shadow-brand`) used on inputs and primary button focus states cannot be replicated in RN's shadow model. A border approach (setting `borderWidth: 3, borderColor`) will need to replace it.
+
+#### CSS Grid — NO RN EQUIVALENT
+
+Every grid layout needs to become Flexbox. The hardest case:
+
+| Grid | Usage | RN Challenge |
+|---|---|---|
+| `repeat(4, 1fr)` stats row | Dashboard stats | Flexbox `flex: 1` per child — straightforward |
+| `1fr 260px` dash-mid | Dashboard layout | Flexbox row — straightforward |
+| `220px 1fr` teams-layout | Teams sidebar | Flexbox row — straightforward |
+| `1fr 1fr` field-row | Forms | Flexbox row — straightforward |
+| `repeat(auto-fill, minmax(280px, 1fr))` courses-grid | **Main course listing** | **NO DIRECT EQUIVALENT** — needs `FlatList` with computed `numColumns`, or a responsive width calculation. Auto-fill with minmax is a web-only responsive pattern. |
+
+The courses grid is the most important: it's the primary surface all learners see. A concrete decision on the RN equivalent is needed before building begins.
+
+#### Backdrop Blur
+
+`backdrop-filter: blur(4px)` used on `.overlay` and `#cert-overlay`. Not available in React Native core. Options: `expo-blur` BlurView (iOS native, requires Expo), or drop to semi-opaque `rgba(0,0,0,0.7)` background.
+
+#### CSS Pseudo-Elements (Structural)
+
+`.brand::before` and `.ldg-wordmark::before` generate the diamond logo mark via CSS `content: ''` + `transform: rotate(45deg)`. These are pure CSS constructs with no RN equivalent. In React Native these need to be explicit `<View>` components or SVG elements.
+
+#### CSS calc()
+
+`.nav-sub { font-size: calc(var(--text-sm) - 1px); }` — `calc()` is not supported in React Native StyleSheets. Replace with a hardcoded value or a token.
+
+#### Scrollbar Styling
+
+`::-webkit-scrollbar` rules — web-only, ignored in RN. No action needed; just remove during migration.
+
+#### HTML Tables
+
+`.table-wrap` + `<table>` used for all data grids (completions, users, teams). React Native has no native table component. All data tables need custom `FlatList` or `ScrollView`-based implementations.
+
+#### Google Fonts CDN
+
+`<link href="fonts.googleapis.com/...">` — will not work in React Native. Both Inter and JetBrains Mono are available via `expo-font` and are open-source licensed for mobile use.
+
+#### Runtime CSS Variable Theme System
+
+`applyBrand()` changes CSS custom properties on `:root` at runtime — this is how the branding system works (admin picks colors, CSS updates everywhere instantly). **This mechanism does not exist in React Native.** NativeWind themes are static at build time. Runtime theme changes in RN require React Context + re-render of affected components. This is an architectural migration decision that affects every surface.
+
+---
+
+### 5 — DECISIONS NEEDED BEFORE MIGRATION
+
+Ordered by impact (highest first):
+
+#### ESTABLISH NOW — Affects every component
+
+1. **Token system migration format.** Decide: (a) Tailwind config values in `tailwind.config.js` consumed via NativeWind utility classes, OR (b) a TypeScript `tokens.ts` constants file used in StyleSheet objects, OR (c) both. Every component in the RN build depends on this choice. Current CSS variable names are semantic and well-structured — they can transfer cleanly.
+
+2. **Type scale shift for mobile.** The bottom half of the scale (`xs`=11px, `sm`=12px, `base`=13px) is below iOS legibility standards. Establish minimum body size of 14pt and remap the scale before any RN component is built. Decisions made now get baked into 20 components.
+
+3. **Touch target minimum.** Establish 44pt as the binding minimum for all interactive elements. Button padding needs to be increased (`.btn` minimum height should be 44pt; `.btn-sm` should become `.btn-compact` at 36pt with a note that it requires careful placement). All nav items need 44pt tap areas even if the visual appearance is smaller.
+
+4. **Press state strategy.** Choose the RN interactive model: `Pressable` with `pressed` state (recommended — most flexible), or `TouchableOpacity`. Every one of the 18+ hover states needs a mapped press equivalent before building starts.
+
+#### DECIDE BEFORE P1 — Affects navigation/shell architecture
+
+5. **Navigation architecture.** Side sidebar → bottom `TabNavigator`. Confirm: Admin gets 5 tabs (Dashboard, Courses, Users, Reports, Settings), Manager gets 4 (Dashboard, Courses, Team, Completions), Learner gets 4 (Courses, Progress, Certs, Account). Course viewer is a modal stack pushed from all three views. Lock this before any screen work begins.
+
+6. **Runtime brand theming approach.** The current `applyBrand()` / CSS variable system needs to become React Context + re-render in RN. Two options: (a) load brand from API on app start and inject into a ThemeContext that every component consumes via `useTheme()`, or (b) use NativeWind's built-in dark/light theming and restrict runtime brand changes to brand colors only via context. This decision determines whether NativeWind can be used for theming at all or whether StyleSheet objects must be computed dynamically.
+
+7. **Shadow brand / focus ring replacement.** CSS `box-shadow: 0 0 0 3px` ring cannot be replicated in RN. Decide: `borderWidth: 2 + borderColor` on focus, or a wrapper View for the ring effect. Lock this so form inputs and primary buttons are consistent.
+
+8. **`backdrop-filter: blur` replacement.** For modals and certificate overlay: expo-blur BlurView (requires Expo managed workflow) or semi-opaque background. If BlurView, commit to expo-blur as a dependency now.
+
+#### CLEAN UP — Lower compounding risk
+
+9. **Legacy alias consolidation.** 20+ legacy aliases in CSS (`--rule`, `--r`, `--white`, `--brand-1`, `--s-1`, etc.) are still referenced in HTML inline styles. None will survive migration. Audit all 1,242 lines of `index.html` for legacy alias references and replace with canonical tokens before the RN build so the team starts from a clean mapping.
+
+10. **Status color token gaps.** rgba variants of `--success`, `--warning`, `--danger` are hardcoded throughout CSS (16 instances). Add `--pass-lt-08` (0.08 opacity), `--pass-lt-20` (0.20 opacity), and equivalents for fail/warn, or commit to a Tailwind opacity modifier approach. These affect chip, quiz feedback, and quiz option components.
+
+11. **Inline font size cleanup.** `font-size: 9px`, `10px`, `11px` appear as inline styles in `index.html` across cert labels, AI importer key display, and chip overrides. These are below the mobile minimum and below the token scale. Replace with `--text-xs` at minimum, resized as per decision #2.
+
+---
+
+### Design System Status Per Dimension
+
+| Dimension | Status | Primary Issue |
+|---|---|---|
+| Colors | DEFINED | Semantic tokens correct; 16 hardcoded rgba escapes; `--ink-3` fails WCAG AA contrast in dark mode |
+| Typography | PARTIAL | Scale defined but bottom half (11–13px) is below iOS minimum; Google Fonts CDN won't work in RN |
+| Spacing | PARTIAL | 4pt grid defined; ~10 inline escapes in CSS; many more in HTML |
+| Border radius | PARTIAL | System exists; several hardcoded escapes |
+| Dark mode | DEFINED | Semantic naming is correct; light mode implementation is proper |
+| Navigation | WRONG PLATFORM | Sidebar nav pattern must be completely replaced with bottom tab bar |
+| Touch targets | INCONSISTENT | Most elements fail 44pt minimum; quiz options and role tiles pass |
+| Hover states | MISSING ALTERNATIVES | 18+ hover interactions with no press-state equivalents defined |
+| Animations | PARTIAL | 7 keyframe animations + transitions; all need Reanimated equivalents |
+| Box shadows | PARTIAL | 3 shadow levels are translatable; shadow-brand ring is not |
+| Grid layouts | INCOMPATIBLE | 6 grid layouts; courses auto-fill has no RN equivalent |
+| Runtime theming | INCOMPATIBLE | CSS variable runtime swap has no RN equivalent |
+
+---
+
+### Decisions Locked (Items 1, 4, 5, 6, 7, 8)
+
+**Decision 1 — Token migration format:**
+Both: a TypeScript `tokens.ts` constants file (feeds StyleSheet objects in RN) AND `tailwind.config.js` values that reference the same constants (consumed via NativeWind utility classes). The existing CSS variable names (`--brand`, `--surface`, `--ink-1`, etc.) map directly to Tailwind keys. Runtime brand overrides are handled via React Context, not via the token file.
+
+**Decision 4 — Press-state strategy:**
+React Native `Pressable` with a `pressed` state argument. Each interactive element gets `style={({ pressed }) => [baseStyle, pressed && pressedStyle]}`. Pressed state colors are derived from the corresponding CSS hover-state values already defined. No `TouchableOpacity` opacity flashes — use explicit color/scale changes only.
+
+**Decision 5 — Navigation architecture:**
+- **Admin:** 5 bottom tabs — Dashboard, Courses, Users, Reports, Settings (maps directly to current sidenav sections)
+- **Manager:** 4 bottom tabs — Dashboard, Courses, Team, Completions
+- **Learner:** 4 bottom tabs — Courses, Progress, Certificates, Account
+- **Course viewer:** Modal stack pushed from the course list in all three roles (back-swipe dismisses via navigation stack)
+- All tab bars use React Navigation `BottomTabNavigator`. The current CSS `display: none / block` page switching becomes React Navigation screen components.
+
+**Decision 6 — Runtime brand theming for RN:**
+`ThemeContext` with a `useTheme()` hook. On app launch, fetch `/api/brand`, store the brand object in context. Brand color changes by admin require app reload or a manual `refetch()`. NativeWind handles static dark/light theming via the `dark:` class variant. Dynamic brand colors (`--brand`, `--brand-secondary`, `--brand-accent`) are applied via inline `style` props that read from `useTheme()`. Static structural tokens (`--surface`, `--bg`, `--ink-1`, etc.) are Tailwind config values resolved at build time.
+
+**Decision 7 — Shadow-brand / focus ring replacement:**
+Replace `box-shadow: 0 0 0 3px rgba(brand, 0.2)` (unsupported spread radius in RN) with: `borderWidth: 2, borderColor: theme.brand` on focused inputs and primary button press state. On iOS this produces a 2pt colored border that matches the visual intent. Focus management in RN uses `onFocus`/`onBlur` handlers to toggle the border style.
+
+**Decision 8 — Backdrop-filter replacement:**
+Use `expo-blur` `BlurView` for modal overlays and the certificate overlay (provides native iOS blur, tintColor controls opacity). This requires the Expo managed workflow. If bare workflow: fall back to `rgba(0,0,0,0.80)` background with no blur. Lock: **expo-blur as a dependency**.
+
+---
+
+### Execution Log
+
+Plan approved 2026-05-20. 11 items completed.
+
+| # | Item | File(s) | Change |
+|---|---|---|---|
+| 1 | Token migration format — decision locked | AUDIT.md | Documented: TypeScript `tokens.ts` + `tailwind.config.js` dual approach |
+| 2 | Type scale shift for mobile | `css/style.css` | `--text-xs` 11→12px, `--text-sm` 12→13px, `--text-base` 13→14px, `--text-md` 14→15px, `--text-lg` 16→17px. Scale comment updated to note 12pt minimum. Upper range (xl–3xl) unchanged. |
+| 3 | Touch target sizing | `css/style.css` | `.btn` padding 7/14 → 10/16px; `.btn-sm` 4/10 → 7/12px; `.btn-lg` 10/20 → 12/22px; `.btn-xl` 12/24 → 14/28px (approx 45pt at --text-lg); `.btn-icon` 6px → 10px; `.nav-btn` 7/10 → 10/10px. Note: RN components will enforce explicit `minHeight: 44` on all Pressable variants. |
+| 4 | Press-state strategy — decision locked | AUDIT.md | Documented: `Pressable` with `pressed` state, explicit color/scale changes, no opacity flashes |
+| 5 | Navigation architecture — decision locked | AUDIT.md | Documented: Bottom TabNavigator per role, modal stack for course viewer |
+| 6 | Runtime brand theming — decision locked | AUDIT.md | Documented: ThemeContext + useTheme(); NativeWind for structural tokens; inline styles for dynamic brand colors |
+| 7 | Shadow-brand / focus ring — decision locked | AUDIT.md | Documented: `borderWidth: 2, borderColor: theme.brand` on focus |
+| 8 | Backdrop-filter — decision locked | AUDIT.md | Documented: expo-blur BlurView locked as a dependency |
+| 9 | Legacy alias cleanup | `css/style.css`, `index.html` | Removed `--pass-lt`, `--fail-lt`, `--warn-lt` from legacy aliases section (promoted to Status section); replaced all alias uses: `var(--fail)` → `var(--danger)` (7 instances), `var(--rule-2)` → `var(--border-2)` (2), `var(--r)` → `var(--radius-md)` (3), `var(--brand-1)` → `var(--brand)` (3), `var(--ok)` → `var(--success)` (1 — was undefined token), `var(--pass)` → `var(--success)` (1); CSS: `var(--r-full)` → `50%` (scrollbar), `var(--rule)` → `var(--border)` (activity-item). |
+| 10 | Status rgba tokens | `css/style.css` | Added 11 new tokens to Status section: `--pass-dim`, `--pass-bg`, `--pass-border`, `--fail-dim`, `--fail-bg`, `--fail-border-lt`, `--fail-border`, `--warn-border` (plus promoted `--pass-lt`, `--fail-lt`, `--warn-lt`). Replaced 16 hardcoded rgba() values across `.btn-danger`, `.chip-green/red/amber`, `.qr-item-pass/fail`, `.quiz-opt.correct/wrong`, `.quiz-feedback.fb-pass/fail`. |
+| 11 | Sub-scale font-size cleanup | `css/style.css`, `index.html` | CSS: `.sidenav-label`, `.mod-item-summary`, `.mod-bullet`, `.mod-objectives-label`, `.mod-meta-chip`, `.opt-letter`, `.cert-org-name`, `.cert-of`, `.cert-meta-label`, `.cert-sig-label` all updated from hardcoded 9/10/11px to `var(--text-xs)`. HTML: AI key display labels (9px→token), masked key display (11px→token), "Stored in browser" hint (10px→token), chip badge overrides (10px→removed, falls through to `.chip` base). |
+
+**Unexpected findings:**
+- `var(--ok)` on `#br-font-custom-name` (branding page font upload success state) was an undefined token — not an alias, just a missing definition. Replaced with `var(--success)`. No visual regression since the element is only populated by JS after a successful upload.
+- `.chip` badge inline `font-size:10px` overrides on the "Team" and "Admin" header badges were removed entirely — the `.chip` component already uses `var(--text-xs)` so the inline override was redundant (and now produces the same result at the new 12px value).
+- CSS sub-scale fixes extended beyond `index.html` to `style.css` (10 additional instances in component definitions) since these are the same problem at the source layer.
