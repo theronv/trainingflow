@@ -52,7 +52,6 @@ async function pbkdf2Hash(password) {
 }
 
 async function pbkdf2Verify(password, stored) {
-  if (stored === 'MOCK_HASH') return true; // Dev bypass
   if (typeof stored !== 'string') return false;
   const parts = stored.split(':')
   if (parts.length !== 3 || parts[0] !== 'pbkdf2v1') return false
@@ -85,6 +84,17 @@ async function getStoredHashes(db, env) {
     hashes.push(env.ADMIN_PASSWORD_HASH)
   }
   return [...new Set(hashes)] // Unique hashes only
+}
+
+// ── One-time setup (runs once per isolate) ────────────────────────────────────
+
+let _setupComplete = false
+async function ensureSetup(db) {
+  if (_setupComplete) return
+  await setupBrand(db)
+  await setupSections(db)
+  await setupTags(db)
+  _setupComplete = true
 }
 
 // ── App & Middleware ──────────────────────────────────────────────────────────
@@ -171,8 +181,7 @@ async function setupTags(db) {
 app.get('/api/brand', async (c) => {
   const db = getDb(c.env)
   try {
-    await setupBrand(db)
-    await setupTags(db)
+    await ensureSetup(db)
     const res = await db.execute({ sql: 'SELECT * FROM brand WHERE id = ?', args: ['default'] })
     const brand = toObj(res)
     return brand ? c.json(brand) : c.json({ org_name: 'TrainFlow' })
@@ -308,7 +317,7 @@ app.put('/api/brand', requireAdmin, async (c) => {
   const body = await c.req.json()
   const db = getDb(c.env)
   try {
-    await setupBrand(db)
+    await ensureSetup(db)
     await db.execute({
       sql: `INSERT INTO brand (id, org_name, tagline, primary_color, secondary_color, accent_color, logo_url, pass_threshold, font_family, font_url)
             VALUES ('default', ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -491,9 +500,11 @@ app.post('/api/auth/manager/register', async (c) => {
     return c.json({ error: 'Failed to create account. Please try again.' }, 500)
   }
 
+  const teamRes = inv.team_id ? await db.execute({ sql: 'SELECT name FROM teams WHERE id = ?', args: [inv.team_id] }) : null
+  const teamName = teamRes ? (toObj(teamRes)?.name || '') : ''
   const now = Math.floor(Date.now() / 1000)
   const token = await sign({ id, name: body.name, role: 'manager', team_id: inv.team_id, iat: now, exp: now + CONSTANTS.ADMIN_JWT_EXP_SEC }, c.env.JWT_SECRET, 'HS256')
-  return c.json({ token, user: { id, name: body.name, team_id: inv.team_id } })
+  return c.json({ token, user: { id, name: body.name, team_id: inv.team_id, team_name: teamName } })
 })
 
 app.delete('/api/completions', requireAdmin, async (c) => {
@@ -765,7 +776,7 @@ async function setupSections(db) {
 
 app.get('/api/sections', async (c) => {
   const db = getDb(c.env)
-  await setupSections(db)
+  await ensureSetup(db)
   const res = await db.execute('SELECT * FROM sections ORDER BY sort_order, name')
   return c.json(toObjs(res))
 })
@@ -774,7 +785,7 @@ app.post('/api/sections', requireAdmin, async (c) => {
   const body = await c.req.json()
   if (!body.name?.trim()) return c.json({ error: 'Name required' }, 400)
   const db = getDb(c.env)
-  await setupSections(db)
+  await ensureSetup(db)
   const id = uid()
   await db.execute({ sql: 'INSERT INTO sections (id, name, sort_order, created_at) VALUES (?, ?, ?, ?)', args: [id, body.name.trim(), body.sort_order ?? 0, Math.floor(Date.now() / 1000)] })
   return c.json({ id }, 201)
@@ -798,7 +809,7 @@ app.delete('/api/sections/:id', requireAdmin, async (c) => {
 app.patch('/api/courses/:id', requireAdmin, async (c) => {
   const body = await c.req.json()
   const db = getDb(c.env)
-  await setupSections(db)
+  await ensureSetup(db)
   const fields = [], args = []
   if (body.section_id !== undefined)    { fields.push('section_id = ?');    args.push(body.section_id || null) }
   if (body.title !== undefined)         { fields.push('title = ?');         args.push(body.title.trim()) }
@@ -811,86 +822,59 @@ app.patch('/api/courses/:id', requireAdmin, async (c) => {
 
 // ── AI Generation ─────────────────────────────────────────────────────────────
 
-function buildAiPrompt(title, content, qCount, difficulty, focus) {
-  return `Generate a JSON object for a training module.
-Title: ${title}
-Difficulty: ${difficulty}
-Focus: ${focus}
-Content:
-${content.slice(0, 5000)}
-
-Return ONLY valid JSON with no markdown fences or extra text:
-{
-  "summary": "2-3 sentence overview of this module",
-  "questions": [
-    {
-      "question": "Question text",
-      "options": ["Option A", "Option B", "Option C", "Option D"],
-      "correct_index": 0,
-      "explanation": "Why this answer is correct"
-    }
-  ]
-}
-
-Generate exactly ${qCount} questions. correct_index is 0-based.`
-}
-
-function extractJson(text) {
-  const match = text.match(/\{[\s\S]*\}/)
-  if (!match) throw new Error('No JSON found in AI response')
-  return JSON.parse(match[0])
-}
-
-async function callClaude(title, content, qCount, difficulty, focus, apiKey) {
+async function callClaudeGeneric(prompt, systemPrompt, maxTokens, apiKey) {
+  const body = {
+    model: 'claude-sonnet-4-6',
+    max_tokens: maxTokens,
+    messages: [{ role: 'user', content: prompt }]
+  }
+  if (systemPrompt) body.system = systemPrompt
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
-    headers: {
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json'
-    },
-    body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 2048,
-      messages: [{ role: 'user', content: buildAiPrompt(title, content, qCount, difficulty, focus) }]
-    })
+    headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+    body: JSON.stringify(body)
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
     throw new Error(err.error?.message || `Claude API error ${res.status}`)
   }
   const data = await res.json()
-  return { ...extractJson(data.content[0].text), _provider: 'Claude' }
+  return { text: data.content[0].text, _provider: 'Claude' }
 }
 
-async function callGemini(title, content, qCount, difficulty, focus, apiKey) {
+async function callGeminiGeneric(prompt, systemPrompt, maxTokens, apiKey) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`
+  const fullPrompt = systemPrompt ? systemPrompt + '\n\n' + prompt : prompt
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ contents: [{ parts: [{ text: buildAiPrompt(title, content, qCount, difficulty, focus) }] }] })
+    body: JSON.stringify({ contents: [{ parts: [{ text: fullPrompt }] }] })
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
     throw new Error(err.error?.message || `Gemini API error ${res.status}`)
   }
   const data = await res.json()
-  return { ...extractJson(data.candidates[0].content.parts[0].text), _provider: 'Gemini' }
+  return { text: data.candidates[0].content.parts[0].text, _provider: 'Gemini' }
 }
 
+// Generic AI proxy — reads keys from env secrets; falls back to request body for self-hosted/dev
 app.post('/api/ai/generate', requireAdmin, async (c) => {
   const body = await c.req.json()
-  const { title, content, q_count = 5, difficulty = 'applied', focus = 'general', claude_key, gemini_key } = body
-  if (!title || !content) return c.json({ error: 'title and content are required' }, 400)
-  if (!claude_key && !gemini_key) return c.json({ error: 'Provide a Claude or Gemini API key' }, 400)
+  const { prompt, system_prompt = '', max_tokens = 1000, claude_key, gemini_key } = body
+  if (!prompt) return c.json({ error: 'prompt is required' }, 400)
+
+  const claudeKey = c.env.CLAUDE_API_KEY || claude_key
+  const geminiKey = c.env.GEMINI_API_KEY || gemini_key
+  if (!claudeKey && !geminiKey) return c.json({ error: 'No AI keys configured. Set CLAUDE_API_KEY or GEMINI_API_KEY env secrets.' }, 400)
 
   let lastError = null
-  if (claude_key) {
-    try { return c.json(await callClaude(title, content, q_count, difficulty, focus, claude_key)) }
+  if (claudeKey) {
+    try { return c.json(await callClaudeGeneric(prompt, system_prompt, max_tokens, claudeKey)) }
     catch (e) { lastError = e; console.error('Claude failed:', e.message) }
   }
-  if (gemini_key) {
-    try { return c.json(await callGemini(title, content, q_count, difficulty, focus, gemini_key)) }
+  if (geminiKey) {
+    try { return c.json(await callGeminiGeneric(prompt, system_prompt, max_tokens, geminiKey)) }
     catch (e) { lastError = e; console.error('Gemini failed:', e.message) }
   }
   return c.json({ error: lastError?.message || 'All AI providers failed' }, 502)
@@ -903,7 +887,7 @@ app.post('/api/courses', requireAdmin, async (c) => {
   const db = getDb(c.env)
   const cid = uid()
 
-  await setupSections(db)
+  await ensureSetup(db)
 
   // Build all INSERT statements and fire them as a single batch request to Turso.
   // Sequential db.execute() calls make one HTTP round-trip per statement — for a
@@ -962,7 +946,7 @@ app.put('/api/courses/:id', requireAdmin, async (c) => {
   const body = await c.req.json()
   const db = getDb(c.env)
   try {
-    await setupSections(db)
+    await ensureSetup(db)
 
     // Fetch old module IDs in one read so we can delete their questions.
     const oldMods = await db.execute({ sql: 'SELECT id FROM modules WHERE course_id = ?', args: [cid] })
@@ -1026,16 +1010,21 @@ app.put('/api/courses/:id', requireAdmin, async (c) => {
 app.delete('/api/courses/:id', requireAdmin, async (c) => {
   const db = getDb(c.env)
   const cid = c.req.param('id')
-  const mods = await db.execute({ sql: 'SELECT id FROM modules WHERE course_id = ?', args: [cid] })
-  for (const mod of mods.rows) {
-    await db.execute({ sql: 'DELETE FROM questions WHERE module_id = ?', args: [mod.id] })
+  try {
+    const modRes = await db.execute({ sql: 'SELECT id FROM modules WHERE course_id = ?', args: [cid] })
+    const modIds = modRes.rows.map(r => String(r[0]))
+    const stmts = []
+    modIds.forEach(mid => stmts.push({ sql: 'DELETE FROM questions WHERE module_id = ?', args: [mid] }))
+    stmts.push({ sql: 'DELETE FROM modules WHERE course_id = ?',        args: [cid] })
+    stmts.push({ sql: 'DELETE FROM assignments WHERE course_id = ?',    args: [cid] })
+    stmts.push({ sql: 'DELETE FROM course_progress WHERE course_id = ?', args: [cid] })
+    stmts.push({ sql: 'DELETE FROM completions WHERE course_id = ?',    args: [cid] })
+    stmts.push({ sql: 'DELETE FROM courses WHERE id = ?',               args: [cid] })
+    await db.batch(stmts, 'write')
+    return c.json({ ok: true })
+  } catch(e) {
+    return c.json({ error: e.message || 'Failed to delete course' }, 500)
   }
-  await db.execute({ sql: 'DELETE FROM modules WHERE course_id = ?', args: [cid] })
-  await db.execute({ sql: 'DELETE FROM assignments WHERE course_id = ?', args: [cid] })
-  try { await db.execute({ sql: 'DELETE FROM course_progress WHERE course_id = ?', args: [cid] }) } catch {}
-  await db.execute({ sql: 'DELETE FROM completions WHERE course_id = ?', args: [cid] })
-  await db.execute({ sql: 'DELETE FROM courses WHERE id = ?', args: [cid] })
-  return c.json({ ok: true })
 })
 
 app.post('/api/assignments', requireManager, async (c) => {
@@ -1068,13 +1057,16 @@ app.post('/api/auth/manager/login', async (c) => {
   const ip = c.req.header('CF-Connecting-IP') || 'unknown'
   if (_rateCheck(`manager:${ip}`)) return c.json({ error: 'Too many attempts. Try again in a minute.' }, 429)
   const db = getDb(c.env)
-  const res = await db.execute({ sql: "SELECT * FROM users WHERE name = ? AND role = 'manager'", args: [body.name] })
+  const res = await db.execute({
+    sql: "SELECT u.*, t.name AS team_name FROM users u LEFT JOIN teams t ON u.team_id = t.id WHERE u.name = ? AND u.role = 'manager'",
+    args: [body.name]
+  })
   const user = toObj(res)
   if (!user || !(await pbkdf2Verify(body.password, user.password_hash))) return c.json({ error: 'Unauthorized' }, 401)
-  
+  await db.execute({ sql: 'UPDATE users SET last_login_at = ? WHERE id = ?', args: [Math.floor(Date.now() / 1000), user.id] })
   const now = Math.floor(Date.now() / 1000)
   const token = await sign({ id: user.id, name: user.name, role: 'manager', team_id: user.team_id, iat: now, exp: now + CONSTANTS.ADMIN_JWT_EXP_SEC }, c.env.JWT_SECRET, 'HS256')
-  return c.json({ token, user: { id: user.id, name: user.name, team_id: user.team_id } })
+  return c.json({ token, user: { id: user.id, name: user.name, team_id: user.team_id, team_name: user.team_name || '' } })
 })
 
 app.post('/api/learners/login', async (c) => {
@@ -1162,7 +1154,7 @@ app.post('/api/admin/backup/restore', requireAdmin, async (c) => {
 
 app.get('/api/admin/tags', requireManager, async (c) => {
   const db = getDb(c.env)
-  await setupTags(db)
+  await ensureSetup(db)
   const res = await db.execute('SELECT * FROM tags ORDER BY name')
   return c.json(toObjs(res))
 })
@@ -1171,7 +1163,7 @@ app.post('/api/admin/tags', requireAdmin, async (c) => {
   const body = await c.req.json()
   if (!body.name?.trim()) return c.json({ error: 'Name required' }, 400)
   const db = getDb(c.env)
-  await setupTags(db)
+  await ensureSetup(db)
   const id = uid()
   await db.execute({ sql: 'INSERT INTO tags (id, name) VALUES (?, ?)', args: [id, body.name.trim()] })
   return c.json({ id, name: body.name.trim() }, 201)
@@ -1187,7 +1179,7 @@ app.delete('/api/admin/tags/:id', requireAdmin, async (c) => {
 
 app.get('/api/admin/learners/:id/tags', requireManager, async (c) => {
   const db = getDb(c.env)
-  await setupTags(db)
+  await ensureSetup(db)
   const res = await db.execute({
     sql: `SELECT t.* FROM tags t JOIN user_tags ut ON t.id = ut.tag_id WHERE ut.user_id = ? ORDER BY t.name`,
     args: [c.req.param('id')]

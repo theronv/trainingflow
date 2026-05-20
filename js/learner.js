@@ -4,6 +4,7 @@
 
 const Learner = {
   _prog: null, // { course_id, module_idx, modules: [{mi, passed, score}] }
+  _navSeq: 0,
 
   init() {
     App.show('screen-learner');
@@ -22,6 +23,7 @@ const Learner = {
   },
 
   nav(p) {
+    Learner._navSeq++;
     ['courses','progress','certs','account'].forEach(k => {
       if($$(`ln-${k}`)) $$(`ln-${k}`).classList.toggle('active', k===p);
       const lp = $$(`lp-${k}`);
@@ -35,6 +37,7 @@ const Learner = {
 
   // ─── COURSES ───
   async renderCourses() {
+    const seq = Learner._navSeq;
     const grid = $$('l-courses-grid'); if(!grid) return;
     grid.innerHTML = '<div style="display:flex;justify-content:center;padding:40px;width:100%;"><div class="spinner"></div></div>';
     try {
@@ -45,6 +48,7 @@ const Learner = {
         learnerApi('/api/progress/me').catch(() => []),
         api('/api/sections').catch(() => [])
       ]);
+      if (Learner._navSeq !== seq) return;
       const recs = apiRecs.map(normRecord);
       const sections = apiSections || [];
 
@@ -106,6 +110,7 @@ const Learner = {
 
   // ─── PROGRESS ───
   async renderProgress() {
+    const seq = Learner._navSeq;
     const el = $$('l-progress-content'); if(!el) return;
     el.innerHTML = '<div style="display:flex;justify-content:center;padding:40px;"><div class="spinner"></div></div>';
     try {
@@ -113,6 +118,7 @@ const Learner = {
         learnerApi('/api/assignments/me'),
         learnerApi('/api/completions/me').catch(() => [])
       ]);
+      if (Learner._navSeq !== seq) return;
       if (!assignments || !assignments.length) {
         el.innerHTML = '<div class="card" style="text-align:center;padding:40px;color:var(--ink-4);">No training assigned yet. Check back later or contact your manager.</div>';
         return;
@@ -150,8 +156,10 @@ const Learner = {
   // ─── CERTS ───
   _certsCache: [],
   async renderCerts() {
+    const seq = Learner._navSeq;
     try {
       const res = await learnerApi('/api/completions/me');
+      if (Learner._navSeq !== seq) return;
       Learner._certsCache = (res || []).filter(r => r.passed);
       $$('l-certs-content').innerHTML = Learner._certsCache.length
         ? Learner._certsCache.map(r => `<div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);margin-bottom:var(--space-3);">

@@ -43,7 +43,7 @@ const Auth = {
     if(!name || !password) return Toast.err('Enter name and password.');
     try {
       const data = await api('/api/auth/manager/login', { method: 'POST', body: JSON.stringify({ name, password }) });
-      setManagerToken(data.token); scheduleExpiryWarning(data.token); setManagerUser(data); curManager = data;
+      setManagerToken(data.token); scheduleExpiryWarning(data.token); setManagerUser(data.user); curManager = data.user;
       Manager.init();
     } catch(e) { Toast.err(e.message); }
   },
@@ -55,7 +55,7 @@ const Auth = {
     if (!code) return Toast.err('Please enter your invite code.');
     try {
       const data = await api('/api/auth/manager/register', { method: 'POST', body: JSON.stringify({ name, password: pw1, code }) });
-      setManagerToken(data.token); scheduleExpiryWarning(data.token); setManagerUser(data); curManager = data;
+      setManagerToken(data.token); scheduleExpiryWarning(data.token); setManagerUser(data.user); curManager = data.user;
       Manager.init();
     } catch(e) { Toast.err(e.message); }
   },

@@ -221,6 +221,20 @@ CREATE TABLE IF NOT EXISTS brand (
 INSERT OR IGNORE INTO brand (id) VALUES ('default');
 
 
+-- ─── COURSE PROGRESS ─────────────────────────────────────
+-- Tracks per-learner resume position within a course.
+-- NOTE: also created lazily by the worker on first progress write.
+
+CREATE TABLE IF NOT EXISTS course_progress (
+  learner_id TEXT    NOT NULL,
+  course_id  TEXT    NOT NULL,
+  module_idx INTEGER NOT NULL DEFAULT 0,
+  modules    TEXT    NOT NULL DEFAULT '[]',
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY (learner_id, course_id)
+);
+
+
 -- ─── ADMIN ───────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS admin (

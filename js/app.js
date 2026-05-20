@@ -2,6 +2,10 @@
 //  TRAINFLOW — Unified Application Proxy
 // ══════════════════════════════════════════════════════════
 
+function debounce(fn, ms) {
+  let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+
 const AppProxy = {
   // Navigation
   aNav: (p) => Admin.nav(p),
@@ -27,19 +31,19 @@ const AppProxy = {
   closeAssign: () => $$('assign-overlay').classList.add('hidden'),
   
   // Importer
-  handleDrop: (e) => Admin.handleDrop(e),
-  handleFileSelect: (e) => Admin.handleFileSelect(e),
-  proceedFromUpload: () => Admin.proceedFromUpload(),
-  startGeneration: () => Admin.startGeneration(),
-  saveAiCourse: () => Admin.saveAiCourse(),
-  goPhase: (n) => Admin.goPhase(n),
+  handleDrop: (e) => Importer.handleDrop(e),
+  handleFileSelect: (e) => Importer.handleFileSelect(e),
+  proceedFromUpload: () => Importer.proceedFromUpload(),
+  startGeneration: () => Importer.startGeneration(),
+  saveAiCourse: () => Importer.saveAiCourse(),
+  goPhase: (n) => Importer.goPhase(n),
 
   // Admin Extra
   renderLearners: () => Admin.renderLearners(),
-  filterLearners: (q) => Admin.filterLearners(q),
-  openAddLearner: () => Admin.openAddLearner(),
-  closeAddLearner: () => Admin.closeAddLearner(),
-  submitAddLearner: () => Admin.submitAddLearner(),
+  filterLearners: debounce((q) => Admin.filterLearners(q), 200),
+  openAddLearner: () => Admin.openAddUser(),
+  closeAddLearner: () => Admin.closeAddUser(),
+  submitAddLearner: () => Admin.submitAddUser(),
   openEditLearner: (id, name, teamId, role) => Admin.openEditLearner(id, name, teamId, role),
   submitEditLearner: () => Admin.submitEditLearner(),
   openDeleteLearner: (id, name, role) => Admin.openDeleteLearner(id, name, role),
@@ -220,7 +224,7 @@ const AppProxy = {
     try {
       await managerApi('/api/managers/me', { method: 'PATCH', body: JSON.stringify({ name }) });
       curManager = { ...curManager, name };
-      const u = getManagerUser(); if (u) setManagerUser({ ...u, user: { ...(u.user || {}), name } });
+      setManagerUser(curManager);
       $$('m-team-badge').textContent = curManager.team_name || 'My Team';
       Toast.ok('Name updated.');
     } catch(e) { Toast.err(e.message); }
@@ -281,7 +285,7 @@ const AppProxy = {
 
   // Completions pagination
   compPage: (dir) => {
-    compOffset = Math.max(0, compOffset + dir * COMP_LIMIT);
+    Admin._compOffset = Math.max(0, Admin._compOffset + dir * COMP_LIMIT);
     Admin.renderComps();
   },
 

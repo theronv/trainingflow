@@ -3,6 +3,8 @@
 // ══════════════════════════════════════════════════════════
 
 const Manager = {
+  _navSeq: 0,
+
   init() {
     App.show('screen-manager');
     $$('m-team-badge').textContent = curManager.team_name || 'My Team';
@@ -10,6 +12,7 @@ const Manager = {
   },
 
   nav(p) {
+    Manager._navSeq++;
     ['dashboard','courses','team','completions','account'].forEach(k => {
       if($$(`mn-${k}`)) $$(`mn-${k}`).classList.toggle('active', k===p);
       const mp = $$(`mp-${k}`);
@@ -24,6 +27,7 @@ const Manager = {
 
   // ─── DASHBOARD ───
   async renderDash() {
+    const seq = Manager._navSeq;
     const statsEl = $$('m-stats'); if(!statsEl) return;
     statsEl.innerHTML = '<div style="display:flex;justify-content:center;padding:40px;width:100%;"><div class="spinner"></div></div>';
     try {
@@ -31,6 +35,7 @@ const Manager = {
         managerApi(`/api/learners?team_id=${curManager.team_id}`),
         managerApi('/api/admin/completions')
       ]);
+      if (Manager._navSeq !== seq) return;
       const overdue = learners.reduce((s,l) => s + (l.overdue_count || 0), 0);
       const passed = comps.filter(c => c.passed).length;
       const rate = comps.length ? Math.round(passed/comps.length*100) : 0;
@@ -53,8 +58,10 @@ const Manager = {
 
   // ─── COURSES ───
   async renderCourses() {
+    const seq = Manager._navSeq;
     try {
       const [apiCourses, sections] = await Promise.all([managerApi('/api/courses'), api('/api/sections').catch(() => [])]);
+      if (Manager._navSeq !== seq) return;
       const courseCard = c => {
         const nc = normCourse(c);
         return `<div class="card">
@@ -76,14 +83,16 @@ const Manager = {
         html = apiCourses.map(courseCard).join('');
       }
       $$('m-courses-grid').innerHTML = html;
-    } catch(e) { }
+    } catch(e) { Toast.err(e.message); }
   },
 
   // ─── TEAM ───
   async renderTeam() {
+    const seq = Manager._navSeq;
     const tbody = $$('m-team-tbody'); if (!tbody) return;
     try {
       const learners = await managerApi(`/api/learners?team_id=${curManager.team_id}`);
+      if (Manager._navSeq !== seq) return;
       const rows = Array.isArray(learners) ? learners : (learners.rows || []);
       if (!rows.length) {
         tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--ink-4);">No learners yet. Use "+ Add Learner" to get started.</td></tr>';
@@ -108,6 +117,7 @@ const Manager = {
     $$('reset-pw-overlay').classList.remove('hidden');
   },
   async submitResetPw() {
+    if (!App._resetPwId) return Toast.err('No user selected.');
     const pw = $$('rp-pw1').value;
     if (!pw || pw.length < 8) return Toast.err('Password must be at least 8 characters.');
     const btn = $$('reset-pw-overlay')?.querySelector('.btn-primary');
@@ -140,9 +150,10 @@ const Manager = {
           <label style="margin:0;">${esc(l.name)} ${exists?'(Already assigned)':''}</label>
         </div>`;
       }).join('') + `<button class="btn btn-primary w-full" id="team-assign-btn" style="margin-top:12px;" onclick="Manager.submitTeamAssign()">Assign Now</button>`;
-    } catch(e) { }
+    } catch(e) { $$('assign-list').innerHTML = `<p style="color:var(--fail);">${esc(e.message)}</p>`; }
   },
   async submitTeamAssign() {
+    if (!App._assignCourseId) return Toast.err('No course selected.');
     const btn = $$('team-assign-btn');
     const orig = btn ? btn.textContent : '';
     if (btn) { btn.disabled = true; btn.textContent = 'Assigning…'; }
@@ -401,14 +412,15 @@ const Manager = {
     const orig = btn.textContent;
     btn.disabled = true; btn.textContent = 'Assigning…';
     try {
-      await Promise.all(ids.map(l =>
+      const results = await Promise.all(ids.map(l =>
         managerApi('/api/assignments', {
           method: 'POST',
           body: JSON.stringify({ course_id: courseId, learner_id: l.id, due_at: dueAt })
-        }).catch(() => null) // skip already-assigned
+        }).then(() => true).catch(() => null)
       ));
+      const assigned = results.filter(Boolean).length;
       $$('post-import-assign-overlay').classList.add('hidden');
-      Toast.ok(`Course assigned to ${ids.length} learner${ids.length !== 1 ? 's' : ''}.`);
+      Toast.ok(`Course assigned to ${assigned} learner${assigned !== 1 ? 's' : ''}.`);
       Manager._importedIds = null;
       Manager._credsRows = null;
     } catch(e) {
@@ -420,11 +432,13 @@ const Manager = {
 
   // ─── COMPLETIONS ───
   async renderComps(courseId) {
+    const seq = Manager._navSeq;
     const tbody = $$('m-comp-tbody'); if (!tbody) return;
     try {
       const params = new URLSearchParams();
       if (courseId) params.set('course_id', courseId);
       const res = await managerApi(`/api/admin/completions?${params.toString()}`);
+      if (Manager._navSeq !== seq) return;
 
       // Populate course filter dropdown on first load
       const filterEl = $$('m-comp-filter');

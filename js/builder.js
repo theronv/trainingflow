@@ -135,9 +135,10 @@ const Builder = {
           <input type="checkbox" id="chk-ind-${l.id}" ${cidAssigns.includes(l.id)?'checked':''} onchange="Builder.toggleAssign('${l.id}', this.checked)">
           <label for="chk-ind-${l.id}" style="margin:0;">${esc(l.name)}</label>
         </div>`).join('');
-    } catch(e) { }
+    } catch(e) { $$('assign-list').innerHTML = `<p style="color:var(--fail);">${esc(e.message)}</p>`; }
   },
   async toggleAssign(lid, checked) {
+    if (!App._assignCourseId) return Toast.err('No course selected.');
     try {
       const method = checked ? 'POST' : 'DELETE';
       await api('/api/assignments', { method, body: JSON.stringify({ course_id: App._assignCourseId, learner_id: lid }) });

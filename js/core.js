@@ -53,44 +53,35 @@ function getLearnerToken()   { return StorageUtils.get('tf_learner_token'); }
 function setLearnerToken(t)  { StorageUtils.set('tf_learner_token', t); }
 function clearLearnerToken() { StorageUtils.remove('tf_learner_token'); }
 
-async function api(path, opts = {}) {
-  const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
-  const token = getToken();
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-  const res = await fetch(WORKER_URL + path, { ...opts, headers });
-  if (res.status === 401 && token) { clearToken(); curCourse = null; curModIdx = 0; quizSt = {}; Toast.err('Session expired. Please sign in again.'); App.show('screen-landing'); throw new Error('Session expired'); }
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({ error: res.statusText }));
-    throw Object.assign(new Error(body.error || res.statusText), { status: res.status, detail: body.detail });
-  }
-  return res.json();
+function makeApi(getTokenFn, on401) {
+  return async function(path, opts = {}) {
+    const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
+    const token = getTokenFn();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(WORKER_URL + path, { ...opts, headers });
+    if (res.status === 401 && token) { on401(); throw new Error('Session expired'); }
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({ error: res.statusText }));
+      throw Object.assign(new Error(body.error || res.statusText), { status: res.status, detail: body.detail });
+    }
+    return res.json();
+  };
 }
 
-async function managerApi(path, opts = {}) {
-  const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
-  const token = getManagerToken();
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-  const res = await fetch(WORKER_URL + path, { ...opts, headers });
-  if (res.status === 401 && token) { clearManagerToken(); clearManagerUser(); curManager = null; curCourse = null; curModIdx = 0; quizSt = {}; Toast.err('Session expired. Please sign in again.'); App.show('screen-landing'); throw new Error('Session expired'); }
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({ error: res.statusText }));
-    throw Object.assign(new Error(body.error || res.statusText), { status: res.status, detail: body.detail });
-  }
-  return res.json();
-}
-
-async function learnerApi(path, opts = {}) {
-  const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
-  const token = getLearnerToken();
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-  const res = await fetch(WORKER_URL + path, { ...opts, headers });
-  if (res.status === 401 && token) { clearLearnerToken(); curLearner = null; curCourse = null; curModIdx = 0; quizSt = {}; Toast.err('Session expired. Please sign in again.'); App.show('screen-landing'); throw new Error('Session expired'); }
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({ error: res.statusText }));
-    throw Object.assign(new Error(body.error || res.statusText), { status: res.status, detail: body.detail });
-  }
-  return res.json();
-}
+const adminApi = makeApi(getToken, () => {
+  clearToken(); curCourse = null; curModIdx = 0; quizSt = {};
+  Toast.err('Session expired. Please sign in again.'); App.show('screen-landing');
+});
+const managerApi = makeApi(getManagerToken, () => {
+  clearManagerToken(); clearManagerUser(); curManager = null; curCourse = null; curModIdx = 0; quizSt = {};
+  Toast.err('Session expired. Please sign in again.'); App.show('screen-landing');
+});
+const learnerApi = makeApi(getLearnerToken, () => {
+  clearLearnerToken(); curLearner = null; curCourse = null; curModIdx = 0; quizSt = {};
+  Toast.err('Session expired. Please sign in again.'); App.show('screen-landing');
+});
+// Backward-compat alias — prefer adminApi for admin-scoped calls
+const api = adminApi;
 
 let curLearner   = null;
 let curManager   = null;
@@ -99,12 +90,12 @@ let curModIdx    = 0;
 let quizSt       = {};
 let cbState      = { editId: null, mods: [] };
 let csvParsed    = null;
-let compOffset   = 0;
 const COMP_LIMIT = 50;
 let _allLearners = [];
 let teamsCache   = [];
 let coursesCache = [];
 let assignCache  = [];
+let sectionsCache = [];
 let isDemo       = false;
 let brandCache   = { name: CONFIG.DEFAULT_BRAND_NAME, tagline: CONFIG.DEFAULT_TAGLINE, logo: '', c1: CONFIG.DEFAULT_C1, c2: CONFIG.DEFAULT_C2, c3: CONFIG.DEFAULT_C3, pass: CONFIG.DEFAULT_PASS, font: CONFIG.DEFAULT_FONT, fontUrl: '' };
 
@@ -146,6 +137,7 @@ function normCourse(c) {
 function normRecord(r) { return { cid: r.course_id, learner: r.learner_name, score: r.score, passed: Boolean(r.passed), date: (r.completed_at || 0) * 1000, cid2: r.cert_id || '', }; }
 function normBrand(b) { return { name: b.org_name || CONFIG.DEFAULT_BRAND_NAME, tagline: b.tagline || CONFIG.DEFAULT_TAGLINE, logo: b.logo_url || '', c1: b.primary_color || CONFIG.DEFAULT_C1, c2: b.secondary_color || CONFIG.DEFAULT_C2, c3: b.accent_color || CONFIG.DEFAULT_C3, pass: b.pass_threshold ?? CONFIG.DEFAULT_PASS, font: b.font_family || CONFIG.DEFAULT_FONT, fontUrl: b.font_url || '' }; }
 
+// ─── Color Utilities ─────────────────────────────────────
 function hexToRgba(hex, alpha) {
   const r = parseInt(hex.slice(1,3),16);
   const g = parseInt(hex.slice(3,5),16);
