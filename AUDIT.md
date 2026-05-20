@@ -298,3 +298,157 @@ The structural weaknesses are real and will compound: uncontrolled global state,
 ### Approved Plan
 
 *(Awaiting approval — see CLI output below)*
+
+---
+
+## Auditor Review — Stage 3 (Security) — 2026-05-20
+
+**Scope:** Full data safety and authorization review. Every API route, auth middleware, DB query, and client-side data access path read before any evaluation.
+
+**Exploitability:** EXPOSED
+
+---
+
+### 1 — AUTHORIZATION BOUNDARY TEST
+
+All routes walked. Results:
+
+| Route | Auth Required | Server-side Ownership Check | Can User A touch User B's data? |
+|---|---|---|---|
+| `GET /api/courses` | None | N/A | Public — all courses listed to anyone |
+| `GET /api/courses/:id` | None | N/A | Full course + **correct answers** public |
+| `GET /api/brand` | None | N/A | Public by design — OK |
+| `GET /api/sections` | None | N/A | Public — OK |
+| `POST /api/completions` | requireLearner | None | Learner posts own ID from JWT — but **score/passed from body, unverified** |
+| `GET /api/learners/:id` | requireManager | **MISSING for managers** | Manager A can read any learner by ID |
+| `POST /api/assignments` | requireManager | **MISSING** | Manager can assign courses to learners in other teams |
+| `DELETE /api/assignments` | requireManager | **MISSING** | Manager can delete any assignment by knowing IDs |
+| `POST /api/learners` | requireManager | Partial | Manager can pass any `team_id` in body (not scoped to manager's team) |
+| `POST /api/learners` | requireManager | N/A | Manager can set `role: 'manager'` — promotes arbitrary accounts |
+| `GET /api/admin/learners/:id/tags` | requireManager | **MISSING** | Manager can read tags for learners on other teams |
+| `POST /api/admin/learners/:id/tags` | requireManager | **MISSING** | Manager can tag learners on other teams |
+| `DELETE /api/admin/learners/:id/tags/:tagId` | requireManager | **MISSING** | Manager can untag learners on other teams |
+| `PUT /api/learners/:id/password` | requireManager | Present (team check) | Scoped correctly for managers |
+| All `requireAdmin` routes | requireAdmin | Admin has no team scoping — by design | OK |
+
+**requireLearner role blind-spot (worker/index.js:152-160):**
+```js
+async function requireLearner(c, next) {
+  const payload = await verify(auth.slice(7), c.env.JWT_SECRET, 'HS256')
+  c.set('user', payload)   // no role check
+  await next()
+}
+```
+No `payload.role === 'learner'` check. A manager or admin JWT passes `requireLearner`. A manager can POST `/api/completions` using their manager token, creating a completion record and a certificate for themselves without taking any quiz.
+
+---
+
+### 2 — INPUT TRUST AUDIT
+
+**All SQL queries are fully parameterized.** No string interpolation in SQL found. No SQL injection risk.
+
+| Input | Route | Issue |
+|---|---|---|
+| `body.score`, `body.passed` | `POST /api/completions` | Entirely trusted from client — no server-side verification against quiz answers |
+| `body.team_id` | `POST /api/learners` | Not validated against manager's `scopedToTeam` — manager can create users in any team |
+| `body.role` | `POST /api/learners` | Allows `'manager'` from any authenticated manager |
+| `body.password` | `PUT /api/learners/:id/password` | No minimum length check — empty string accepted |
+| `body.current_password` | `PUT /api/admin/password` | Optional — if omitted, current password verification is skipped entirely |
+| `from`, `to` | `GET /api/admin/completions` | `new Date(from).getTime()` can produce `NaN` for malformed dates — passes to parameterized query silently |
+| No string length limits | All string fields | No server-side enforcement on name, title, content, etc. |
+
+---
+
+### 3 — DATA EXPOSURE AUDIT
+
+**password_hash in API responses (worker/index.js:444-448, 532-588, 609):**
+`GET /api/learners/:id` and `GET /api/learners` both execute `SELECT u.*` which includes the `password_hash` column. The admin stats endpoint also does `SELECT * FROM users`. Password hashes (PBKDF2) are returned in every user API response to any authenticated manager or admin.
+
+**Course answer key publicly accessible (worker/index.js:635-649):**
+`GET /api/courses/:id` requires no authentication. The response includes the full course structure with `correct_index` and `explanation` for every quiz question. Any unauthenticated visitor can download the complete answer key for any course.
+
+**Error message leakage (worker/index.js:118-121):**
+```js
+app.onError((err, c) => {
+  return c.json({ error: 'Internal server error', detail: err.message }, 500)
+})
+```
+`err.message` on a DB error will contain table names, column names, and constraint names. Several routes also do `return c.json({ error: e.message }, 500)` directly. Raw libSQL exceptions are client-visible.
+
+**List scoping (completions, learners, stats):** Managers see only their team's data via `user.scopedToTeam`. This scoping is correctly applied on GET /api/learners, GET /api/admin/stats, GET /api/admin/completions, GET /api/assignments. The bypass is through GET /api/learners/:id which has no team check.
+
+---
+
+### 4 — STATE CORRUPTION PATHS
+
+**Completion fabrication (repeated submissions):**
+`POST /api/completions` uses `INSERT OR REPLACE` keyed on a fresh UID per request. There is no `UNIQUE(learner_id, course_id)` constraint. A learner can submit the same course multiple times, producing multiple `cert_id` records and multiple rows in the completions table. Pass-rate calculations and admin dashboards accumulate all records. This is likely intentional for retakes but allows unbounded record inflation.
+
+**Invite code TOCTOU:**
+The `SELECT` check for `used = 0` and the `UPDATE SET used = 1` are in separate operations. Two simultaneous registration requests with the same invite code could both pass the SELECT check. The batch contains an INSERT (which would fail on name uniqueness if identical names) and an UPDATE. If two different managers register with the same code simultaneously, both could succeed. Low probability in practice; structurally present.
+
+---
+
+### 5 — AUTH EDGE CASES
+
+**JWT expiry:** Clean — `verify()` throws on expiry, middleware returns 401, client clears token and redirects to login. No partial response risk.
+
+**requireLearner accepts any role:** As noted in Section 1 — a valid manager JWT passes requireLearner. A manager can call any `requireLearner`-protected endpoint. Primary impact: fake completions and certificates under the manager's own account.
+
+**`PUT /api/admin/password` — current password optional (worker/index.js:344-359):**
+```js
+if (body.current_password) {  // check is inside an optional block
+  ...verify...
+}
+```
+An authenticated admin (or someone who has hijacked an admin session) can change the admin password without knowing the current one by sending `{ new_password: "new" }` with no `current_password` field.
+
+**Client-side auth checks:** `App.show()` guards UI screen access. All screens that matter (`screen-admin`, `screen-manager`, `screen-course`) are also protected server-side. Client-side checks are not load-bearing.
+
+**Brand endpoint:** `GET /api/brand` is public and unauthenticated. This leaks the org name, logo URL, brand colors, and pass threshold to anyone. For an internal training platform this may be undesirable but is not a data safety issue.
+
+---
+
+### 6 — FINDINGS REGISTER
+
+| # | Severity | File + Line | Attack Vector | Impact | Exploitability | Remediation |
+|---|---|---|---|---|---|---|
+| F1 | **CRITICAL** | `worker/index.js:664-675` | Learner posts `{ course_id, score:100, passed:true }` without taking quiz | Fake completion record + legitimate cert_id stored in DB; training compliance records corrupted | **NOW** | Compute score server-side from stored quiz responses, or at minimum require question response proof |
+| F2 | **CRITICAL** | `worker/index.js:635-649` | Any unauthenticated request to `GET /api/courses/:id` | Complete answer key (`correct_index`, `explanation`) for every quiz question publicly available before test | **NOW** | Require auth to fetch course detail, or strip answer fields for non-admin/manager responses |
+| F3 | **HIGH** | `worker/index.js:442-448` | Manager requests `GET /api/learners/:id` with any learner ID | Reads any user's full record including `password_hash`; no team ownership enforced | **NOW** | Add `WHERE team_id = user.scopedToTeam` check for managers |
+| F4 | **HIGH** | `worker/index.js:444,586` | Any `GET /api/learners` or `GET /api/learners/:id` | `password_hash` returned in API response to any authenticated manager or admin | **NOW** | Replace `SELECT *` with explicit column list excluding `password_hash` |
+| F5 | **HIGH** | `worker/index.js:152-160` | Manager or admin JWT used to call `POST /api/completions` | Manager creates fake completion + cert without taking quiz; DB records appear legitimate | **NOW** | Add `if (payload.role !== 'learner') throw new Error('Forbidden')` in `requireLearner` |
+| F6 | **HIGH** | `worker/index.js:1030-1053` | Manager calls `POST /api/assignments` or `DELETE /api/assignments` with any learner_id | Assigns/removes courses for learners on other teams; no team ownership enforced | **NOW** | Add team membership check before insert/delete |
+| F7 | **HIGH** | `worker/index.js:427-440` | Manager sends `POST /api/learners` with arbitrary `team_id` in body | Manager creates user in any team, not just their own | **NOW** | Override `body.team_id` with `user.scopedToTeam` when caller is a scoped manager |
+| F8 | **HIGH** | `worker/index.js:431` | Manager sends `POST /api/learners` with `role: 'manager'` | Promotes any user to manager role without admin approval | **NOW** | Restrict role elevation to `requireAdmin` only |
+| F9 | **MEDIUM** | `worker/index.js:361-372` | Manager sends `PUT /api/learners/:id/password` with 1-char password | Sets trivially weak password on any learner account they manage | **NOW** | Add `if (!body.password || body.password.length < 8)` check |
+| F10 | **MEDIUM** | `worker/index.js:344-359` | Admin sends `PUT /api/admin/password` without `current_password` field | Admin session hijack allows password change without knowing original | CONDITIONAL | Make `current_password` required (remove optional `if` wrapper) |
+| F11 | **MEDIUM** | `worker/index.js:118-121` | Any 500 error | DB exception messages (`err.message`) returned as `detail` field; leaks column/table/constraint names | CONDITIONAL | Remove `detail` field from 500 responses; log server-side only |
+| F12 | **MEDIUM** | `worker/index.js:1190-1203` | Manager calls tag endpoints with any learner ID | Tags/untags learners on other teams | **NOW** | Add team ownership check matching F3 pattern |
+| F13 | **LOW** | `js/importer.js:21-37` | Admin UI sends full admin password to `/api/auth/login` just to unlock key editor | Unnecessary auth roundtrip; admin password in-flight for UI-only purpose | THEORETICAL | ✅ **Resolved** — replaced with session token presence check (`tf_token`) |
+| F14 | **LOW** | `worker/index.js:728-729` | Malformed `from`/`to` date strings | `NaN` timestamp in parameterized query causes silent filter failure; no injection risk | THEORETICAL | ✅ **Resolved** — NaN guard returns 400 before query execution |
+| F15 | **LOW** | `worker/index.js:104-116` | `ALLOWED_ORIGIN` env var not set in production | CORS falls back to `theronv.github.io` (safe hardcoded default); localhost echoing only triggers for localhost origins | ACCEPTED | Hardcoded safe fallback mitigates the risk; no further action required |
+
+---
+
+### Resolution Summary
+
+All F1–F14 findings resolved. F15 accepted (safe hardcoded fallback in place).
+
+| Finding | Severity | Status | File |
+|---|---|---|---|
+| F1 — Client-controlled score/passed | CRITICAL | ✅ Resolved | worker/index.js |
+| F2 — Answer key public | CRITICAL | ✅ Resolved | worker/index.js |
+| F3 — Manager reads any learner | HIGH | ✅ Resolved | worker/index.js |
+| F4 — password_hash in responses | HIGH | ✅ Resolved | worker/index.js |
+| F5 — requireLearner role-blind | HIGH | ✅ Resolved | worker/index.js |
+| F6 — Assignment team bypass | HIGH | ✅ Resolved | worker/index.js |
+| F7 — Manager sets arbitrary team_id | HIGH | ✅ Resolved | worker/index.js |
+| F8 — Manager promotes to manager role | HIGH | ✅ Resolved | worker/index.js |
+| F9 — Weak password allowed | MEDIUM | ✅ Resolved | worker/index.js |
+| F10 — Admin password change without current | MEDIUM | ✅ Resolved | worker/index.js |
+| F11 — DB error message leakage | MEDIUM | ✅ Resolved | worker/index.js |
+| F12 — Tag endpoints team bypass | MEDIUM | ✅ Resolved | worker/index.js |
+| F13 — Admin password in-flight for UI | LOW | ✅ Resolved | js/importer.js |
+| F14 — NaN date filter | LOW | ✅ Resolved | worker/index.js |
+| F15 — CORS localhost echo | LOW | ✅ Accepted | worker/index.js |

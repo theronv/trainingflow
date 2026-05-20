@@ -18,23 +18,10 @@ const Importer = {
     Toast.ok('Keys saved for this session.');
   },
 
-  async requestAiEdit() {
-    const pw = prompt("Please enter your admin password to change AI keys:");
-    if (!pw) return;
-    try {
-      const res = await fetch(`${CONFIG.WORKER_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: pw })
-      });
-      if (res.ok) {
-        Importer.toggleAiEdit(true);
-      } else {
-        Toast.err("Incorrect password.");
-      }
-    } catch (e) {
-      Toast.err("Authentication failed.");
-    }
+  requestAiEdit() {
+    const token = sessionStorage.getItem('tf_token');
+    if (!token) { Toast.err("Admin session not found. Please log in again."); return; }
+    Importer.toggleAiEdit(true);
   },
 
   toggleAiEdit(show) {

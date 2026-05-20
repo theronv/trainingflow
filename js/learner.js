@@ -177,7 +177,7 @@ const Learner = {
   async startCourse(cid) {
     try {
       const [res, progList] = await Promise.all([
-        api(`/api/courses/${cid}`),
+        learnerApi(`/api/courses/${cid}`),
         learnerApi('/api/progress/me').catch(() => [])
       ]);
       curCourse = normCourse(res);

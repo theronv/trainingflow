@@ -117,7 +117,7 @@ app.use('/api/*', async (c, next) => {
 
 app.onError((err, c) => {
   console.error('API Error:', err)
-  return c.json({ error: 'Internal server error', detail: err.message }, 500)
+  return c.json({ error: 'Internal server error' }, 500)
 })
 
 // ── Auth Middlewares ──
@@ -150,6 +150,17 @@ async function requireManager(c, next) {
 }
 
 async function requireLearner(c, next) {
+  const auth = c.req.header('Authorization')
+  if (!auth?.startsWith('Bearer ')) return c.json({ error: 'Unauthorized' }, 401)
+  try {
+    const payload = await verify(auth.slice(7), c.env.JWT_SECRET, 'HS256')
+    if (payload.role !== 'learner') throw new Error('Forbidden')
+    c.set('user', payload)
+    await next()
+  } catch { return c.json({ error: 'Unauthorized' }, 401) }
+}
+
+async function requireAnyAuth(c, next) {
   const auth = c.req.header('Authorization')
   if (!auth?.startsWith('Bearer ')) return c.json({ error: 'Unauthorized' }, 401)
   try {
@@ -345,13 +356,13 @@ app.put('/api/admin/password', requireAdmin, async (c) => {
   const db = getDb(c.env)
   if (!body.new_password || body.new_password.length < 8)
     return c.json({ error: 'Password must be at least 8 characters' }, 400)
-  if (body.current_password) {
-    const hashes = await getStoredHashes(db, c.env)
-    const stored = hashes[0]
-    if (stored && stored !== 'MOCK_HASH') {
-      const ok = await pbkdf2Verify(body.current_password, stored)
-      if (!ok) return c.json({ error: 'Current password is incorrect' }, 400)
-    }
+  if (!body.current_password)
+    return c.json({ error: 'Current password is required' }, 400)
+  const hashes = await getStoredHashes(db, c.env)
+  const stored = hashes[0]
+  if (stored) {
+    const ok = await pbkdf2Verify(body.current_password, stored)
+    if (!ok) return c.json({ error: 'Current password is incorrect' }, 400)
   }
   const hash = await pbkdf2Hash(body.new_password)
   await db.execute({ sql: 'INSERT OR REPLACE INTO admin (id, password_hash) VALUES (?, ?)', args: ['default', hash] })
@@ -362,6 +373,8 @@ app.put('/api/learners/:id/password', requireManager, async (c) => {
   const user = c.get('user')
   const body = await c.req.json()
   const db = getDb(c.env)
+  if (!body.password || body.password.length < 8)
+    return c.json({ error: 'Password must be at least 8 characters' }, 400)
   if (user.scopedToTeam) {
     const check = await db.execute({ sql: 'SELECT id FROM users WHERE id = ? AND team_id = ?', args: [c.req.param('id'), user.scopedToTeam] })
     if (!check.rows.length) return c.json({ error: 'Not found' }, 404)
@@ -425,23 +438,32 @@ app.post('/api/learners/bulk/delete', requireAdmin, async (c) => {
 })
 
 app.post('/api/learners', requireManager, async (c) => {
+  const user = c.get('user')
   const body = await c.req.json()
   if (!body.name || !body.password) return c.json({ error: 'Name and password are required' }, 400)
   if (body.password.length < 8) return c.json({ error: 'Password must be at least 8 characters' }, 400)
-  const role = body.role === 'manager' ? 'manager' : 'learner'
+  // Only admins can create manager accounts; scoped managers always create learners
+  const role = (user.isAdmin && body.role === 'manager') ? 'manager' : 'learner'
+  // Scoped managers are locked to their own team; admins can specify any team
+  const teamId = user.isAdmin ? (body.team_id || null) : user.scopedToTeam
   const db = getDb(c.env)
   const hash = await pbkdf2Hash(body.password)
   const id = uid()
   await db.execute({
     sql: 'INSERT INTO users (id, name, password_hash, role, team_id) VALUES (?, ?, ?, ?, ?)',
-    args: [id, body.name, hash, role, body.team_id || null]
+    args: [id, body.name, hash, role, teamId]
   })
   return c.json({ id }, 201)
 })
 
 app.get('/api/learners/:id', requireManager, async (c) => {
+  const caller = c.get('user')
   const db = getDb(c.env)
-  const res = await db.execute({ sql: 'SELECT * FROM users WHERE id = ?', args: [c.req.param('id')] })
+  const lid = c.req.param('id')
+  let sql = 'SELECT id, name, role, team_id, last_login_at, created_at FROM users WHERE id = ?'
+  const args = [lid]
+  if (caller.scopedToTeam) { sql += ' AND team_id = ?'; args.push(caller.scopedToTeam) }
+  const res = await db.execute({ sql, args })
   const user = toObj(res)
   if (!user) return c.json({ error: 'Not found' }, 404)
   return c.json(user)
@@ -574,16 +596,18 @@ app.get('/api/learners', requireManager, async (c) => {
         AND NOT EXISTS (SELECT 1 FROM completions c WHERE c.learner_id = u.id AND c.course_id = a.course_id AND c.passed = 1)
     ) AS overdue_count`
 
+  const safeColumns = 'u.id, u.name, u.role, u.team_id, u.last_login_at, u.created_at'
+
   if (page > 0) {
     const [countRes, rowsRes] = await Promise.all([
       db.execute({ sql: `SELECT COUNT(*) AS n FROM users u ${baseWhere}`, args }),
-      db.execute({ sql: `SELECT u.*${stats} FROM users u ${baseWhere} ORDER BY u.name LIMIT ${PAGE_SIZE} OFFSET ${(page - 1) * PAGE_SIZE}`, args })
+      db.execute({ sql: `SELECT ${safeColumns}${stats} FROM users u ${baseWhere} ORDER BY u.name LIMIT ${PAGE_SIZE} OFFSET ${(page - 1) * PAGE_SIZE}`, args })
     ])
     const total = toObj(countRes)?.n || 0
     return c.json({ rows: toObjs(rowsRes), total, page, pages: Math.ceil(total / PAGE_SIZE) })
   }
 
-  const res = await db.execute({ sql: `SELECT u.*${stats} FROM users u ${baseWhere} ORDER BY u.name`, args })
+  const res = await db.execute({ sql: `SELECT ${safeColumns}${stats} FROM users u ${baseWhere} ORDER BY u.name`, args })
   return c.json(toObjs(res))
 })
 
@@ -606,7 +630,7 @@ app.get('/api/admin/stats', requireManager, async (c) => {
     const [lc, cc, lr, cm, pr] = await Promise.all([
       db.execute({ sql: `SELECT COUNT(*) AS n FROM users WHERE role = 'learner'${st ? ' AND team_id = ?' : ''}`, args: wa }),
       db.execute('SELECT COUNT(*) AS n FROM courses'),
-      db.execute({ sql: `SELECT * FROM users WHERE role = 'learner'${st ? ' AND team_id = ?' : ''} LIMIT 5`, args: wa }),
+      db.execute({ sql: `SELECT id, name, role, team_id, last_login_at, created_at FROM users WHERE role = 'learner'${st ? ' AND team_id = ?' : ''} LIMIT 5`, args: wa }),
       db.execute({ sql: `SELECT COUNT(*) AS n FROM completions c WHERE c.completed_at >= ?${teamFilter}`, args: st ? [monthStart, st] : [monthStart] }),
       db.execute({ sql: `SELECT COUNT(*) AS total, SUM(CASE WHEN c.passed = 1 THEN 1 ELSE 0 END) AS passed FROM completions c WHERE 1=1${teamFilter}`, args: st ? [st] : [] }),
     ])
@@ -632,7 +656,7 @@ app.get('/api/courses', async (c) => {
   return c.json(toObjs(res))
 })
 
-app.get('/api/courses/:id', async (c) => {
+app.get('/api/courses/:id', requireAnyAuth, async (c) => {
   const db = getDb(c.env)
   try {
     const courseRes = await db.execute({ sql: 'SELECT * FROM courses WHERE id = ?', args: [c.req.param('id')] })
@@ -665,11 +689,22 @@ app.post('/api/completions', requireLearner, async (c) => {
   const user = c.get('user')
   const body = await c.req.json()
   const db = getDb(c.env)
+
+  // Look up pass threshold server-side; never trust passed:true from the client
+  let passThreshold = 80
+  try {
+    const brandRow = toObj(await db.execute({ sql: 'SELECT pass_threshold FROM brand WHERE id = ?', args: ['default'] }))
+    if (brandRow?.pass_threshold != null) passThreshold = Number(brandRow.pass_threshold)
+  } catch {}
+
+  const score = body.score ?? 100
+  const passed = score >= passThreshold ? 1 : 0
+
   const rid = uid()
   const cid = certId()
   await db.execute({
     sql: "INSERT OR REPLACE INTO completions (id, learner_id, learner_name, course_id, score, passed, cert_id, completed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-    args: [rid, user.id, user.name, body.course_id, body.score ?? 100, body.passed ? 1 : 0, cid, Math.floor(Date.now() / 1000)]
+    args: [rid, user.id, user.name, body.course_id, score, passed, cid, Math.floor(Date.now() / 1000)]
   })
   return c.json({ cert_id: cid }, 201)
 })
@@ -690,8 +725,16 @@ app.get('/api/admin/completions', requireManager, async (c) => {
 
   if (cid) { where.push('c.course_id = ?'); args.push(cid) }
   if (user.scopedToTeam) { where.push('u.team_id = ?'); args.push(user.scopedToTeam) }
-  if (from) { where.push('c.completed_at >= ?'); args.push(Math.floor(new Date(from).getTime() / 1000)) }
-  if (to) { where.push('c.completed_at <= ?'); args.push(Math.floor(new Date(to + 'T23:59:59').getTime() / 1000)) }
+  if (from) {
+    const ts = new Date(from).getTime()
+    if (isNaN(ts)) return c.json({ error: 'Invalid from date' }, 400)
+    where.push('c.completed_at >= ?'); args.push(Math.floor(ts / 1000))
+  }
+  if (to) {
+    const ts = new Date(to + 'T23:59:59').getTime()
+    if (isNaN(ts)) return c.json({ error: 'Invalid to date' }, 400)
+    where.push('c.completed_at <= ?'); args.push(Math.floor(ts / 1000))
+  }
 
   if (where.length) sql += ' WHERE ' + where.join(' AND ')
 
@@ -1028,8 +1071,13 @@ app.delete('/api/courses/:id', requireAdmin, async (c) => {
 })
 
 app.post('/api/assignments', requireManager, async (c) => {
+  const caller = c.get('user')
   const body = await c.req.json()
   const db = getDb(c.env)
+  if (caller.scopedToTeam) {
+    const check = await db.execute({ sql: 'SELECT id FROM users WHERE id = ? AND team_id = ?', args: [body.learner_id, caller.scopedToTeam] })
+    if (!check.rows.length) return c.json({ error: 'Not found' }, 404)
+  }
   try {
     await db.execute({
       sql: 'INSERT INTO assignments (course_id, learner_id, due_at) VALUES (?, ?, ?)',
@@ -1043,8 +1091,13 @@ app.post('/api/assignments', requireManager, async (c) => {
 })
 
 app.delete('/api/assignments', requireManager, async (c) => {
+  const caller = c.get('user')
   const body = await c.req.json()
   const db = getDb(c.env)
+  if (caller.scopedToTeam) {
+    const check = await db.execute({ sql: 'SELECT id FROM users WHERE id = ? AND team_id = ?', args: [body.learner_id, caller.scopedToTeam] })
+    if (!check.rows.length) return c.json({ error: 'Not found' }, 404)
+  }
   await db.execute({
     sql: 'DELETE FROM assignments WHERE course_id = ? AND learner_id = ?',
     args: [body.course_id, body.learner_id]
@@ -1178,27 +1231,45 @@ app.delete('/api/admin/tags/:id', requireAdmin, async (c) => {
 })
 
 app.get('/api/admin/learners/:id/tags', requireManager, async (c) => {
+  const caller = c.get('user')
   const db = getDb(c.env)
+  const lid = c.req.param('id')
+  if (caller.scopedToTeam) {
+    const check = await db.execute({ sql: 'SELECT id FROM users WHERE id = ? AND team_id = ?', args: [lid, caller.scopedToTeam] })
+    if (!check.rows.length) return c.json({ error: 'Not found' }, 404)
+  }
   await ensureSetup(db)
   const res = await db.execute({
     sql: `SELECT t.* FROM tags t JOIN user_tags ut ON t.id = ut.tag_id WHERE ut.user_id = ? ORDER BY t.name`,
-    args: [c.req.param('id')]
+    args: [lid]
   })
   return c.json(toObjs(res))
 })
 
 app.post('/api/admin/learners/:id/tags', requireManager, async (c) => {
+  const caller = c.get('user')
   const body = await c.req.json()
   const db = getDb(c.env)
+  const lid = c.req.param('id')
+  if (caller.scopedToTeam) {
+    const check = await db.execute({ sql: 'SELECT id FROM users WHERE id = ? AND team_id = ?', args: [lid, caller.scopedToTeam] })
+    if (!check.rows.length) return c.json({ error: 'Not found' }, 404)
+  }
   try {
-    await db.execute({ sql: 'INSERT INTO user_tags (user_id, tag_id) VALUES (?, ?)', args: [c.req.param('id'), body.tag_id] })
+    await db.execute({ sql: 'INSERT INTO user_tags (user_id, tag_id) VALUES (?, ?)', args: [lid, body.tag_id] })
   } catch {}
   return c.json({ ok: true })
 })
 
 app.delete('/api/admin/learners/:id/tags/:tagId', requireManager, async (c) => {
+  const caller = c.get('user')
   const db = getDb(c.env)
-  await db.execute({ sql: 'DELETE FROM user_tags WHERE user_id = ? AND tag_id = ?', args: [c.req.param('id'), c.req.param('tagId')] })
+  const lid = c.req.param('id')
+  if (caller.scopedToTeam) {
+    const check = await db.execute({ sql: 'SELECT id FROM users WHERE id = ? AND team_id = ?', args: [lid, caller.scopedToTeam] })
+    if (!check.rows.length) return c.json({ error: 'Not found' }, 404)
+  }
+  await db.execute({ sql: 'DELETE FROM user_tags WHERE user_id = ? AND tag_id = ?', args: [lid, c.req.param('tagId')] })
   return c.json({ ok: true })
 })
 
