@@ -7,7 +7,7 @@ const CONFIG = {
     ? 'http://localhost:8787'
     : 'https://trainflow-worker.theronv.workers.dev',
   DEFAULT_BRAND_NAME: 'TrainFlow',
-  DEFAULT_TAGLINE: 'Training & Certification Platform',
+  DEFAULT_TAGLINE: 'Assign, track, and certify your team\'s training — in one place.',
   DEFAULT_C1: '#2563eb',
   DEFAULT_C2: '#7c3aed',
   DEFAULT_C3: '#0891b2',

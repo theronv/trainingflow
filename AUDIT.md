@@ -452,3 +452,163 @@ All F1–F14 findings resolved. F15 accepted (safe hardcoded fallback in place).
 | F13 — Admin password in-flight for UI | LOW | ✅ Resolved | js/importer.js |
 | F14 — NaN date filter | LOW | ✅ Resolved | worker/index.js |
 | F15 — CORS localhost echo | LOW | ✅ Accepted | worker/index.js |
+
+---
+
+## Strategist Review — Stage 2 — 2026-05-20
+
+**Scope:** Commercial viability review — screens, flows, copy, monetization, retention mechanics, acquisition positioning. No code changes made.
+
+**Stack context:** TrainFlow is a vanilla JS SPA deployed on GitHub Pages + Cloudflare Worker + Turso. It is a self-hosted, developer-deployed B2B tool, not a consumer subscription app. Standard mobile VD targets (RevenueCat, hard paywall, trial) do not apply — this is an infrastructure product sold (or potentially sold) org-by-org.
+
+---
+
+### 1 — FIRST SESSION AUDIT
+
+**Flow traced for a brand-new learner:**
+
+1. **First screen:** Landing page — "TrainFlow" wordmark, three role tiles (🎓 Learner / 💼 Manager / ⚙️ Admin), a Demo Mode button, and a footer.
+2. **Purpose clear in 10 seconds?** MOSTLY — the role tiles and "Training & Certification Platform" tagline communicate category immediately. It does not communicate why this is better than any other LMS or who it's for.
+3. **Taps to first meaningful action:** Landing → tap Learner → sign in (2 fields) → course list → tap course = **4 actions** to reach content. Acceptable but the sign-in wall is friction before any value demonstration.
+4. **Aha moment:** Completing a module quiz → confetti animation + branded PDF certificate with unique cert ID. This is a genuinely satisfying moment and it's reachable in a first session if demo data is seeded.
+5. **Friction before aha:**
+   - The "Welcome." greeting on the learner sign-in is cold — learners land here already knowing they're signing in, so the heading adds no value.
+   - "✨ Try Demo Mode (Offline)" on the landing is unexplained — non-technical users don't know what "Offline" means in this context.
+   - Empty state if no courses exist: "No courses available." — a dead end with no call to action.
+   - The footer on the landing reads "Securely powered by Cloudflare Workers and Turso Database" — this is infrastructure credentialing, not a user-facing benefit.
+
+---
+
+### 2 — CORE LOOP QUALITY
+
+**Core loop (Learner):**
+> Assigned course appears → open module → read content → take competency check → receive per-question feedback → see score → earn certificate → move to next module → repeat
+
+The loop is **mechanically sound**. Per-question feedback (correct/incorrect highlight + explanation) is better than most indie LMS tools. Progress resumes across sessions. Certificates are branded, downloadable PDF with unique verifiable IDs.
+
+**Does value accumulate?**
+YES — to a degree. Certificates pile up in the Certificates tab. Progress tracks. Pass/fail history is visible. A learner on day 30 has a portfolio of certifications they can download.
+
+**What is missing:**
+- **No notification mechanism.** When a manager assigns a new mandatory course, the learner has zero signal — no email, no push, no in-app badge. They discover it by logging in. This is the single biggest retention gap: learners have no reason to open the app unless they're scheduled to do training.
+- **No urgency mechanics.** Due dates exist in the schema but are only shown to learners in the Progress tab as a date string. There are no countdown timers, overdue banners, or escalation states beyond a red color.
+- **Day 30 = Day 1 for the Manager.** The Manager dashboard shows aggregate stats but there is no trend data, no historical comparison, no "X% improvement this quarter" — the value of long-term usage is invisible.
+
+**What would cause a user to open tomorrow?**
+Currently: nothing, unless their manager verbally reminds them. This is a critical commercial weakness.
+
+---
+
+### 3 — MONETIZATION REVIEW
+
+**Verdict: BROKEN — no monetization mechanism exists.**
+
+TrainFlow has no pricing tier, no paywall, no subscription, no billing, and no RevenueCat integration. It is currently a self-hosted open source deployment: each organization installs their own Cloudflare Worker, provisions their own Turso database, and configures their own secrets. There is no "sign up and start training your team in 5 minutes" path that doesn't require a developer.
+
+**Implications:**
+- The product has genuine feature depth (AI importer, role-based RBAC, branded certificates, team management, CSV bulk import) that could command $4–8/learner/month in the SMB LMS market (Trainual is $299/mo for 25 seats; TalentLMS free tier is 5 users/5 courses).
+- The deployment model prevents any commercial traction without either: (a) a hosted SaaS offering with multi-tenant architecture and a signup flow, or (b) a marketplace/agency model where developers deploy it for clients.
+- Standard VD targets (annual $19.99 / monthly $3.99 / 7-day trial / hard paywall) are consumer-app framing — not applicable here. The correct frame is **per-seat B2B**: $4–7/active learner/month with an org minimum.
+
+**Free experience vs. upgrade:** The entire product is free as deployed. There is no upgrade path, no teaser for premium features, no trial expiry. All features are available to anyone who deploys the worker.
+
+---
+
+### 4 — COPY AUDIT
+
+**All visible strings reviewed. Worst 3 failures:**
+
+---
+
+**Failure 1 — Landing tagline**
+> Current: "Training & Certification Platform"
+
+This is the category, not the value. Every LMS on the market describes itself this way. It answers "what is this?" but not "why does this matter for my team?"
+
+> Should be: "Turn your team's training into verifiable credentials." or "Assign, track, and certify your team's training — in one place."
+
+---
+
+**Failure 2 — Landing helper text**
+> Current: "Not sure which to pick? Your manager will let you know."
+
+This copy assumes the confused user (most likely a new learner arriving from a link their manager sent) should already know who their manager is and feel comfortable asking. It's a dead end. A confused user closing the tab costs a learner activation.
+
+> Should be: "Joining your team's training? Tap Learner and sign in with the credentials your manager provided."
+
+---
+
+**Failure 3 — Learner empty state (courses)**
+> Current: "No courses available."
+
+No context. No next step. A learner who just signed in sees this and has no idea if this is an error, if they need to wait, or if they did something wrong.
+
+> Should be: "No courses assigned yet. Your manager will add you to training — check back soon, or reach out to let them know you're ready."
+
+---
+
+**Additional copy notes:**
+- "Welcome." on the learner sign-in screen: Drop it. The learner knows they're signing in.
+- "✨ Try Demo Mode (Offline)": Rewrite as "Explore with demo data →" — remove the word "Offline," which implies broken.
+- Certificate empty state: "No certificates yet — complete a course and pass the quiz to earn your first one!" — this is actually good copy. Keep it.
+- Learner certs tab button label: "↓ Download PDF" — clear and functional. Fine.
+- AI Importer phase subtitles are functional and clear for an admin audience. No changes needed.
+- "Worker Initialization Required" overlay: This technical overlay (showing `npx wrangler secret put` CLI commands) surfaces to anyone who hits the admin login on an unconfigured deployment. This is a developer screen bleeding into the end-user surface. It should only appear if the admin is authenticated or be replaced with a friendlier "Setup required — contact your system administrator."
+
+---
+
+### 5 — ACQUISITION POSITIONING
+
+**Most realistic acquirers today:**
+1. **HR tech consolidators** (Rippling, Gusto, BambooHR, Lattice) — TrainFlow could be the training module they don't want to build. The three-role model (Admin/Manager/Learner) maps cleanly onto their existing user hierarchies.
+2. **Compliance platforms** (Vanta, Drata, Secureframe) — these products mandate training completion as part of compliance evidence. A lightweight embedded LMS with verifiable cert IDs is a natural add-on.
+3. **LMS mid-market** (TalentLMS, Absorb, Docebo) — acquires for the AI importer and lightweight deployment model as a competitive differentiator for their SMB tier.
+
+**What metrics need to improve most:**
+- **Learner activation rate** — currently unmeasured. No analytics on how many learners who receive credentials actually log in and complete training.
+- **Completion rate** — the data exists (completions table) but there's no cohort or funnel view. An acquirer wants "X% of assigned learners complete training within 7 days of assignment."
+- **Org count** — the multi-tenant story is absent. One deployment = one org. An acquirer needs to see repeatable org onboarding.
+
+**What an acquirer questions:**
+1. "How does a new organization get started without a developer?" — There is no hosted offering, no SaaS signup, no org provisioning.
+2. "What's the retention signal?" — No notification system means no behavioral retention data.
+3. "Where is the integration story?" — No SSO (SAML/OIDC), no SCIM, no HRIS connectors. An HR tech acquirer cannot embed this without those.
+4. "What happens at 500+ learners?" — The README acknowledges pagination gaps; the all-learners-rendered-at-once issue is a known scaling hole.
+
+**What TrainFlow needs to demonstrate in 90 days:**
+1. A hosted SaaS path: org signup → provisioned subdomain → first course in under 10 minutes, no developer required.
+2. Email notification: assignment created → learner gets email with due date. This is the single most impactful retention unlock.
+3. An integration stub: even a read-only CSV export to HRIS is a proof point for the compliance acquisition story.
+4. Org count: onboard 5 paying pilot organizations, even at $0, to demonstrate the multi-tenant pattern works.
+
+---
+
+### Findings Summary
+
+| Dimension | Rating | Primary Gap |
+|---|---|---|
+| First-session clarity | GOOD | Tagline is generic; demo path is unclear |
+| Aha moment | PRESENT | Certificate + confetti is genuinely satisfying |
+| Core loop | FUNCTIONAL | Loop works; no retention hooks between sessions |
+| Monetization | BROKEN | Zero — no pricing, no paywall, no SaaS offering |
+| Copy quality | WEAK | 3 high-impact failures; functional elsewhere |
+| Acquisition readiness | LOW | No multi-tenancy, no integrations, no analytics |
+
+---
+
+### Approved Plan — Execution Log
+
+Plan approved 2026-05-20. 8 items executed. No code was written that required approval before this point.
+
+| # | Item | File(s) | Change |
+|---|---|---|---|
+| 1 | Landing tagline — benefit-led copy | `js/core.js`, `index.html` (×2) | `DEFAULT_TAGLINE` + HTML default + branding placeholder all updated from "Training & Certification Platform" to "Assign, track, and certify your team's training — in one place." |
+| 2 | Landing helper text — directive for new learners | `index.html` | "Not sure which to pick? Your manager will let you know." → "Joining your team's training? Tap **Learner** and sign in with the credentials your manager provided." |
+| 3 | Learner empty state (courses) — context + next step | `js/learner.js` (×2) | Both "No courses available." instances replaced with: "No courses assigned yet. Your manager will add you to training — check back soon, or reach out to let them know you're ready." |
+| 4 | Demo Mode button — remove "Offline" | `index.html` | "✨ Try Demo Mode (Offline)" → "✨ Explore with demo data →" |
+| 5 | Landing footer — trust statement | `index.html` | "Securely powered by Cloudflare Workers and Turso Database" → "Your data stays private. No third-party tracking." |
+| 6 | Learner sign-in greeting — actionable | `index.html` | "Welcome." → "Sign in to your training." / "Sign in to access your training." → "Enter the credentials your manager gave you." |
+| 7 | Overdue visual urgency on course cards | `js/learner.js` | `renderCard` now finds the full assignment object, derives `dueTs` and `overdue` flag; adds red ⚠ Overdue chip (highest priority below Passed) and shows "Due [date]" inline for upcoming deadlines on Mandatory cards |
+| 8 | Worker Init overlay — improved framing | `index.html` | Heading changed from "Worker Initialization Required" to "Setup Required"; body copy tightened; README reference added |
+
+**Nothing unexpected.** The `DEFAULT_TAGLINE` constant in `js/core.js` feeds both the HTML fallback (via `applyBrand()`) and the `normBrand()` coercion for new orgs without a saved tagline — so the single constant change propagates correctly to all surfaces without additional edits. The overdue chip reuses the existing `--fail` CSS token already used on the Progress tab; no new CSS was needed.

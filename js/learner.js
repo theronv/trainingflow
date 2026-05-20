@@ -53,22 +53,31 @@ const Learner = {
       const sections = apiSections || [];
 
       if (!apiCourses.length) {
-        grid.innerHTML = '<div class="card" style="grid-column:1/-1;text-align:center;padding:40px;color:var(--ink-4);">No courses available.</div>';
+        grid.innerHTML = '<div class="card" style="grid-column:1/-1;text-align:center;padding:40px;color:var(--ink-4);">No courses assigned yet. Your manager will add you to training — check back soon, or reach out to let them know you\'re ready.</div>';
         return;
       }
 
       const renderCard = c => {
         const nc = normCourse(c);
-        const assigned = apiAssigns.some(a => a.course_id === nc.id);
+        const assignment = apiAssigns.find(a => a.course_id === nc.id);
+        const assigned = !!assignment;
         const best = recs.filter(r => r.cid === nc.id).sort((a,z) => z.score - a.score)[0];
         const passed = best && best.passed;
         const prog = !passed && apiProgress.find(p => p.course_id === nc.id);
         const modsDone = prog ? prog.modules.length : 0;
         const totalMods = nc.mods ? nc.mods.length : null;
+        const dueTs = assignment && assignment.due_at
+          ? (isNaN(assignment.due_at) ? new Date(assignment.due_at).getTime() : assignment.due_at * 1000)
+          : null;
+        const overdue = !passed && dueTs && dueTs < Date.now();
+        const dueStr = !passed && dueTs && !overdue
+          ? `<span style="font-size:var(--text-xs);color:var(--ink-4);margin-left:6px;">Due ${new Date(dueTs).toLocaleDateString()}</span>`
+          : '';
         let chip = '';
         if (passed) chip = '<span class="chip chip-brand-accent">✓ Passed</span>';
+        else if (overdue) chip = `<span class="chip" style="background:rgba(239,68,68,0.10);color:var(--fail);border:1px solid var(--fail);">⚠ Overdue</span>`;
         else if (prog) chip = `<span class="chip chip-blue">▶ In Progress${totalMods ? ` (${modsDone}/${totalMods})` : ''}</span>`;
-        else if (assigned) chip = '<span class="chip chip-brand-secondary">Mandatory</span>';
+        else if (assigned) chip = `<span class="chip chip-brand-secondary">Mandatory</span>${dueStr}`;
         const modCount = totalMods ? `<span style="font-size:var(--text-xs);color:var(--ink-4);">${totalMods} module${totalMods!==1?'s':''}</span>` : '';
         const desc = nc.desc ? `<div style="font-size:var(--text-sm);color:var(--ink-3);margin-top:6px;line-height:1.4;">${esc(nc.desc.length > 100 ? nc.desc.slice(0,100)+'…' : nc.desc)}</div>` : '';
         return `<div class="course-card" onclick="Learner.startCourse('${nc.id}')">
@@ -102,7 +111,7 @@ const Learner = {
       } else {
         html = apiCourses.map(renderCard).join('');
       }
-      grid.innerHTML = html || '<div class="card" style="grid-column:1/-1;text-align:center;padding:40px;color:var(--ink-4);">No courses available.</div>';
+      grid.innerHTML = html || '<div class="card" style="grid-column:1/-1;text-align:center;padding:40px;color:var(--ink-4);">No courses assigned yet. Your manager will add you to training — check back soon, or reach out to let them know you\'re ready.</div>';
     } catch(e) {
       grid.innerHTML = `<div class="card" style="grid-column:1/-1;color:var(--fail);">${esc(e.message)}</div>`;
     }

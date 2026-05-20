@@ -38,7 +38,7 @@ if (typeof marked !== 'undefined') {
     </div>
     <div class="landing-logo" id="ldg-brand">TrainFlow</div>
     <div id="ldg-org" style="font-size:var(--text-sm);color:var(--ink-4);font-weight:600;letter-spacing:0.1em;text-transform:uppercase;margin-top:-8px;margin-bottom:8px;"></div>
-    <p class="landing-sub" id="ldg-tagline">Training &amp; Certification Platform</p>
+    <p class="landing-sub" id="ldg-tagline">Assign, track, and certify your team's training — in one place.</p>
     <div class="landing-rule"></div>
     <div class="role-grid">
       <div class="role-tile" onclick="App.goLearner()">
@@ -59,11 +59,11 @@ if (typeof marked !== 'undefined') {
     </div>
     <div style="margin-bottom:var(--space-8);">
       <button class="btn btn-outline" onclick="App.startDemo()" style="width:100%;border-style:dashed;border-color:var(--brand-1);color:var(--brand-1);">
-        ✨ Try Demo Mode (Offline)
+        ✨ Explore with demo data →
       </button>
     </div>
-    <p style="font-size:var(--text-xs);color:var(--ink-4);margin-top:var(--space-2);">Not sure which to pick? Your manager will let you know.</p>
-    <p class="landing-foot">Securely powered by Cloudflare Workers and Turso Database</p>
+    <p style="font-size:var(--text-xs);color:var(--ink-4);margin-top:var(--space-2);">Joining your team's training? Tap <strong>Learner</strong> and sign in with the credentials your manager provided.</p>
+    <p class="landing-foot">Your data stays private. No third-party tracking.</p>
   </div>
 </div>
 
@@ -138,13 +138,14 @@ if (typeof marked !== 'undefined') {
 <!-- FIRST RUN REQUIRED OVERLAY -->
 <div id="first-run-overlay" class="overlay hidden">
   <div class="modal" style="max-width:500px;">
-    <h3 style="margin-bottom:var(--space-2);color:var(--fail);">Worker Initialization Required</h3>
-    <p style="margin-bottom:var(--space-4);">The Cloudflare Worker is running, but it has not been initialized with the required secrets (e.g. <code>ADMIN_PASSWORD_HASH</code>, <code>JWT_SECRET</code>).</p>
+    <h3 style="margin-bottom:var(--space-2);color:var(--fail);">Setup Required</h3>
+    <p style="margin-bottom:var(--space-4);">The worker is running but hasn't been initialized yet. Set the required secrets via Wrangler, then reload.</p>
     <div style="background:var(--rule-2);padding:var(--space-4);border-radius:var(--r);font-family:monospace;font-size:12px;margin-bottom:var(--space-4);overflow-x:auto;">
       npx wrangler secret put ADMIN_PASSWORD_HASH<br>
       npx wrangler secret put JWT_SECRET<br>
       npx wrangler secret put TURSO_TOKEN
     </div>
+    <p style="font-size:var(--text-xs);color:var(--ink-4);margin-bottom:var(--space-4);">See the README for full setup instructions.</p>
     <div style="text-align:right;">
       <button class="btn btn-primary" onclick="document.getElementById('first-run-overlay').classList.add('hidden')">Close</button>
     </div>
@@ -282,8 +283,8 @@ if (typeof marked !== 'undefined') {
     <div class="main">
       <div class="page active" id="lp-name">
         <div class="name-wrap">
-          <div class="name-greeting">Welcome.</div>
-          <p class="name-hint">Sign in to access your training.</p>
+          <div class="name-greeting">Sign in to your training.</div>
+          <p class="name-hint">Enter the credentials your manager gave you.</p>
           <div id="l-login-error" style="display:none;color:var(--fail);font-size:var(--text-sm);padding:var(--space-3);background:var(--fail-lt);border-radius:var(--r);margin-bottom:var(--space-3);"></div>
           <div class="field">
             <input type="text" id="learner-name-input" placeholder="Your name…" autocomplete="username" onkeydown="if(event.key==='Enter')$$('learner-pw-input').focus()">
@@ -745,7 +746,7 @@ if (typeof marked !== 'undefined') {
             <div class="card-title">Organisation</div>
             <div class="card-sub" style="margin-bottom:var(--space-5);">Displayed on all learner-facing screens.</div>
             <div class="field"><label>Organisation Name</label><input type="text" id="br-name" placeholder="Your Organisation" oninput="App.previewBrand()"></div>
-            <div class="field"><label>Tagline</label><input type="text" id="br-tag" placeholder="Training & Certification Platform" oninput="App.previewBrand()"></div>
+            <div class="field"><label>Tagline</label><input type="text" id="br-tag" placeholder="Assign, track, and certify your team's training — in one place." oninput="App.previewBrand()"></div>
             <div class="field">
               <label>Logo</label>
               <input type="text" id="br-logo-url" placeholder="https://… or upload below" oninput="App.previewBrand()" style="margin-bottom:8px;">
