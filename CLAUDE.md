@@ -30,12 +30,13 @@ css/
 └── style.css         # Design system — semantic tokens, dark/light themes
 js/
 ├── core.js           # Global state (13+ globals), API helpers, applyBrand()
-├── auth.js           # Login/register for Admin, Manager, Learner
-├── admin.js          # Admin portal (1,618 lines — oversized, see Architecture)
-├── manager.js        # Manager portal (446 lines)
-├── learner.js        # Learner portal (513 lines)
-├── builder.js        # Course builder — module/question editor
-└── app.js            # AppProxy — wires onclick attrs to JS modules (473 lines)
+├── auth.js           # Login/register for Admin, Manager, Learner (74 lines)
+├── admin.js          # Admin portal (1,017 lines — still oversized, see Architecture)
+├── importer.js       # AI Importer (555 lines — split out of admin.js)
+├── manager.js        # Manager portal (460 lines)
+├── learner.js        # Learner portal (530 lines)
+├── builder.js        # Course builder — module/question editor (148 lines)
+└── app.js            # AppProxy — wires onclick attrs to JS modules (477 lines)
 worker/
 ├── index.js          # All Hono routes + DB logic (1,214 lines — oversized)
 ├── wrangler.toml     # Cloudflare Worker config
@@ -60,6 +61,22 @@ cd worker && npm run dev       # Runs at http://localhost:8787
 # Frontend (Terminal 2)
 npx serve .                    # Runs at http://localhost:3000
 ```
+
+## Testing
+
+Worker has a Vitest suite that drives the real Hono `app` against an in-memory
+libSQL DB (no mocks — `getDb()` honours a test-only `env.DB_CLIENT` hook):
+
+```bash
+cd worker && npm test            # one-shot
+cd worker && npm run test:watch  # watch mode
+```
+
+Coverage: `worker/test/` — `auth` (login + rate limiting), `rbac` (role gates +
+manager team scoping), `scoring` (F1/F2 answer-key/score integrity). The F1/F2
+suite contains `it.fails(...)` tripwires asserting the *secure* target
+behaviour; they pass while the gap is open and turn red once F1/F2 is fixed —
+that's the cue to delete the `.fails` marker. Frontend (`js/`) has no tests yet.
 
 ## Environment Variables
 
@@ -209,9 +226,9 @@ assignCache, isDemo, brandCache
 
 **API helpers:** Three near-identical functions (`api()`, `managerApi()`, `learnerApi()`) each attach the correct JWT and handle 401. No request cancellation.
 
-**`admin.js` is 1,618 lines** — AI Importer (~600 lines), Branding, Teams, Learners, Dashboard all in one object. Must be split before RN migration.
+**`admin.js` is 1,017 lines** — AI Importer already extracted to `importer.js` (555 lines). Branding, Teams, Learners, Dashboard still in one object. Should be split further before RN migration.
 
-**`worker/index.js` is 1,214 lines** — all 45+ routes in one file. Schema migration calls (`setupSections()`, `setupTags()`) run `ALTER TABLE` on every relevant request rather than at deploy time.
+**`worker/index.js` is 1,277 lines** — all 45+ routes in one file. Schema migration calls (`setupBrand()`, `setupSections()`, `setupTags()`) are now guarded by `ensureSetup()` + a module-level `_setupComplete` flag, so the `ALTER TABLE`/`CREATE TABLE IF NOT EXISTS` statements run **once per Worker isolate**, not per request. (Previously per-request — fixed.)
 
 **AI keys risk:** Claude/Gemini API keys stored in `localStorage`, called directly from the browser. The server-side proxy endpoint (`/api/ai/generate`) exists but is unused. Any XSS exposes all keys.
 
@@ -245,14 +262,20 @@ Dark mode via `[data-theme="light"]` CSS overrides. Brand colors applied at runt
 
 ---
 
-## Security Status (as of 2026-05-20)
+## Security Status (last verified against code 2026-06-18)
 
-All 14 security findings from the Auditor Review are resolved. F15 accepted (safe hardcoded fallback).
+F3–F12 verified present in code. **F1/F2 have REGRESSED** since the Auditor Review and are currently OPEN — see warning below.
 
-Key resolutions:
-- **F1/F2 (CRITICAL):** Score computed server-side from `question_responses`; course answer key requires auth and strips `correct_index`/`explanation` for learner tokens
-- **F3–F8 (HIGH):** Team ownership enforced on all manager routes; `requireLearner` checks `role === 'learner'`; role elevation restricted to Admin; `team_id` locked to manager's own team
-- **F9–F12 (MEDIUM):** Password min-length enforced; current password required to change admin password; DB error detail removed from 500 responses; tag endpoints team-scoped
+> ⚠️ **F1/F2 (CRITICAL) — REGRESSED / OPEN.** The documented fix is **not present in the current code**:
+> - `GET /api/courses/:id` (`worker/index.js:659`) returns `SELECT *` for any authenticated token, including learners — `correct_index` and `explanation` are **not stripped**. The answer key is shipped to the browser (`js/learner.js:308` reads `q.correct_index` directly).
+> - `POST /api/completions` (`worker/index.js:688`) trusts the client-supplied `body.score`; it only re-derives the `passed` boolean from `pass_threshold`. The `question_responses` table is **never written** (only read by `/api/admin/trouble-spots`), so there is no server-side score verification.
+> - **Impact:** a learner can read all answers via the course endpoint, or POST an arbitrary score (e.g. `{score:100}`) to mint a passing certificate. Regression tests covering this live in `worker/test/` and currently document the gap.
+> - **Fix direction:** strip the answer key for learner tokens in `GET /api/courses/:id`; submit per-question responses, write them to `question_responses`, and compute `score` server-side from that table.
+
+Verified present:
+- **F3–F8 (HIGH):** Team ownership enforced on manager routes; `requireLearner` checks `role === 'learner'` (`worker/index.js:152`); `team_id` locked to manager's own team
+- **F9–F12 (MEDIUM):** Password min-length enforced; current password required to change admin password; DB error detail removed from 500 responses (`app.onError` returns generic message); tag endpoints team-scoped
+- **F15 accepted** (safe hardcoded CORS fallback)
 
 ---
 
@@ -262,7 +285,7 @@ Key resolutions:
 |---|---|---|
 | B-04 | CSV import into Course Builder — stub | ~2 hrs |
 | B-06 | Tags feature — schema/API exist, UI incomplete | ~3 hrs |
-| D-10 | Learner list pagination (all users rendered at once) | ~1 hr |
+| ~~D-10~~ | ~~Learner list pagination~~ — DONE: server-side `PAGE_SIZE`/`OFFSET` on `/api/learners` (`worker/index.js:604`) | — |
 | — | Real-time dashboard updates (no SSE/WebSocket) | large |
 | — | Logo CDN (base64 inflates API responses) | medium |
 | — | KB Scraper → AI Importer integration | planned |
@@ -356,8 +379,8 @@ Replace `box-shadow: 0 0 0 3px rgba(brand, 0.2)` (unsupported spread in RN) with
 
 | # | Issue | Detail |
 |---|---|---|
-| S1 | AI keys in localStorage | Route through existing `/api/ai/generate` worker endpoint instead |
-| S2 | `admin.js` at 1,618 lines | Must split before RN module-per-screen architecture |
+| S1 | AI keys in localStorage | Server proxy `/api/ai/generate` exists (`requireAdmin`, reads `CLAUDE_API_KEY`/`GEMINI_API_KEY` env secrets); frontend still defaults to localStorage keys — finish routing the browser through the proxy |
+| S2 | `admin.js` at 1,017 lines | AI Importer already split to `importer.js`; split remaining concerns before RN module-per-screen architecture |
 | S3 | No Drizzle ORM | 45+ routes use raw SQL; Drizzle migration needed before RN API layer |
 | S4 | No RevenueCat project | B2B per-seat pricing needs to be architected |
 

@@ -24,6 +24,9 @@ function certId() {
 }
 
 function getDb(env) {
+  // Test hook: tests inject an in-memory libSQL client as env.DB_CLIENT.
+  // Never set in production (Wrangler env has no DB_CLIENT), so this is a no-op there.
+  if (env.DB_CLIENT) return env.DB_CLIENT
   return createClient({ url: env.TURSO_URL, authToken: env.TURSO_TOKEN })
 }
 
