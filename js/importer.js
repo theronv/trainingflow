@@ -495,7 +495,7 @@ RULES:
           <div style="font-weight:600;font-size:var(--text-sm);margin-bottom:var(--space-2);">Q${qi + 1}. ${esc(q.question)}</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
             ${(q.options || []).map((opt, oi) => opt ? `
-              <div style="font-size:12px;padding:6px 10px;border-radius:6px;border:1px solid var(--border);${oi === q.correct_index ? 'background:var(--pass-lt);border-color:#bbf7d0;color:var(--pass);font-weight:600;' : 'color:var(--ink-3);'}">
+              <div style="font-size:var(--text-xs);padding:var(--space-2) var(--space-3);border-radius:var(--radius-md);border:1px solid var(--border);${oi === q.correct_index ? 'background:var(--pass-lt);border-color:var(--pass-border);color:var(--pass);font-weight:600;' : 'color:var(--ink-3);'}">
                 <span style="opacity:.5;margin-right:4px">${letters[oi]}</span> ${esc(opt)}
               </div>` : '').join('')}
           </div>

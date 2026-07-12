@@ -262,6 +262,32 @@ Dark mode via `[data-theme="light"]` CSS overrides. Brand colors applied at runt
 
 ---
 
+## Visual Refinement — 2026-06-18
+
+Visual design pass on the **web app** (vanilla JS SPA — the RN/NativeWind target in the original brief does not exist yet; the pass was retargeted to the live codebase with each RN technique mapped to its web equivalent). Auth and data/render logic untouched — presentation only.
+
+**Tokens / depth (`css/style.css`):**
+- Added `--scrim` / `--scrim-strong` for modal & certificate backdrops; replaced the last hardcoded `rgba(0,0,0,…)` scrims, `.chip-blue` border, and `.source-banner-link:hover` with tokens.
+- Added `--surface-raised` (aliases `--surface-2`) and an explicit elevation ladder: `bg < bg-2 < surface (cards) < surface-raised (modals)`. Modals now read above the card layer instead of matching it.
+- Removed stray hardcoded hex in markup/JS (`index.html` cert preview `#666` → `--ink-3`; `importer.js` answer-option `#bbf7d0`/raw px → `--pass-border` + spacing tokens). Remaining hex are **data**, not style: brand-palette preset swatches and `core.js` `DEFAULT_C*` seeds.
+
+**Components:**
+- `.btn` now has `min-height: 44px` (`.btn-sm` 36 / `.btn-lg` 48 / `.btn-xl` 52; `.btn-icon` opted out) — tap targets meet 44pt, aligning the CSS with what the design-system notes already claimed.
+- Rich empty-state component (`.empty` = icon + headline + supporting text + optional `.empty-action`) hardened and applied to the screenshot-critical lists: learner Courses/Certificates, manager Dashboard activity, admin Courses (with a "+ New Course" action). Table-row empties (`colspan`) left inline by design.
+
+**Typography:**
+- `font-variant-numeric: tabular-nums` on numeric displays (`.stat-value`, `.score-big`, `.qr-score`, all `table`) plus `.tabular` / `.mono` utilities for aligned figures.
+
+**Motion (CSS, RN-technique → web):**
+- Press feedback `:active { transform: scale(0.97) }` on `.btn` (and lighter scales on `.course-card`, `.role-tile`, `.quiz-opt`).
+- List entrance retuned: `.stagger` now `listIn` (fade + 8px rise, **150ms**, 8-step stagger) — was a 400ms `fadeUp` that violated the 350ms cap.
+- Modal/overlay entrance: `fadeIn` backdrop + `modalIn` (200ms, 12px rise + scale).
+- **`@media (prefers-reduced-motion: reduce)`** added — collapses animations/transitions to ~0ms and disables press transforms; the loading spinner keeps a minimal rotation so loading state stays legible.
+
+**Not changed (deliberate):** the base spacing scale is a 4pt grid (`--space-1` = 4px) driving an 8pt rhythm — standard, left as-is; off-grid button paddings (`10/16`) are conventional and were not churned. No JS data flow, hooks, or auth touched.
+
+---
+
 ## Security Status (last verified against code 2026-06-18)
 
 F3–F12 verified present in code. **F1/F2 have REGRESSED** since the Auditor Review and are currently OPEN — see warning below.
