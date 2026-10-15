@@ -77,37 +77,22 @@ const Importer = {
   },
 
   // ── Import a course authored in Claude.ai (JSON) ──────────────────────────
-  CLAUDE_PROMPT: `You are an instructional designer. Create a training course on this topic: [DESCRIBE YOUR TOPIC AND AUDIENCE HERE]
+  CLAUDE_PROMPT: `Create a training course as a downloadable file named course.json. Topic and audience: [DESCRIBE YOUR TOPIC AND AUDIENCE HERE]
 
-Return ONLY one JSON object (no commentary) in exactly this format:
-{
-  "title": "Course title",
-  "icon": "💻",
-  "description": "One or two sentences on what learners will gain.",
-  "modules": [
-    {
-      "title": "Module title",
-      "summary": "One-sentence takeaway (max 250 chars).",
-      "learning_objectives": ["Learners will be able to ...", "..."],
-      "content": "Full lesson text in Markdown (headings, short paragraphs, bullet lists, numbered steps).",
-      "questions": [
-        {
-          "question": "Question text?",
-          "options": ["Option A", "Option B", "Option C", "Option D"],
-          "correct_index": 0,
-          "explanation": "Why this answer is correct."
-        }
-      ]
-    }
-  ]
-}
+OUTPUT RULES (save tokens):
+- Create the file and reply with ONE short sentence. Do not print the JSON in chat, and add no preview, summary or explanation.
+- Write the JSON compactly: no indentation or pretty-printing, no comments.
+- Do not research or ask questions; use your own knowledge.
+- If you cannot create a file, output the JSON once inside a single code block (never as plain text, which corrupts the quotes).
 
-Rules:
-- 3 to 6 modules, each with 300-600 words of Markdown content.
-- 3 to 5 questions per module, testing understanding rather than trivia.
-- Exactly 4 options per question; correct_index is 0-3 and varies across questions.
+JSON format:
+{"title":"","icon":"💻","description":"1-2 sentences on what learners gain","modules":[{"title":"","summary":"one-sentence takeaway, max 200 chars","learning_objectives":["Learners will be able to ..."],"content":"Lesson in Markdown (## headings, short paragraphs, bullets, numbered steps)","questions":[{"question":"","options":["","","",""],"correct_index":0,"explanation":"one sentence"}]}]}
+
+CONTENT RULES:
+- 3-6 modules, each 300-500 words of practical, specific Markdown content.
+- 3-4 questions per module that test understanding, not trivia. Exactly 4 options; correct_index is 0-3 and varies.
 - "icon" is a single emoji.
-- Output valid JSON only: double quotes, no trailing commas, escape newlines in strings as \\n.`,
+- Valid JSON only: double quotes, no trailing commas, newlines in strings written as \\n.`,
 
   async copyClaudePrompt() {
     try { await navigator.clipboard.writeText(Importer.CLAUDE_PROMPT); Toast.ok('Prompt copied — paste it into Claude.ai.'); }
@@ -129,8 +114,13 @@ Rules:
     const a = raw.indexOf('{'), b = raw.lastIndexOf('}');
     if (a < 0 || b <= a) return { course: null, errors: ['No JSON object found.'] };
     let data;
-    try { data = JSON.parse(raw.slice(a, b + 1)); }
-    catch (e) { return { course: null, errors: ['Invalid JSON: ' + e.message] }; }
+    const body = raw.slice(a, b + 1);
+    try { data = JSON.parse(body); }
+    catch (e) {
+      // Chat windows often "smart-quote" copied text (“ ” instead of "); repair and retry.
+      try { data = JSON.parse(body.replace(/[\u201C\u201D\u201E\u201F\u2033]/g, '"')); }
+      catch (e2) { return { course: null, errors: ['Invalid JSON: ' + e.message] }; }
+    }
 
     const str = v => (typeof v === 'string' ? v.trim() : '');
     if (!str(data.title)) errors.push('Missing course "title".');
