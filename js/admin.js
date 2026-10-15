@@ -143,7 +143,7 @@ const Admin = {
           <div class="team-list-meta">${t.learner_count || 0} member${t.learner_count !== 1 ? 's' : ''} · ${t.manager_count || 0} manager${t.manager_count !== 1 ? 's' : ''}</div>
         </div>`).join('');
 
-      const toSelect = (Admin._selectedTeamId && teams.find(t => t.id === Admin._selectedTeamId))
+      const toSelect = (Admin._selectedTeamId && teams.find(t => String(t.id) === String(Admin._selectedTeamId)))
         ? Admin._selectedTeamId
         : teams[0].id;
       Admin.selectTeam(toSelect);
@@ -155,7 +155,7 @@ const Admin = {
     document.querySelectorAll('.team-list-item').forEach(el => el.classList.remove('active'));
     const listItem = $$(`tli-${tid}`); if (listItem) listItem.classList.add('active');
 
-    const team = teamsCache.find(t => t.id === tid); if (!team) return;
+    const team = teamsCache.find(t => String(t.id) === String(tid)); if (!team) return;
     const detail = $$('team-detail'); if (!detail) return;
 
     detail.innerHTML = `
@@ -206,7 +206,7 @@ const Admin = {
     // Load invite codes for this team
     try {
       const invites = await api('/api/admin/invites');
-      const teamInvites = (invites || []).filter(inv => inv.team_id === tid);
+      const teamInvites = (invites || []).filter(inv => String(inv.team_id) === String(tid));
       const invEl = $$('team-invites-detail'); if (!invEl) return;
       if (!teamInvites.length) {
         invEl.innerHTML = '<div class="empty-state-sm">No invite codes yet. Use "+ Invite" above to generate one.</div>';
@@ -297,6 +297,7 @@ const Admin = {
     if (!confirm('Delete this team? All members will become unassigned. This cannot be undone.')) return;
     try {
       await api(`/api/admin/teams/${id}`, { method: 'DELETE' });
+      if (String(Admin._selectedTeamId) === String(id)) Admin._selectedTeamId = null;
       Toast.ok('Team deleted.');
       await Admin.renderTeams();
     } catch(e) { Toast.err(e.message); }
@@ -565,7 +566,7 @@ const Admin = {
     const filtered = _allLearners.filter(l => (l.name || '').toLowerCase().includes(query));
     if(!filtered.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:32px;">No matches.</td></tr>'; return; }
     tbody.innerHTML = filtered.map(l => {
-      const team = (teamsCache||[]).find(t => t.id === l.team_id);
+      const team = (teamsCache||[]).find(t => String(t.id) === String(l.team_id));
       const teamHtml = team ? esc(team.name) : '<span class="chip chip-amber">Unassigned</span>';
       const isManager = l.role === 'manager';
       const roleChip = isManager

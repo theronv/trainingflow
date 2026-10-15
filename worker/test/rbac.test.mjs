@@ -81,3 +81,23 @@ describe('RBAC — manager team scoping', () => {
     expect(res.json.length).toBe(2)
   })
 })
+
+describe('Teams — admin delete', () => {
+  it('deletes a team that has members and invite codes, unassigning the members', async () => {
+    const h = await setupHarness()
+    const keep = await h.createTeam('1st Level Support')
+    const doomed = await h.createTeam('Patient Services')
+    const learner = await h.createUser({ name: 'pat', role: 'learner', team_id: doomed })
+    const manager = await h.createUser({ name: 'mgr', role: 'manager', team_id: doomed })
+    await h.db.execute({ sql: "INSERT INTO invite_codes (code, team_id, used) VALUES ('ABC123', ?, 0)", args: [doomed] })
+
+    const res = await h.request(`/api/admin/teams/${doomed}`, { method: 'DELETE', token: h.adminToken() })
+    expect(res.status).toBe(200)
+
+    const teams = await h.request('/api/admin/teams', { token: h.adminToken() })
+    expect(teams.json.map(t => t.name)).toEqual(['1st Level Support'])
+    const rows = await h.db.execute({ sql: 'SELECT team_id FROM users WHERE id IN (?, ?)', args: [learner.id, manager.id] })
+    expect(rows.rows.every(r => r[0] === null)).toBe(true)
+    expect(keep).toBeTruthy()
+  })
+})
