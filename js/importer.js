@@ -100,6 +100,25 @@ const Importer = {
     if (!files.length) { Toast.err('Drop .md files only.'); return; }
     files.forEach(f => Importer.readAndAddFile(f));
   },
+  // Fetch a page as Markdown. Tries Jina Reader straight from the browser first (the
+  // visitor's own IP isn't rate-limited like the Worker's shared egress), then falls
+  // back to the Worker proxy.
+  async fetchPage(rawUrl) {
+    let u;
+    try { u = new URL(rawUrl); } catch { throw new Error('Not a valid URL'); }
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') throw new Error('Only http(s) URLs are supported');
+    try {
+      const res = await fetch('https://r.jina.ai/' + u.href, {
+        headers: { Accept: 'text/plain' },
+        signal: AbortSignal.timeout(25000),
+      });
+      if (res.ok) {
+        const markdown = await res.text();
+        if (markdown.trim()) return { markdown, url: u.href };
+      }
+    } catch { /* fall through to the Worker proxy */ }
+    return adminApi('/api/scrape?url=' + encodeURIComponent(u.href));
+  },
   async importFromUrls() {
     const raw = $$('imp-url-input').value;
     const urls = [...new Set(raw.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#')))];
@@ -113,7 +132,7 @@ const Importer = {
       const row = $$(`imp-url-${i}`);
       status.textContent = `Fetching ${i + 1} of ${urls.length}…`;
       try {
-        const data = await adminApi('/api/scrape?url=' + encodeURIComponent(urls[i]));
+        const data = await Importer.fetchPage(urls[i]);
         const slug = decodeURIComponent(new URL(data.url).pathname.split('/').filter(Boolean).pop() || new URL(data.url).hostname);
         Importer.addFileModule(data.markdown, slug.replace(/^\d+[-_]/, '').replace(/\.\w+$/, ''));
         row.innerHTML = `<span style="color:var(--pass)">✓</span> ${esc(urls[i])}`;

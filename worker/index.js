@@ -926,12 +926,17 @@ app.get('/api/scrape', requireAdmin, async (c) => {
   let res
   try {
     res = await fetch(`https://r.jina.ai/${u.href}`, {
-      headers: { Accept: 'text/plain', 'X-Return-Format': 'markdown', 'User-Agent': 'TrainFlow-Importer' },
+      headers: {
+        Accept: 'text/plain', 'X-Return-Format': 'markdown', 'User-Agent': 'TrainFlow-Importer',
+        // Optional: a Jina API key lifts the shared-IP rate limit (wrangler secret put JINA_API_KEY)
+        ...(c.env.JINA_API_KEY ? { Authorization: `Bearer ${c.env.JINA_API_KEY}` } : {}),
+      },
       signal: AbortSignal.timeout(25000),
     })
   } catch {
     return c.json({ error: 'Could not reach the page (timed out or blocked)' }, 502)
   }
+  if (res.status === 429) return c.json({ error: 'The page reader is rate-limiting requests — wait a minute and try again' }, 429)
   if (!res.ok) return c.json({ error: `Page fetch failed (${res.status})` }, 502)
   const markdown = await res.text()
   if (!markdown.trim()) return c.json({ error: 'The page returned no readable content' }, 422)
