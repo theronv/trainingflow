@@ -211,10 +211,18 @@ const AppProxy = {
 
   // Navigation & screen switching
   exitCourse: () => {
-    if (window._adminPreview) { window._adminPreview = false; App.show('screen-admin'); }
+    if (window._adminPreview) {
+      window._adminPreview = false;
+      if (Learner._preview) { App.show('screen-learner'); Learner.nav('courses'); }
+      else App.show('screen-admin');
+    }
     else { App.show('screen-learner'); if(curLearner) Learner.nav('courses'); }
   },
-  showLearner: () => { if(curLearner) { App.show('screen-learner'); Learner.nav('courses'); } else Toast.info('No active learner session.'); },
+  showLearner: () => {
+    if (curLearner) { App.show('screen-learner'); Learner.nav('courses'); }
+    else if (getToken() || getManagerToken()) Learner.enterPreview();
+    else Toast.info('No active learner session.');
+  },
   moveLearner: (id) => Admin.moveLearner(id),
 
   // Manager

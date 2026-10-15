@@ -5,6 +5,26 @@
 const Learner = {
   _prog: null, // { course_id, module_idx, modules: [{mi, passed, score}] }
   _navSeq: 0,
+  _preview: null, // { api, back } while an admin/manager is viewing the learner experience
+
+  // Admins and managers have no learner session, so "Learner view" is a read-only preview
+  // of the catalogue and course player using their own token. Nothing is saved.
+  enterPreview() {
+    const isAdmin = !!getToken();
+    Learner._preview = { api: isAdmin ? adminApi : managerApi, back: isAdmin ? 'screen-admin' : 'screen-manager' };
+    curLearner = { id: 'preview', name: isAdmin ? 'Admin preview' : 'Manager preview' };
+    const btn = $$('l-signout-btn'); if (btn) btn.textContent = 'Exit preview';
+    const acct = $$('ln-account'); if (acct) acct.classList.add('hidden');
+    Learner.init();
+  },
+  exitPreview() {
+    const back = Learner._preview ? Learner._preview.back : 'screen-landing';
+    Learner._preview = null; curLearner = null; curCourse = null; curModIdx = 0; quizSt = {};
+    window._adminPreview = false;
+    const btn = $$('l-signout-btn'); if (btn) btn.textContent = 'Sign Out';
+    const acct = $$('ln-account'); if (acct) acct.classList.remove('hidden');
+    App.show(back);
+  },
 
   init() {
     App.show('screen-learner');
@@ -41,13 +61,16 @@ const Learner = {
     const grid = $$('l-courses-grid'); if(!grid) return;
     grid.innerHTML = '<div style="display:flex;justify-content:center;padding:40px;width:100%;"><div class="spinner"></div></div>';
     try {
-      const [apiCourses, apiRecs, apiAssigns, apiProgress, apiSections] = await Promise.all([
-        isDemo ? Promise.resolve(DEMO_COURSES) : learnerApi('/api/courses'),
-        learnerApi('/api/completions/me').catch(() => []),
-        learnerApi('/api/assignments/me').catch(() => []),
-        learnerApi('/api/progress/me').catch(() => []),
-        isDemo ? Promise.resolve([]) : learnerApi('/api/sections').catch(() => [])
-      ]);
+      const pv = Learner._preview;
+      const [apiCourses, apiRecs, apiAssigns, apiProgress, apiSections] = pv
+        ? await Promise.all([pv.api('/api/courses'), [], [], [], pv.api('/api/sections').catch(() => [])])
+        : await Promise.all([
+            isDemo ? Promise.resolve(DEMO_COURSES) : learnerApi('/api/courses'),
+            learnerApi('/api/completions/me').catch(() => []),
+            learnerApi('/api/assignments/me').catch(() => []),
+            learnerApi('/api/progress/me').catch(() => []),
+            isDemo ? Promise.resolve([]) : learnerApi('/api/sections').catch(() => [])
+          ]);
       if (Learner._navSeq !== seq) return;
       const recs = apiRecs.map(normRecord);
       const sections = apiSections || [];
@@ -131,6 +154,10 @@ const Learner = {
   async renderProgress() {
     const seq = Learner._navSeq;
     const el = $$('l-progress-content'); if(!el) return;
+    if (Learner._preview || isDemo) {
+      el.innerHTML = '<div class="empty"><div class="empty-icon">' + ICON.clip + '</div><div class="empty-title">Nothing to show in preview</div><div class="empty-hint">Assignments and progress are tracked per learner. Sign in as a learner to see them.</div></div>';
+      return;
+    }
     el.innerHTML = '<div style="display:flex;justify-content:center;padding:40px;"><div class="spinner"></div></div>';
     try {
       const [assignments, completions] = await Promise.all([
@@ -176,6 +203,10 @@ const Learner = {
   _certsCache: [],
   async renderCerts() {
     const seq = Learner._navSeq;
+    if (Learner._preview || isDemo) {
+      $$('l-certs-content').innerHTML = '<div class="empty"><div class="empty-icon">' + ICON.award + '</div><div class="empty-title">Nothing to show in preview</div><div class="empty-hint">Certificates are issued to learners who pass a course.</div></div>';
+      return;
+    }
     try {
       const res = await learnerApi('/api/completions/me');
       if (Learner._navSeq !== seq) return;
@@ -195,7 +226,11 @@ const Learner = {
   // ─── QUIZ ENGINE ───
   async startCourse(cid) {
     try {
-      const [res, progList] = isDemo
+      const pv = Learner._preview;
+      if (pv) window._adminPreview = true; // local grading, nothing saved, exit returns to the preview list
+      const [res, progList] = pv
+        ? [await pv.api(`/api/courses/${cid}`), []]
+        : isDemo
         ? [DEMO_COURSES.find(c => c.id === cid), []]
         : await Promise.all([
             learnerApi(`/api/courses/${cid}`),
@@ -325,6 +360,10 @@ const Learner = {
     // demo have no learner session and already hold the key locally.
     let ok, correctIndex, explanation;
     if (window._adminPreview || isDemo) {
+      if (typeof q.correct_index !== 'number') {
+        buttons.forEach(btn => { btn.disabled = false; });
+        return Toast.info('Quizzes can only be graded in an admin preview or a learner account.');
+      }
       correctIndex = q.correct_index;
       ok = sel === correctIndex;
       explanation = q.explanation;
@@ -443,7 +482,7 @@ const Learner = {
   },
 
   async _saveProgress(mi, passed, score) {
-    if(!curLearner || !curCourse) return;
+    if(!curLearner || !curCourse || window._adminPreview) return;
     const prog = Learner._prog;
     // Update or insert this module's record
     const existing = prog.modules.findIndex(m => m.mi === mi);

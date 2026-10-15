@@ -70,5 +70,5 @@ const Auth = {
       Learner.init();
     } catch(e) { $$('l-login-error').textContent = e.message; $$('l-login-error').style.display='block'; }
   },
-  learnerLogout() { clearLearnerToken(); curLearner = null; curCourse = null; curModIdx = 0; quizSt = {}; App.show('screen-landing'); }
+  learnerLogout() { if (Learner._preview) return Learner.exitPreview(); clearLearnerToken(); curLearner = null; curCourse = null; curModIdx = 0; quizSt = {}; App.show('screen-landing'); }
 };
