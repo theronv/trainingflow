@@ -29,7 +29,7 @@ const Manager = {
   async renderDash() {
     const seq = Manager._navSeq;
     const statsEl = $$('m-stats'); if(!statsEl) return;
-    statsEl.innerHTML = '<div style="display:flex;justify-content:center;padding:40px;width:100%;"><div class="spinner"></div></div>';
+    statsEl.innerHTML = Skeleton.tiles(4);
     try {
       const [learners, comps] = await Promise.all([
         managerApi(`/api/learners?team_id=${curManager.team_id}`),

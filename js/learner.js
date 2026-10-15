@@ -59,7 +59,7 @@ const Learner = {
   async renderCourses() {
     const seq = Learner._navSeq;
     const grid = $$('l-courses-grid'); if(!grid) return;
-    grid.innerHTML = '<div style="display:flex;justify-content:center;padding:40px;width:100%;"><div class="spinner"></div></div>';
+    grid.innerHTML = Skeleton.cards(4);
     try {
       const pv = Learner._preview;
       const [apiCourses, apiRecs, apiAssigns, apiProgress, apiSections] = pv
@@ -158,7 +158,7 @@ const Learner = {
       el.innerHTML = '<div class="empty"><div class="empty-icon">' + ICON.clip + '</div><div class="empty-title">Nothing to show in preview</div><div class="empty-hint">Assignments and progress are tracked per learner. Sign in as a learner to see them.</div></div>';
       return;
     }
-    el.innerHTML = '<div style="display:flex;justify-content:center;padding:40px;"><div class="spinner"></div></div>';
+    el.innerHTML = Skeleton.list(3);
     try {
       const [assignments, completions] = await Promise.all([
         learnerApi('/api/assignments/me'),

@@ -12,6 +12,71 @@ function inviteState(inv) {
   return 'active';
 }
 
+// Skeleton placeholders (shown while data loads; announced politely to screen readers).
+const Skeleton = {
+  tiles(n = 4) {
+    return Array.from({ length: n }, () => '<div class="stat-tile" aria-hidden="true"><div class="skeleton" style="width:40px;height:40px;border-radius:var(--radius-md);margin-bottom:var(--space-3);"></div><div class="skeleton" style="width:60%;height:28px;margin-bottom:8px;"></div><div class="skeleton" style="width:40%;height:14px;"></div></div>').join('');
+  },
+  cards(n = 3) {
+    return Array.from({ length: n }, () => '<div class="card" aria-hidden="true" style="display:flex;flex-direction:column;gap:var(--space-3);"><div style="display:flex;gap:var(--space-3);"><div class="skeleton" style="width:44px;height:44px;border-radius:var(--radius-lg);flex-shrink:0;"></div><div style="flex:1;"><div class="skeleton" style="width:70%;height:16px;margin-bottom:8px;"></div><div class="skeleton" style="width:35%;height:12px;"></div></div></div><div class="skeleton" style="width:100%;height:12px;"></div><div class="skeleton" style="width:80%;height:12px;"></div></div>').join('');
+  },
+  list(n = 4) {
+    return '<div role="status" aria-label="Loading">' + Array.from({ length: n }, () => '<div class="card" aria-hidden="true" style="margin-bottom:var(--space-3);"><div class="skeleton" style="width:50%;height:16px;margin-bottom:8px;"></div><div class="skeleton" style="width:25%;height:12px;"></div></div>').join('') + '</div>';
+  },
+};
+
+// Click-to-sort for any table inside a .table-wrap. Sorts the rendered rows in place, so it works
+// regardless of how or when a view renders its tbody. Columns with no header text (checkboxes,
+// actions) are not sortable.
+function initSortableTables() {
+  document.addEventListener('click', (e) => {
+    const th = e.target.closest && e.target.closest('.table-wrap thead th');
+    if (!th || !th.textContent.trim() || /^actions?$/i.test(th.textContent.trim())) return;
+    const table = th.closest('table'), body = table.tBodies[0];
+    if (!body || body.rows.length < 2 || (body.rows.length === 1 && body.rows[0].cells.length === 1)) return;
+    const idx = [...th.parentNode.children].indexOf(th);
+    const dir = th.getAttribute('aria-sort') === 'ascending' ? 'descending' : 'ascending';
+    table.querySelectorAll('thead th').forEach(h => h.removeAttribute('aria-sort'));
+    th.setAttribute('aria-sort', dir);
+    const val = (tr) => (tr.cells[idx] ? tr.cells[idx].textContent.trim() : '');
+    const num = (s) => { const n = parseFloat(s.replace(/[%,]/g, '')); return isNaN(n) || !/^[\d.,%\s-]+$/.test(s) ? null : n; };
+    const dt = (s) => { const t = Date.parse(s); return isNaN(t) || !/\d{1,4}[\/-]\d{1,2}/.test(s) ? null : t; };
+    const rows = [...body.rows];
+    rows.sort((a, b) => {
+      const A = val(a), B = val(b);
+      const nA = num(A), nB = num(B), dA = dt(A), dB = dt(B);
+      let r;
+      if (nA !== null && nB !== null) r = nA - nB;
+      else if (dA !== null && dB !== null) r = dA - dB;
+      else r = A.localeCompare(B, undefined, { sensitivity: 'base', numeric: true });
+      return dir === 'ascending' ? r : -r;
+    });
+    rows.forEach(r => body.appendChild(r));
+  });
+  // Keyboard access: make header cells focusable and operable with Enter/Space.
+  const arm = () => document.querySelectorAll('.table-wrap thead th').forEach(th => {
+    if (th.dataset.sortArmed || !th.textContent.trim() || /^actions?$/i.test(th.textContent.trim())) return;
+    th.dataset.sortArmed = '1'; th.tabIndex = 0; th.setAttribute('role', 'columnheader');
+    th.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); th.click(); } });
+  });
+  arm();
+  new MutationObserver(arm).observe(document.body, { childList: true, subtree: true });
+}
+
+// Dialog semantics + Escape-to-close for every modal overlay.
+function initDialogA11y() {
+  document.querySelectorAll('.overlay > .modal').forEach(m => { m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true'); });
+  document.querySelectorAll('.main').forEach(m => m.setAttribute('role', 'main'));
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    const open = [...document.querySelectorAll('.overlay:not(.hidden)')].filter(o => o.id !== 'first-run-overlay');
+    const top = open[open.length - 1];
+    if (!top) return;
+    if (top.id === 'builder-overlay' && typeof Builder !== 'undefined') return Builder.closeBuilder();
+    top.classList.add('hidden');
+  });
+}
+
 // Shared inline icon set (stroke icons; sized via CSS)
 const ICON = {
   moon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>',

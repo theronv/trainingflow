@@ -32,7 +32,7 @@ const Admin = {
   async renderDash() {
     const seq = Admin._navSeq;
     const statsEl = $$('a-stats'); if(!statsEl) return;
-    statsEl.innerHTML = '<div style="display:flex;justify-content:center;padding:40px;width:100%;"><div class="spinner"></div></div>';
+    statsEl.innerHTML = Skeleton.tiles(4);
 
     try {
       const [stats, teams, recent] = await Promise.all([
@@ -808,7 +808,7 @@ const Admin = {
   async renderCourses() {
     const seq = Admin._navSeq;
     const grid = $$('a-courses-grid'); if(!grid) return;
-    grid.innerHTML = '<div style="display:flex;justify-content:center;padding:40px;width:100%;grid-column:1/-1"><div class="spinner"></div></div>';
+    grid.innerHTML = Skeleton.cards(4);
     try {
       const [courses, sections, assignments] = await Promise.all([
         api('/api/courses'),

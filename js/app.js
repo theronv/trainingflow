@@ -474,6 +474,8 @@ const AppProxy = {
 
   // Global
   init: async () => {
+    initSortableTables();
+    initDialogA11y();
     const savedTheme = localStorage.getItem('trainflow_theme');
     const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
     const theme = savedTheme ? (savedTheme === 'dark' ? 'dark' : 'light') : (prefersDark ? 'dark' : 'light');

@@ -13,6 +13,11 @@ const Builder = {
     $$('mods-builder').innerHTML = '';
     $$('builder-title').textContent = editId ? 'Edit Course' : 'New Course';
     $$('builder-overlay').classList.remove('hidden');
+    Builder._dirty = false;
+    if (!Builder._dirtyArmed) {
+      Builder._dirtyArmed = true;
+      $$('builder-overlay').addEventListener('input', () => { Builder._dirty = true; });
+    }
     if(editId) {
       api(`/api/courses/${editId}`).then(c => {
         const nc = normCourse(c);
@@ -25,7 +30,11 @@ const Builder = {
       }).catch(() => {});
     }
   },
-  closeBuilder() { $$('builder-overlay').classList.add('hidden'); },
+  closeBuilder(force) {
+    if (!force && Builder._dirty && !confirm('Discard your unsaved changes to this course?')) return;
+    Builder._dirty = false;
+    $$('builder-overlay').classList.add('hidden');
+  },
   addMod() {
     const mi = cbState.mods.length;
     cbState.mods.push({ id: uid(), title: '', content: '', summary: '', reference_url: '', learning_objectives: [], questions: [] });
@@ -114,7 +123,7 @@ const Builder = {
     try {
       if(cbState.editId) await api(`/api/courses/${cbState.editId}`, { method: 'PUT', body: JSON.stringify(body) });
       else await api('/api/courses', { method: 'POST', body: JSON.stringify(body) });
-      Builder.closeBuilder();
+      Builder.closeBuilder(true);
       if (curManager) Manager.init(); else Admin.init();
       Toast.ok('Course saved.');
     } catch(e) { Toast.err(e.message); }
