@@ -2061,3 +2061,7 @@ button, .nav-btn, .quiz-opt, .course-card, .role-tile, label { touch-action: man
   .sidenav:not(:has(.nav-btn:nth-of-type(6))) .nav-icon { margin: 0; }
   .sidenav:not(:has(.nav-btn:nth-of-type(6))) .nav-icon svg { width: 20px; height: 20px; }
 }
+
+/* Course tiles: line icon in brand colour instead of emoji */
+.cc-icon, .lc-icon { color: var(--brand); }
+.cc-icon svg, .lc-icon svg { width: 22px; height: 22px; display: block; }

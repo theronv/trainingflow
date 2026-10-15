@@ -108,7 +108,7 @@ const Learner = {
         const cta = passed ? 'Review' : (prog ? 'Continue' : 'Start');
         return `<div class="course-card lc" role="button" tabindex="0" onclick="Learner.startCourse('${nc.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();Learner.startCourse('${nc.id}')}">
           <div class="lc-top">
-            <div class="lc-icon" aria-hidden="true">${esc(nc.icon)}</div>
+            <div class="lc-icon" aria-hidden="true">${courseIcon(nc.icon)}</div>
             <div class="lc-body">
               <div class="lc-title">${esc(nc.title)}</div>
               <div class="lc-meta">${modCount}${dueStr ? ` · ${dueStr}` : ''}</div>

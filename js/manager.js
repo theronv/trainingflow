@@ -74,7 +74,7 @@ const Manager = {
         const n = nc.mods ? nc.mods.length : 0;
         return `<div class="card cc">
           <div class="cc-top">
-            <div class="cc-icon" aria-hidden="true">${esc(nc.icon)}</div>
+            <div class="cc-icon" aria-hidden="true">${courseIcon(nc.icon)}</div>
             <div class="cc-body">
               <div class="cc-title">${esc(nc.title)}</div>
               ${n ? `<div class="cc-meta"><span class="chip">${n} module${n!==1?'s':''}</span></div>` : ''}

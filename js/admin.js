@@ -886,7 +886,7 @@ const Admin = {
       : `<span class="chip">Unassigned</span>`;
     return `<div class="card cc">
       <div class="cc-top">
-        <div class="cc-icon" aria-hidden="true">${esc(c.icon || '📋')}</div>
+        <div class="cc-icon" aria-hidden="true">${courseIcon(c.icon)}</div>
         <div class="cc-body">
           <div class="cc-title">${esc(c.title)}</div>
           <div class="cc-meta">
