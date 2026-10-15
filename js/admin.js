@@ -71,7 +71,7 @@ const Admin = {
             <div class="activity-list">${items.map(c => {
               const date = new Date(c.completed_at * 1000).toLocaleDateString(undefined, { month:'short', day:'numeric' });
               const chip = c.passed
-                ? '<span class="chip chip-brand-accent">Pass</span>'
+                ? '<span class="chip chip-green">Pass</span>'
                 : '<span class="chip chip-red">Fail</span>';
               return `<div class="activity-item">
                 <div class="activity-info">
@@ -188,8 +188,8 @@ const Admin = {
           <thead><tr><th>Name</th><th>Role</th><th>Actions</th></tr></thead>
           <tbody>${rows.map(l => {
             const roleChip = l.role === 'manager'
-              ? '<span class="chip chip-blue" style="font-size:9px;">Manager</span>'
-              : '<span class="chip chip-green" style="font-size:9px;">Learner</span>';
+              ? '<span class="chip chip-blue">Manager</span>'
+              : '<span class="chip chip-green">Learner</span>';
             return `<tr>
               <td>${esc(l.name)}</td>
               <td>${roleChip}</td>
@@ -215,8 +215,8 @@ const Admin = {
           <thead><tr><th>Code</th><th>Status</th><th>Expires</th><th>Actions</th></tr></thead>
           <tbody>${teamInvites.map(inv => {
             const statusChip = inv.used
-              ? '<span class="chip chip-amber" style="font-size:9px;">Used</span>'
-              : '<span class="chip chip-blue" style="font-size:9px;">Active</span>';
+              ? '<span class="chip chip-amber">Used</span>'
+              : '<span class="chip chip-blue">Active</span>';
             const expires = inv.expires_at ? new Date(inv.expires_at).toLocaleDateString() : 'Never';
             return `<tr>
               <td style="font-family:monospace;letter-spacing:0.08em;font-weight:600;">${esc(inv.code)}</td>
@@ -312,8 +312,8 @@ const Admin = {
       }
       tbody.innerHTML = invites.map(inv => {
         const statusChip = inv.used
-          ? `<span class="chip chip-amber" style="font-size:9px;">Used</span>`
-          : `<span class="chip chip-blue"  style="font-size:9px;">Active</span>`;
+          ? `<span class="chip chip-amber">Used</span>`
+          : `<span class="chip chip-blue" >Active</span>`;
         const created = inv.created_at ? new Date(inv.created_at).toLocaleDateString() : '—';
         const expires = inv.expires_at  ? new Date(inv.expires_at).toLocaleDateString()  : '—';
         const teamName = inv.team_name ? esc(inv.team_name) : '';
@@ -566,23 +566,23 @@ const Admin = {
     if(!filtered.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:32px;">No matches.</td></tr>'; return; }
     tbody.innerHTML = filtered.map(l => {
       const team = (teamsCache||[]).find(t => t.id === l.team_id);
-      const teamHtml = team ? esc(team.name) : '<span class="chip chip-amber" style="font-size:9px;">Unassigned</span>';
+      const teamHtml = team ? esc(team.name) : '<span class="chip chip-amber">Unassigned</span>';
       const isManager = l.role === 'manager';
       const roleChip = isManager
-        ? '<span class="chip chip-blue" style="font-size:9px;">Manager</span>'
-        : '<span class="chip chip-green" style="font-size:9px;">User</span>';
+        ? '<span class="chip chip-blue">Manager</span>'
+        : '<span class="chip chip-green">User</span>';
       const isChecked = Admin._selectedUsers.has(l.id);
       return `<tr>
         <td style="width:36px;"><input type="checkbox" data-id="${l.id}" ${isChecked ? 'checked' : ''} onchange="Admin.toggleUserSelect('${l.id}', this.checked)"></td>
-        <td>${esc(l.name || 'Unnamed')} ${l.overdue_count ? `<span class="chip chip-red" style="font-size:9px;">⚠️ ${l.overdue_count}</span>` : ''}</td>
+        <td>${esc(l.name || 'Unnamed')} ${l.overdue_count ? `<span class="chip chip-red">${l.overdue_count} overdue</span>` : ''}</td>
         <td>${roleChip}</td>
         <td><button class="btn btn-ghost btn-sm" onclick="App.openEditLearner('${l.id}','${esc(l.name)}','${l.team_id||''}','${l.role||'learner'}')">${teamHtml}</button></td>
         <td>${l.last_login_at ? new Date(l.last_login_at*1000).toLocaleDateString() : '—'}</td>
         <td>${l.completion_count || 0}</td>
-        <td style="white-space:nowrap;">
-          <button class="btn btn-ghost btn-sm" title="Reset password" onclick="App.openResetPw('${l.id}','${esc(l.name)}')">🔑</button>
-          <button class="btn btn-ghost btn-sm" title="Edit user" onclick="App.openEditLearner('${l.id}','${esc(l.name)}','${l.team_id||''}','${l.role||'learner'}')">✏️</button>
-          <button class="btn btn-ghost btn-sm" title="Delete user" style="color:var(--fail)" onclick="App.openDeleteLearner('${l.id}','${esc(l.name)}','${l.role||'learner'}')">✕</button>
+        <td style="white-space:nowrap;text-align:right;">
+          <button class="btn btn-ghost btn-sm icon-btn" title="Reset password" aria-label="Reset password" onclick="App.openResetPw('${l.id}','${esc(l.name)}')">${Admin._ico.key}</button>
+          <button class="btn btn-ghost btn-sm icon-btn" title="Edit user" aria-label="Edit user" onclick="App.openEditLearner('${l.id}','${esc(l.name)}','${l.team_id||''}','${l.role||'learner'}')">${Admin._ico.pencil}</button>
+          <button class="btn btn-ghost btn-sm icon-btn btn-danger-ghost" title="Delete user" aria-label="Delete user" onclick="App.openDeleteLearner('${l.id}','${esc(l.name)}','${l.role||'learner'}')">${Admin._ico.trash}</button>
         </td>
       </tr>`;
     }).join('');
@@ -781,7 +781,7 @@ const Admin = {
         <td>${esc(r.user_name)}</td>
         <td>${esc(r.course_title)}</td>
         <td>${r.score}%</td>
-        <td>${r.passed ? '<span class="chip chip-brand-accent">Passed</span>' : '<span class="chip chip-red">Failed</span>'}</td>
+        <td>${r.passed ? '<span class="chip chip-green">Passed</span>' : '<span class="chip chip-red">Failed</span>'}</td>
         <td>${new Date(r.completed_at * 1000).toLocaleDateString()}</td>
         <td style="font-family:monospace;font-size:11px;">${r.cert_id || '—'}</td>
       </tr>`).join('');
@@ -859,6 +859,7 @@ const Admin = {
   },
 
   _ico: {
+    key: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>',
     pencil: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>',
     x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>',
     trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',

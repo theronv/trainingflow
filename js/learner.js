@@ -71,22 +71,32 @@ const Learner = {
           : null;
         const overdue = !passed && dueTs && dueTs < Date.now();
         const dueStr = !passed && dueTs && !overdue
-          ? `<span style="font-size:var(--text-xs);color:var(--ink-4);margin-left:6px;">Due ${new Date(dueTs).toLocaleDateString()}</span>`
+          ? `Due ${new Date(dueTs).toLocaleDateString()}`
           : '';
         let chip = '';
-        if (passed) chip = '<span class="chip chip-brand-accent">✓ Passed</span>';
-        else if (overdue) chip = `<span class="chip" style="background:rgba(239,68,68,0.10);color:var(--fail);border:1px solid var(--fail);">⚠ Overdue</span>`;
-        else if (prog) chip = `<span class="chip chip-blue">▶ In Progress${totalMods ? ` (${modsDone}/${totalMods})` : ''}</span>`;
-        else if (assigned) chip = `<span class="chip chip-brand-secondary">Mandatory</span>${dueStr}`;
-        const modCount = totalMods ? `<span style="font-size:var(--text-xs);color:var(--ink-4);">${totalMods} module${totalMods!==1?'s':''}</span>` : '';
-        const desc = nc.desc ? `<div style="font-size:var(--text-sm);color:var(--ink-3);margin-top:6px;line-height:1.4;">${esc(nc.desc.length > 100 ? nc.desc.slice(0,100)+'…' : nc.desc)}</div>` : '';
-        return `<div class="course-card" onclick="Learner.startCourse('${nc.id}')">
-          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
-            <div style="font-weight:700;">${esc(nc.title)}</div>
-            ${modCount}
+        if (passed) chip = '<span class="chip chip-green">Passed</span>';
+        else if (overdue) chip = `<span class="chip chip-red">Overdue</span>`;
+        else if (prog) chip = `<span class="chip chip-blue">In progress${totalMods ? ` · ${modsDone}/${totalMods}` : ''}</span>`;
+        else if (assigned) chip = `<span class="chip chip-brand-secondary">Mandatory</span>`;
+        const modCount = totalMods ? `${totalMods} module${totalMods!==1?'s':''}` : '';
+        const desc = nc.desc ? `<div class="lc-desc">${esc(nc.desc)}</div>` : '';
+        const pct = prog && totalMods ? Math.min(100, Math.round(modsDone / totalMods * 100)) : 0;
+        const bar = prog && totalMods ? `<div class="lc-progress" aria-hidden="true"><span style="width:${pct}%"></span></div>` : '';
+        const cta = passed ? 'Review' : (prog ? 'Continue' : 'Start');
+        return `<div class="course-card lc" role="button" tabindex="0" onclick="Learner.startCourse('${nc.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();Learner.startCourse('${nc.id}')}">
+          <div class="lc-top">
+            <div class="lc-icon" aria-hidden="true">${esc(nc.icon)}</div>
+            <div class="lc-body">
+              <div class="lc-title">${esc(nc.title)}</div>
+              <div class="lc-meta">${modCount}${dueStr ? ` · ${dueStr}` : ''}</div>
+            </div>
           </div>
           ${desc}
-          <div style="margin-top:10px;">${chip}</div>
+          ${bar}
+          <div class="lc-foot">
+            <span>${chip}</span>
+            <span class="lc-cta">${cta} <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></span>
+          </div>
         </div>`;
       };
 
@@ -155,7 +165,7 @@ const Learner = {
         html += `<div style="font-weight:700;margin-bottom:var(--space-3);margin-top:var(--space-6);">Completed (${done.length})</div>`;
         html += done.map(a => `<div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);margin-bottom:var(--space-3);opacity:0.75;">
           <div style="font-weight:600;">${esc(a.course_title)}</div>
-          <span class="chip chip-brand-accent">✓ Done</span>
+          <span class="chip chip-green">✓ Done</span>
         </div>`).join('');
       }
       el.innerHTML = html;
@@ -173,7 +183,7 @@ const Learner = {
       $$('l-certs-content').innerHTML = Learner._certsCache.length
         ? Learner._certsCache.map(r => `<div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);margin-bottom:var(--space-3);">
             <div>
-              <div style="font-weight:600;">📜 ${esc(r.course_title)}</div>
+              <div style="font-weight:600;">${esc(r.course_title)}</div>
               <div style="font-size:var(--text-xs);color:var(--ink-4);margin-top:4px;">Passed ${r.score}% · ${new Date(r.completed_at*1000).toLocaleDateString()} · ID: <span style="font-family:monospace;">${r.cert_id || '—'}</span></div>
             </div>
             <button class="btn btn-outline btn-sm" onclick="Learner.viewCert('${r.cert_id}')">↓ Download PDF</button>
@@ -258,8 +268,8 @@ const Learner = {
         ${mod.summary ? `<p class="mod-summary-text">${esc(mod.summary)}</p>` : ''}
         ${objectivesHtml}
         <div class="mod-meta-row">
-          <span class="mod-meta-chip">📖 ~${readMin} min read</span>
-          ${hasQuiz ? `<span class="mod-meta-chip">❓ ${mod.questions.length} question${mod.questions.length !== 1 ? 's' : ''}</span>` : ''}
+          <span class="mod-meta-chip">~${readMin} min read</span>
+          ${hasQuiz ? `<span class="mod-meta-chip">${mod.questions.length} question${mod.questions.length !== 1 ? 's' : ''}</span>` : ''}
         </div>
       </div>` : '';
 
@@ -381,7 +391,7 @@ const Learner = {
     $$('mod-main').innerHTML = `<div class="quiz-results">
       <div class="qr-score ${passed ? 'qr-pass' : 'qr-fail'}">${pct}%</div>
       <div class="qr-label">${correct} of ${total} correct</div>
-      <div class="qr-verdict">${passed ? '🎉 Module Passed!' : '❌ Not quite — review the material and try again.'}</div>
+      <div class="qr-verdict">${passed ? 'Module passed' : 'Not quite — review the material and try again.'}</div>
       ${nextMod
         ? `<button class="btn btn-primary btn-lg" style="margin-top:var(--space-6);" onclick="Learner.loadMod(${mi+1})">Next Module →</button>`
         : `<button class="btn btn-primary btn-lg" style="margin-top:var(--space-6);" onclick="Learner.completeCourse()">Finish Course 🎓</button>`}

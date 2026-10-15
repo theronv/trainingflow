@@ -40,8 +40,15 @@ const Manager = {
       const passed = comps.filter(c => c.passed).length;
       const rate = comps.length ? Math.round(passed/comps.length*100) : 0;
 
-      statsEl.innerHTML = [['Members', learners.length, '👥'],['Month', comps.length, '🏆'],['Pass Rate', rate + '%', '📈'],['Overdue', overdue, '⚠️']].map(([l,v,i])=>`<div class="stat-tile">
-        <div style="font-size:24px;">${i}</div>
+      const ico = d => `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+      const tiles = [
+        ['Members',    learners.length, ico('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>')],
+        ['Completions', comps.length,   ico('<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/>')],
+        ['Pass rate',  rate + '%',      ico('<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/>')],
+        ['Overdue',    overdue,         ico('<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>')],
+      ];
+      statsEl.innerHTML = tiles.map(([l, v, i]) => `<div class="stat-tile">
+        <div class="stat-icon">${i}</div>
         <div class="stat-value">${v}</div>
         <div class="stat-label">${l}</div>
       </div>`).join('');
@@ -49,7 +56,7 @@ const Manager = {
       if (!comps.length) {
         $$('m-recent').innerHTML = '<div class="empty"><div class="empty-icon">📊</div><div class="empty-title">No activity yet</div><div class="empty-hint">Completions from your team will appear here as learners finish their courses.</div></div>';
       } else {
-        $$('m-recent').innerHTML = `<h3>Recent Team Activity</h3><div class="table-wrap"><table><thead><tr><th>Learner</th><th>Course</th><th>Score</th><th>Date</th></tr></thead><tbody>${comps.slice(0,5).map(r=>`<tr><td>${esc(r.user_name)}</td><td>${esc(r.course_title)}</td><td>${r.score}%</td><td>${new Date(r.completed_at*1000).toLocaleDateString()}</td></tr>`).join('')}</tbody></table></div>`;
+        $$('m-recent').innerHTML = `<div class="dash-section-label">Recent team activity</div><div class="table-wrap"><table><thead><tr><th>Learner</th><th>Course</th><th>Score</th><th>Date</th></tr></thead><tbody>${comps.slice(0,5).map(r=>`<tr><td>${esc(r.user_name)}</td><td>${esc(r.course_title)}</td><td>${r.score}%</td><td>${new Date(r.completed_at*1000).toLocaleDateString()}</td></tr>`).join('')}</tbody></table></div>`;
       }
     } catch(e) { 
       statsEl.innerHTML = `<div class="card" style="color:var(--fail);width:100%;">${esc(e.message)}</div>`;
@@ -64,9 +71,18 @@ const Manager = {
       if (Manager._navSeq !== seq) return;
       const courseCard = c => {
         const nc = normCourse(c);
-        return `<div class="card">
-          <div style="font-weight:700;">${esc(nc.title)}</div>
-          <button class="btn btn-primary btn-sm w-full" style="margin-top:12px;" onclick="Manager.openTeamAssign('${nc.id}', '${esc(nc.title)}')">Assign to Team</button>
+        const n = nc.mods ? nc.mods.length : 0;
+        return `<div class="card cc">
+          <div class="cc-top">
+            <div class="cc-icon" aria-hidden="true">${esc(nc.icon)}</div>
+            <div class="cc-body">
+              <div class="cc-title">${esc(nc.title)}</div>
+              ${n ? `<div class="cc-meta"><span class="chip">${n} module${n!==1?'s':''}</span></div>` : ''}
+            </div>
+          </div>
+          <div class="cc-actions">
+            <button class="btn btn-primary btn-sm" onclick="Manager.openTeamAssign('${nc.id}', '${esc(nc.title)}')">Assign to team</button>
+          </div>
         </div>`;
       };
       let html = '';
@@ -99,7 +115,7 @@ const Manager = {
         return;
       }
       tbody.innerHTML = rows.map(l => `<tr>
-        <td>${esc(l.name)} ${l.overdue_count ? `<span class="chip chip-red" style="font-size:9px;">⚠️ ${l.overdue_count} overdue</span>` : ''}</td>
+        <td>${esc(l.name)} ${l.overdue_count ? `<span class="chip chip-red">⚠️ ${l.overdue_count} overdue</span>` : ''}</td>
         <td>${l.assignment_count || 0}</td>
         <td>${l.completion_count || 0}</td>
         <td>${l.pass_rate != null ? l.pass_rate + '%' : '—'}</td>
@@ -295,7 +311,7 @@ const Manager = {
                 return `<tr>
                   <td>${esc(r.name || '—')}</td>
                   <td style="font-family:monospace;font-size:12px;color:${autogen ? 'var(--brand)' : 'var(--ink-4)'};">${r.password || '—'}</td>
-                  <td>${err ? `<span class="chip chip-red" style="font-size:9px;">${esc(err)}</span>` : '<span class="chip chip-green" style="font-size:9px;">✓ OK</span>'}</td>
+                  <td>${err ? `<span class="chip chip-red">${esc(err)}</span>` : '<span class="chip chip-green">✓ OK</span>'}</td>
                 </tr>`;
               }).join('')}
             </tbody>
@@ -454,7 +470,7 @@ const Manager = {
         tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--ink-4);">No completions yet.</td></tr>';
         return;
       }
-      tbody.innerHTML = res.map(r => `<tr><td>${esc(r.user_name)}</td><td>${esc(r.course_title)}</td><td>${r.score}%</td><td>${r.passed?'<span class="chip chip-brand-accent">Passed</span>':'<span class="chip chip-red">Failed</span>'}</td><td>${new Date(r.completed_at*1000).toLocaleDateString()}</td></tr>`).join('');
+      tbody.innerHTML = res.map(r => `<tr><td>${esc(r.user_name)}</td><td>${esc(r.course_title)}</td><td>${r.score}%</td><td>${r.passed?'<span class="chip chip-green">Passed</span>':'<span class="chip chip-red">Failed</span>'}</td><td>${new Date(r.completed_at*1000).toLocaleDateString()}</td></tr>`).join('');
     } catch(e) { tbody.innerHTML = `<tr><td colspan="5" style="color:var(--fail);padding:16px;">${esc(e.message)}</td></tr>`; }
   }
 };
