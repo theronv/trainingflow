@@ -248,6 +248,9 @@ input[type=text],
 input[type=password],
 input[type=email],
 input[type=number],
+input[type=url],
+input[type=search],
+input[type=tel],
 input[type=date],
 input[type=color],
 select,
@@ -1636,4 +1639,49 @@ input[type=file]::file-selector-button:hover { background: var(--bg-2); }
   background:
     radial-gradient(900px 420px at 50% -10%, var(--brand-glow), transparent 70%),
     var(--bg);
+}
+
+/* ══════════════════ RESPONSIVE SHELL ══════════════════
+   Sidebar collapses to a horizontally scrolling tab strip on tablets/phones. */
+@media (max-width: 860px) {
+  .app-layout { flex-direction: column; overflow: visible; }
+  .screen.active { min-height: 100vh; }
+  .sidenav {
+    width: 100%; flex-direction: row; align-items: center;
+    overflow-x: auto; overflow-y: hidden;
+    padding: var(--space-2) var(--space-3);
+    border-right: none; border-bottom: 1px solid var(--border);
+    gap: var(--space-1);
+    -webkit-overflow-scrolling: touch; scrollbar-width: none;
+  }
+  .sidenav::-webkit-scrollbar { display: none; }
+  .sidenav-section { display: contents; margin: 0; }
+  .sidenav-label { display: none; }
+  .nav-btn, .nav-sub {
+    width: auto; flex-shrink: 0; white-space: nowrap;
+    padding: 8px var(--space-3); min-height: 40px;
+  }
+  .nav-sub .nav-icon { display: flex; }
+  .main { padding: var(--space-6) var(--space-4); overflow: visible; }
+  .topbar { padding: 0 var(--space-4); }
+  .page-title { font-size: 24px; }
+  .courses-grid { grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr)); }
+  .cc-actions { flex-wrap: wrap; }
+  .cc-actions .btn-primary { flex: 1 1 100%; }
+  .stats-row { grid-template-columns: repeat(2, 1fr); }
+  .teams-layout { grid-template-columns: 1fr; height: auto; max-height: none; }
+  .teams-sidebar { border-right: none; border-bottom: 1px solid var(--border); max-height: 220px; }
+  .module-main, .mod-main { padding: var(--space-6) var(--space-4); }
+  .course-body { flex-direction: column; }
+  .module-nav, .mod-sidebar { width: 100%; max-height: 180px; border-right: none; border-bottom: 1px solid var(--border); }
+}
+@media (max-width: 520px) {
+  .topbar-right .btn { padding-left: var(--space-2); padding-right: var(--space-2); }
+  .page-head-row > div:last-child { width: 100%; }
+}
+
+/* Modals on small screens */
+@media (max-width: 600px) {
+  .modal { max-width: calc(100vw - 24px); }
+  .modal-foot { flex-wrap: wrap; }
 }

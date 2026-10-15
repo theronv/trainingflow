@@ -288,6 +288,17 @@ Visual design pass on the **web app** (vanilla JS SPA — the RN/NativeWind targ
 
 ---
 
+## UI Polish — 2026-10-14
+
+Presentation-only passes on the web app (no data flow/auth changes), all at the end of `css/style.css` under "ENTERPRISE POLISH" / "RESPONSIVE SHELL":
+- New default palette: `#1B78F2` primary, `#241C59` secondary, `#D9631E` accent (fallbacks only — the saved `brand` row in Turso still wins).
+- Landing: SVG role tiles. Shell: Inter sentence-case sidebar, 56px topbar, 1240px content cap. Course library (`.cc`) and learner course cards (`.lc`).
+- Mono/uppercase "terminal" labels retired; chips are pills; pass = green (`chip-green`), not `chip-brand-accent`.
+- ≤860px: sidebar becomes a horizontal tab strip; course player stacks.
+- AI Importer: "Import from web pages" (browser→Jina first, `GET /api/scrape` Worker proxy fallback; optional `JINA_API_KEY`).
+
+---
+
 ## Security Status (last verified against code 2026-06-18)
 
 F3–F12 verified present in code. **F1/F2 have REGRESSED** since the Auditor Review and are currently OPEN — see warning below.
