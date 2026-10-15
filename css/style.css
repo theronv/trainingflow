@@ -1952,3 +1952,97 @@ a { color: var(--accent); }
 #cert-sheet { padding: 0; overflow: hidden; }
 #cert-sheet .cert-accent-bar { border-radius: 0; }
 .cert-org-name, .cert-sig-label { font-family: var(--font-body); }
+
+/* ══════════════════ MOBILE OPTIMIZATION — 2026-10-15 ══════════════════
+   Presentation-only. Builds on RESPONSIVE SHELL: touch behaviour, safe areas,
+   dynamic viewport units, bottom-sheet modals, sticky course chrome. */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body { -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; }
+button, .nav-btn, .quiz-opt, .course-card, .role-tile, label { touch-action: manipulation; }
+
+/* dynamic viewport: avoids the iOS URL-bar jump where 100vh is taller than the visible area */
+@supports (height: 100dvh) {
+  #app, .screen, .screen.active, #screen-landing { min-height: 100dvh; }
+}
+
+@media (max-width: 860px) {
+  /* ≥16px inputs so iOS Safari doesn't zoom the page on focus */
+  input[type=text], input[type=password], input[type=email], input[type=number],
+  input[type=url], input[type=search], input[type=tel], input[type=date],
+  select, textarea { font-size: 16px; min-height: 44px; }
+  textarea { min-height: 90px; }
+  input[type=checkbox], input[type=radio] { width: 20px; height: 20px; }
+
+  /* safe areas (notch / home indicator) */
+  .topbar, .course-header { padding-left: max(var(--space-4), env(safe-area-inset-left)); padding-right: max(var(--space-4), env(safe-area-inset-right)); }
+  .topbar { padding-top: env(safe-area-inset-top); height: calc(56px + env(safe-area-inset-top)); }
+  .main { padding-bottom: calc(var(--space-8) + env(safe-area-inset-bottom)); }
+  #toast-root { top: calc(12px + env(safe-area-inset-top)); left: 12px; right: 12px; max-width: none; }
+
+  /* topbar: keep brand + actions on one row, truncate instead of wrapping */
+  .brand { min-width: 0; }
+  .brand > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 46vw; }
+  .topbar .user-pill > span:not(.user-avatar) { display: none; }
+  .topbar-right { gap: var(--space-2); flex-shrink: 0; }
+
+  /* tab strip sticks under the topbar and fades to hint at overflow */
+  .sidenav { position: sticky; top: 0; z-index: 20; scroll-snap-type: x proximity; }
+  .nav-btn, .nav-sub { scroll-snap-align: start; min-height: 44px; }
+
+  /* inline two-column form grids stack on phones */
+  [style*="grid-template-columns:1fr 1fr"] { grid-template-columns: 1fr !important; }
+
+  /* course player: sticky header, collapsible-height module list */
+  .course-header { position: sticky; top: 0; z-index: 30; flex-wrap: wrap; gap: var(--space-2) var(--space-3); padding-top: calc(var(--space-3) + env(safe-area-inset-top)); padding-bottom: var(--space-3); }
+  .course-header > div[style*="max-width"] { flex: 1 1 100%; max-width: none !important; order: 5; }
+  .course-body { overflow: visible; }
+  .module-main, .mod-main { overflow: visible; padding: var(--space-5) var(--space-4) calc(var(--space-8) + env(safe-area-inset-bottom)); }
+  .module-nav, .mod-sidebar { max-height: 140px; }
+  .focus-mode .module-nav { max-height: 0; }
+  .module-prose { font-size: 16px; }
+  .module-prose img, .module-prose video, .module-prose iframe { max-width: 100%; height: auto; }
+  .module-prose table { display: block; overflow-x: auto; }
+  .quiz-opt { padding: var(--space-4); min-height: 56px; }
+
+  /* tables scroll inside their wrapper, with momentum */
+  .table-wrap { -webkit-overflow-scrolling: touch; }
+  .table-wrap table { min-width: 560px; }
+
+  /* modals become bottom sheets */
+  .overlay { align-items: flex-end; padding: 0; }
+  .modal, .modal-wide, .modal-lg, .modal-sm {
+    width: 100%; max-width: 100%; max-height: 92dvh;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    padding: var(--space-5) var(--space-4) calc(var(--space-5) + env(safe-area-inset-bottom));
+  }
+  .overlay:not(.hidden) .modal { animation: sheetIn 0.22s cubic-bezier(0.2, 0.8, 0.2, 1); }
+  .modal-foot { flex-direction: column-reverse; }
+  .modal-foot .btn { width: 100%; }
+
+  /* certificate overlay pans instead of clipping; the sheet keeps its fixed width so the A4 PDF export isn't distorted */
+  .cert-overlay-wrap, #cert-overlay { justify-content: flex-start; align-items: flex-start; overflow: auto; -webkit-overflow-scrolling: touch; padding: var(--space-4); padding-top: calc(var(--space-4) + env(safe-area-inset-top)); }
+  .cert-controls { flex-wrap: wrap; position: sticky; left: 0; }
+  .cert-sheet, #cert-sheet { min-width: 760px; flex-shrink: 0; }
+
+  /* hero bands */
+  #screen-landing .landing-wrap { padding-top: calc(48px + env(safe-area-inset-top)); }
+  .ldg-head { min-height: 0; }
+  .page-head .page-title { font-size: clamp(26px, 8vw, 34px); }
+  .page-head-row { align-items: stretch; }
+  .teams-layout { min-height: 0; }
+}
+@keyframes sheetIn { from { transform: translateY(24px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+@media (max-width: 520px) {
+  .stats-row { gap: var(--space-3); }
+  .stat-value { font-size: 26px; }
+  .topbar .btn-ghost { padding: 0 10px; letter-spacing: .04em; }
+  #m-team-badge, .topbar .chip { max-width: 28vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .login-wrap { padding: 0 var(--space-1); }
+}
+
+@media (hover: none) {
+  /* no sticky hover states after a tap */
+  .nav-btn:hover, .course-card:hover, .quiz-opt:hover { background: inherit; border-color: inherit; transform: none; }
+  .nav-btn.active:hover { background: var(--why-bg); color: var(--accent-strong); }
+}
