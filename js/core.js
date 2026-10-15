@@ -201,6 +201,19 @@ let sectionsCache = [];
 let isDemo       = false;
 let brandCache   = { name: CONFIG.DEFAULT_BRAND_NAME, tagline: CONFIG.DEFAULT_TAGLINE, logo: '', c1: CONFIG.DEFAULT_C1, c2: CONFIG.DEFAULT_C2, c3: CONFIG.DEFAULT_C3, pass: CONFIG.DEFAULT_PASS, font: CONFIG.DEFAULT_FONT, fontUrl: '' };
 
+// Parents first, each followed by its sub-sections. Adds `label` ("Parent › Child") and `depth`.
+function orderSections(sections) {
+  const list = sections || [];
+  const ids = new Set(list.map(s => s.id));
+  const isChild = s => s.parent_id && ids.has(s.parent_id);
+  const out = [];
+  list.filter(s => !isChild(s)).forEach(p => {
+    out.push({ ...p, label: p.name, depth: 0 });
+    list.filter(s => s.parent_id === p.id).forEach(c => out.push({ ...c, label: p.name + ' › ' + c.name, depth: 1 }));
+  });
+  return out;
+}
+
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
 function $$(id) { return document.getElementById(id); }

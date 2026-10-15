@@ -67,7 +67,7 @@ const Manager = {
   async renderCourses() {
     const seq = Manager._navSeq;
     try {
-      const [apiCourses, sections] = await Promise.all([managerApi('/api/courses'), managerApi('/api/sections').catch(() => [])]);
+      let [apiCourses, sections] = await Promise.all([managerApi('/api/courses'), managerApi('/api/sections').catch(() => [])]);
       if (Manager._navSeq !== seq) return;
       const courseCard = c => {
         const nc = normCourse(c);
@@ -87,12 +87,13 @@ const Manager = {
       };
       let html = '';
       if(sections.length) {
+        sections = orderSections(sections);
         const bySec = {}, unsec = [];
         sections.forEach(s => { bySec[s.id] = []; });
         apiCourses.forEach(c => { if(c.section_id && bySec[c.section_id]) bySec[c.section_id].push(c); else unsec.push(c); });
         sections.forEach(s => {
           if(!bySec[s.id].length) return;
-          html += `<div class="section-header" style="grid-column:1/-1;">${esc(s.name)}</div>` + bySec[s.id].map(courseCard).join('');
+          html += `<div class="section-header" style="grid-column:1/-1;">${esc(s.label)}</div>` + bySec[s.id].map(courseCard).join('');
         });
         if(unsec.length) html += `<div class="section-header" style="grid-column:1/-1;">Other</div>` + unsec.map(courseCard).join('');
       } else {

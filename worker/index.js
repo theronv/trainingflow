@@ -1035,6 +1035,7 @@ app.get('/api/assignments/me', requireLearner, async (c) => {
 
 async function setupSections(db) {
   await db.execute('CREATE TABLE IF NOT EXISTS sections (id TEXT PRIMARY KEY, name TEXT NOT NULL, sort_order INTEGER DEFAULT 0, created_at INTEGER)')
+  try { await db.execute('ALTER TABLE sections ADD COLUMN parent_id TEXT') } catch {}
   try { await db.execute('ALTER TABLE courses ADD COLUMN section_id TEXT') } catch {}
   try { await db.execute('ALTER TABLE courses ADD COLUMN reference_url TEXT') } catch {}
   try { await db.execute('ALTER TABLE modules ADD COLUMN summary TEXT') } catch {}
@@ -1054,8 +1055,15 @@ app.post('/api/sections', requireAdmin, async (c) => {
   if (!body.name?.trim()) return c.json({ error: 'Name required' }, 400)
   const db = getDb(c.env)
   await ensureSetup(db)
+  const parentId = body.parent_id || null
+  if (parentId) {
+    // One level of nesting: the parent must exist and must itself be top-level.
+    const p = await db.execute({ sql: 'SELECT parent_id FROM sections WHERE id = ?', args: [parentId] })
+    if (!p.rows.length) return c.json({ error: 'Parent section not found' }, 400)
+    if (p.rows[0].parent_id) return c.json({ error: 'Sub-sections can only be one level deep' }, 400)
+  }
   const id = uid()
-  await db.execute({ sql: 'INSERT INTO sections (id, name, sort_order, created_at) VALUES (?, ?, ?, ?)', args: [id, body.name.trim(), body.sort_order ?? 0, Math.floor(Date.now() / 1000)] })
+  await db.execute({ sql: 'INSERT INTO sections (id, name, sort_order, created_at, parent_id) VALUES (?, ?, ?, ?, ?)', args: [id, body.name.trim(), body.sort_order ?? 0, Math.floor(Date.now() / 1000), parentId] })
   return c.json({ id }, 201)
 })
 
@@ -1070,6 +1078,8 @@ app.patch('/api/sections/:id', requireAdmin, async (c) => {
 app.delete('/api/sections/:id', requireAdmin, async (c) => {
   const db = getDb(c.env)
   try { await db.execute({ sql: 'UPDATE courses SET section_id = NULL WHERE section_id = ?', args: [c.req.param('id')] }) } catch {}
+  // Children of a deleted section become top-level sections.
+  try { await db.execute({ sql: 'UPDATE sections SET parent_id = NULL WHERE parent_id = ?', args: [c.req.param('id')] }) } catch {}
   await db.execute({ sql: 'DELETE FROM sections WHERE id = ?', args: [c.req.param('id')] })
   return c.json({ ok: true })
 })

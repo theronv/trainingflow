@@ -810,13 +810,14 @@ const Admin = {
     const grid = $$('a-courses-grid'); if(!grid) return;
     grid.innerHTML = Skeleton.cards(4);
     try {
-      const [courses, sections, assignments] = await Promise.all([
+      let [courses, sections, assignments] = await Promise.all([
         api('/api/courses'),
         api('/api/sections').catch(() => []),
         api('/api/assignments').catch(() => [])
       ]);
       if (Admin._navSeq !== seq) return;
-      sectionsCache = sections || [];
+      sectionsCache = orderSections(sections || []);
+      sections = sectionsCache;
       Admin._renderSectionsBar(sections);
 
       // Count enrolled learners per course
@@ -840,7 +841,7 @@ const Admin = {
       let html = '';
       sections.forEach(s => {
         const n = bySec[s.id].length;
-        html += `<div class="sec-head"><span class="sec-title">${esc(s.name)}</span><span class="sec-count">${n} ${n === 1 ? 'course' : 'courses'}</span></div>`;
+        html += `<div class="sec-head"><span class="sec-title">${esc(s.label)}</span><span class="sec-count">${n} ${n === 1 ? 'course' : 'courses'}</span></div>`;
         if(!n) {
           html += `<div class="sec-empty">No courses in this section yet.</div>`;
         } else {
@@ -861,8 +862,9 @@ const Admin = {
     const bar = $$('a-sections-bar'); if(!bar) return;
     if(!sections.length) { bar.innerHTML = '<span style="font-size:var(--text-sm);color:var(--ink-4);">No sections — click "+ New Section" to group your courses.</span>'; return; }
     bar.innerHTML = sections.map(s => `
-      <span class="sec-chip">
-        ${esc(s.name)}
+      <span class="sec-chip"${s.depth ? ' style="margin-left:var(--space-3);"' : ''}>
+        ${s.depth ? '↳ ' : ''}${esc(s.name)}
+        ${s.depth ? '' : `<button class="icon-btn" title="Add sub-section" aria-label="Add sub-section" onclick="Admin.openCreateSection('${s.id}')">+</button>`}
         <button class="icon-btn" title="Rename section" aria-label="Rename section" onclick="Admin.openRenameSection('${s.id}','${esc(s.name)}')">${Admin._ico.pencil}</button>
         <button class="icon-btn danger" title="Delete section" aria-label="Delete section" onclick="Admin.deleteSection('${s.id}')">${Admin._ico.x}</button>
       </span>`).join('');
@@ -877,7 +879,7 @@ const Admin = {
   },
 
   _courseCard(c, sections, enrolled = {}) {
-    const secOpts = sections.map(s => `<option value="${s.id}" ${c.section_id===s.id?'selected':''}>${esc(s.name)}</option>`).join('');
+    const secOpts = sections.map(s => `<option value="${s.id}" ${c.section_id===s.id?'selected':''}>${esc(s.label || s.name)}</option>`).join('');
     const count = enrolled[c.id] || 0;
     const enrollBadge = count > 0
       ? `<span class="chip chip-green">${count} assigned</span>`
@@ -940,7 +942,12 @@ const Admin = {
     } catch(e) { Toast.err(e.message); }
   },
 
-  openCreateSection() {
+  openCreateSection(parentId) {
+    const sel = $$('section-parent-input');
+    const tops = orderSections(sectionsCache).filter(s => !s.depth);
+    sel.innerHTML = '<option value="">None (top-level section)</option>' + tops.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('');
+    sel.value = typeof parentId === 'string' ? parentId : '';
+    $$('section-parent-field').classList.remove('hidden');
     $$('section-modal-title').textContent = 'New Section';
     $$('section-name-input').value = '';
     $$('section-modal-btn').textContent = 'Create Section';
@@ -949,6 +956,7 @@ const Admin = {
     setTimeout(() => $$('section-name-input').focus(), 50);
   },
   openRenameSection(id, name) {
+    $$('section-parent-field').classList.add('hidden');
     $$('section-modal-title').textContent = 'Rename Section';
     $$('section-name-input').value = name;
     $$('section-modal-btn').textContent = 'Save';
@@ -959,7 +967,7 @@ const Admin = {
   async submitCreateSection() {
     const name = $$('section-name-input').value.trim();
     if(!name) return Toast.err('Section name required.');
-    try { await api('/api/sections', { method:'POST', body:JSON.stringify({ name }) }); $$('section-modal').classList.add('hidden'); Admin.renderCourses(); }
+    try { await api('/api/sections', { method:'POST', body:JSON.stringify({ name, parent_id: $$('section-parent-input').value || null }) }); $$('section-modal').classList.add('hidden'); Admin.renderCourses(); }
     catch(e) { Toast.err(e.message); }
   },
   async submitRenameSection(id) {
@@ -969,7 +977,7 @@ const Admin = {
     catch(e) { Toast.err(e.message); }
   },
   async deleteSection(id) {
-    if(!confirm('Delete this section? Courses will become unsectioned.')) return;
+    if(!confirm('Delete this section? Its courses will become unsectioned and any sub-sections become top-level.')) return;
     try { await api(`/api/sections/${id}`, { method:'DELETE' }); Admin.renderCourses(); }
     catch(e) { Toast.err(e.message); }
   },
