@@ -104,12 +104,16 @@ async function ensureSetup(db) {
 
 const app = new Hono()
 
+// ALLOWED_ORIGIN may be a single origin or a comma-separated list (e.g. during a domain move).
+// The matching request origin is echoed back; unknown origins get the first entry (and are
+// therefore rejected by the browser).
+const DEFAULT_ORIGIN = 'https://theronv.github.io'
 app.use('/api/*', async (c, next) => {
-  const origin = c.env.ALLOWED_ORIGIN || (
-    c.req.header('origin')?.startsWith('http://localhost') || c.req.header('origin')?.startsWith('http://127.0.0.1')
-      ? c.req.header('origin')
-      : 'https://theronv.github.io'
-  )
+  const allowed = String(c.env.ALLOWED_ORIGIN || '').split(',').map(o => o.trim()).filter(Boolean)
+  const reqOrigin = c.req.header('origin') || ''
+  const isLocalDev = reqOrigin.startsWith('http://localhost') || reqOrigin.startsWith('http://127.0.0.1')
+  const list = allowed.length ? allowed : [DEFAULT_ORIGIN]
+  const origin = list.includes(reqOrigin) ? reqOrigin : (!allowed.length && isLocalDev ? reqOrigin : list[0])
   return cors({
     origin,
     allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],

@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { setupHarness } from './helpers.mjs'
+import app from '../index.js'
 
 describe('auth — admin login', () => {
   let h
@@ -54,5 +55,18 @@ describe('auth — learner & manager login', () => {
     const res = await h.request('/api/auth/manager/login', { method: 'POST', body: { name: 'sarah', password: 'manager-pw-1' } })
     expect(res.status).toBe(200)
     expect(res.json.user.team_name).toBe('Engineering')
+  })
+})
+
+describe('CORS — ALLOWED_ORIGIN list', () => {
+  it('echoes whichever allowed origin made the request and rejects others', async () => {
+    const h = await setupHarness()
+    const env = { ...h.env, ALLOWED_ORIGIN: 'https://theronv.github.io,https://pregame-academy.vickerydigital.com' }
+    for (const origin of ['https://theronv.github.io', 'https://pregame-academy.vickerydigital.com']) {
+      const res = await app.request('/api/brand', { headers: { Origin: origin } }, env)
+      expect(res.headers.get('access-control-allow-origin')).toBe(origin)
+    }
+    const evil = await app.request('/api/brand', { headers: { Origin: 'https://evil.example' } }, env)
+    expect(evil.headers.get('access-control-allow-origin')).not.toBe('https://evil.example')
   })
 })
