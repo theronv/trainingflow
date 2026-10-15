@@ -211,8 +211,8 @@ CREATE TABLE IF NOT EXISTS brand (
   org_name        TEXT    NOT NULL DEFAULT 'TrainFlow',
   tagline         TEXT    NOT NULL DEFAULT 'Training & Certification Platform',
   logo_url        TEXT    NOT NULL DEFAULT '',
-  primary_color   TEXT    NOT NULL DEFAULT '#2563eb',
-  secondary_color TEXT    NOT NULL DEFAULT '#1d4ed8',
+  primary_color   TEXT    NOT NULL DEFAULT '#1B78F2',
+  secondary_color TEXT    NOT NULL DEFAULT '#241C59',
   pass_threshold  INTEGER NOT NULL DEFAULT 80,
   created_at      INTEGER NOT NULL DEFAULT (unixepoch()),
   updated_at      INTEGER NOT NULL DEFAULT (unixepoch())

@@ -3,24 +3,24 @@
    ══════════════════════════════════════════ */
 :root {
   /* ── Layout ── */
-  --bg:           #0f1117;
-  --bg-2:         #161b27;
-  --surface:      #1c2333;
-  --surface-2:    #222a3d;
-  --border:       #2a3347;
-  --border-2:     #334060;
+  --bg:           #0D0D0D;
+  --bg-2:         #14121f;
+  --surface:      #1a1730;
+  --surface-2:    #221e3d;
+  --border:       #2e2a52;
+  --border-2:     #3d3868;
 
   /* ── Brandable tokens (overridden at runtime by Admin Branding panel) ── */
-  --brand:        #3b82f6;
-  --brand-dark:   #2563eb;
-  --brand-glow:   rgba(59,130,246,0.15);
-  --shadow-brand: 0 0 0 3px rgba(59,130,246,0.2);
-  --brand-secondary:      #7c3aed;
-  --brand-secondary-dark: #6d28d9;
-  --brand-secondary-glow: rgba(124,58,237,0.10);
-  --brand-accent:         #0891b2;
-  --brand-accent-dark:    #0e7490;
-  --brand-accent-glow:    rgba(8,145,178,0.12);
+  --brand:        #1B78F2;
+  --brand-dark:   #1560C8;
+  --brand-glow:   rgba(27,120,242,0.15);
+  --shadow-brand: 0 0 0 3px rgba(27,120,242,0.2);
+  --brand-secondary:      #241C59;
+  --brand-secondary-dark: #1A1442;
+  --brand-secondary-glow: rgba(36,28,89,0.10);
+  --brand-accent:         #D9631E;
+  --brand-accent-dark:    #B84F14;
+  --brand-accent-glow:    rgba(217,99,30,0.12);
 
   /* ── Status ── */
   --success:      #10b981;
@@ -110,15 +110,15 @@
 
 /* ── LIGHT MODE ── */
 [data-theme="light"] {
-  --bg:           #f8fafc;
-  --bg-2:         #f1f5f9;
+  --bg:           #F2F2F2;
+  --bg-2:         #E8E8EC;
   --surface:      #ffffff;
   --surface-2:    #f1f5f9;
   --border:       #e2e8f0;
   --border-2:     #cbd5e1;
 
-  --ink-1:        #0f172a;
-  --ink-2:        #334155;
+  --ink-1:        #0D0D0D;
+  --ink-2:        #2b2a3a;
   --ink-3:        #64748b;
   --ink-4:        #94a3b8;
 

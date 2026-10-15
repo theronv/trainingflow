@@ -180,9 +180,9 @@ async function setupBrand(db) {
   // These are additive migrations — each is silently skipped if the column already exists.
   try { await db.execute("ALTER TABLE brand ADD COLUMN tagline TEXT DEFAULT 'Training & Certification Platform'") } catch {}
   try { await db.execute("ALTER TABLE brand ADD COLUMN logo_url TEXT DEFAULT ''") } catch {}
-  try { await db.execute("ALTER TABLE brand ADD COLUMN primary_color TEXT DEFAULT '#2563eb'") } catch {}
-  try { await db.execute("ALTER TABLE brand ADD COLUMN secondary_color TEXT DEFAULT '#1d4ed8'") } catch {}
-  try { await db.execute("ALTER TABLE brand ADD COLUMN accent_color TEXT DEFAULT '#0891b2'") } catch {}
+  try { await db.execute("ALTER TABLE brand ADD COLUMN primary_color TEXT DEFAULT '#1B78F2'") } catch {}
+  try { await db.execute("ALTER TABLE brand ADD COLUMN secondary_color TEXT DEFAULT '#241C59'") } catch {}
+  try { await db.execute("ALTER TABLE brand ADD COLUMN accent_color TEXT DEFAULT '#D9631E'") } catch {}
   try { await db.execute("ALTER TABLE brand ADD COLUMN font_family TEXT DEFAULT 'Inter'") } catch {}
   try { await db.execute("ALTER TABLE brand ADD COLUMN font_url TEXT DEFAULT ''") } catch {}
 }
