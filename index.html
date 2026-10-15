@@ -61,8 +61,41 @@ if (typeof marked !== 'undefined') {
         <span class="role-tile-cta">Sign in <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></span>
       </button>
     </div>
+    <button type="button" class="ldg-demo" onclick="App.openJoin()">Have an invite code? Join your team <span aria-hidden="true">→</span></button>
     <button type="button" class="ldg-demo" onclick="App.startDemo()">Explore with demo data <span aria-hidden="true">→</span></button>
     <p class="landing-foot">New here? Choose <strong>Learner</strong> and sign in with the credentials your manager provided.<br>Your data stays private. No third-party tracking.</p>
+  </div>
+</div>
+
+<!-- ══════════ SCREEN: JOIN (invite redemption) ══════════ -->
+<div id="screen-join" class="screen">
+  <div class="login-wrap">
+    <div class="login-header">
+      <div class="login-title" id="join-title">Join your team</div>
+      <div class="login-sub" id="join-sub">Enter your invite code to create your account.</div>
+    </div>
+    <div class="login-card">
+      <div class="field">
+        <label for="join-code">Invite code</label>
+        <input type="text" id="join-code" placeholder="8-character code" autocomplete="off" autocapitalize="characters" style="text-transform:uppercase;font-family:monospace;letter-spacing:0.1em;" onblur="Auth.loadInvitePreview()">
+      </div>
+      <div class="field">
+        <label for="join-name">Your full name</label>
+        <input type="text" id="join-name" placeholder="e.g. Jane Doe" autocomplete="name">
+      </div>
+      <div class="field">
+        <label for="join-pw1">Create a password</label>
+        <input type="password" id="join-pw1" placeholder="At least 8 characters" autocomplete="new-password">
+      </div>
+      <div class="field">
+        <label for="join-pw2">Confirm password</label>
+        <input type="password" id="join-pw2" placeholder="Re-enter password" autocomplete="new-password" onkeydown="if(event.key==='Enter')App.doJoin()">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:var(--space-3);">
+        <button class="btn btn-primary" id="join-btn" onclick="App.doJoin()">Create account</button>
+        <button class="btn btn-ghost btn-sm" onclick="App.show('screen-landing')">Back</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -84,30 +117,8 @@ if (typeof marked !== 'undefined') {
       </div>
       <div style="display:flex;flex-direction:column;gap:var(--space-3);">
         <button class="btn btn-primary" onclick="App.doManagerLogin()">Sign In</button>
-        <button class="btn btn-ghost btn-sm" onclick="App.toggleManagerReg(true)">Register with Invite Code</button>
+        <button class="btn btn-ghost btn-sm" onclick="App.openJoin()">Have an invite code?</button>
         <button class="btn btn-outline btn-sm" onclick="App.show('screen-landing')">Back</button>
-      </div>
-    </div>
-    <div class="login-card hidden" id="m-reg-form">
-      <div class="field">
-        <label>Full Name</label>
-        <input type="text" id="m-reg-name" placeholder="e.g. Jane Doe">
-      </div>
-      <div class="field">
-        <label>Password</label>
-        <input type="password" id="m-reg-pw1" placeholder="8+ characters…">
-      </div>
-      <div class="field">
-        <label>Confirm Password</label>
-        <input type="password" id="m-reg-pw2" placeholder="Confirm password…">
-      </div>
-      <div class="field">
-        <label>Invite Code</label>
-        <input type="text" id="m-reg-code" placeholder="8-character code…" style="text-transform:uppercase;font-family:monospace;letter-spacing:0.1em;">
-      </div>
-      <div style="display:flex;flex-direction:column;gap:var(--space-3);">
-        <button class="btn btn-primary" onclick="App.doManagerRegister()">Create Account</button>
-        <button class="btn btn-ghost btn-sm" onclick="App.toggleManagerReg(false)">Back to Sign In</button>
       </div>
     </div>
   </div>
@@ -205,6 +216,7 @@ if (typeof marked !== 'undefined') {
           </div>
           <div style="display:flex;gap:var(--space-2);">
             <button class="btn btn-outline" onclick="App.openCsvImport()">↑ Import CSV</button>
+            <button class="btn btn-outline" onclick="App.openInviteLearners()">Invite link</button>
             <button class="btn btn-primary" onclick="App.openAddLearner()">+ Add Learner</button>
           </div>
         </div>
@@ -212,6 +224,8 @@ if (typeof marked !== 'undefined') {
           <table><thead><tr><th>Name</th><th>Assignments</th><th>Completed</th><th>Pass Rate</th><th>Actions</th></tr></thead>
           <tbody id="m-team-tbody"></tbody></table>
         </div>
+        <div class="dash-section-label" style="margin-top:var(--space-8);">Invite links</div>
+        <div id="m-invites"></div>
       </div>
       <div class="page hidden" id="mp-completions">
         <div class="page-head page-head-row">
@@ -961,23 +975,48 @@ if (typeof marked !== 'undefined') {
 <div class="overlay hidden" id="invite-modal">
   <div class="modal">
     <div class="modal-head">
-      <div class="modal-title">New Manager Invite</div>
+      <div class="modal-title" id="invite-title">Invite to team</div>
       <div id="invite-subtitle" class="modal-sub"></div>
     </div>
     <div class="modal-body" id="invite-form">
-      <div class="field"><label>Expires (optional)</label><input type="date" id="invite-expiry"></div>
-      <button class="btn btn-primary w-full" onclick="App.submitGenerateInvite()">Generate Code</button>
+      <div class="field" id="invite-role-field">
+        <label for="invite-role">Invite as</label>
+        <select id="invite-role" onchange="App.inviteRoleChanged()">
+          <option value="learner">Learner — signs up with a shared team link</option>
+          <option value="manager">Manager — single-use code</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="invite-days">Link expires</label>
+        <select id="invite-days">
+          <option value="1">In 24 hours</option>
+          <option value="7" selected>In 7 days</option>
+          <option value="30">In 30 days</option>
+          <option value="90">In 90 days</option>
+        </select>
+      </div>
+      <div class="field" id="invite-uses-field">
+        <label for="invite-uses">Maximum sign-ups</label>
+        <input type="number" id="invite-uses" min="1" max="500" value="25">
+      </div>
+      <button class="btn btn-primary w-full" onclick="App.submitGenerateInvite()">Create invite</button>
     </div>
     <div class="modal-body hidden" id="invite-result">
-      <div style="text-align:center;padding:var(--space-4) 0;">
-        <div style="font-size:var(--text-xs);color:var(--ink-4);text-transform:uppercase;margin-bottom:var(--space-3);">Invite Code</div>
-        <div style="display:flex;align-items:center;justify-content:center;gap:var(--space-3);margin-bottom:var(--space-5);">
-          <div id="generated-code" style="font-size:32px;font-family:monospace;letter-spacing:0.1em;background:var(--border-2);padding:var(--space-3) var(--space-5);border-radius:var(--radius-md);font-weight:700;"></div>
-          <button class="btn btn-outline" onclick="App.copyInviteCode()">Copy</button>
+      <div class="field">
+        <label>Invite link</label>
+        <div style="display:flex;gap:var(--space-2);">
+          <input type="text" id="generated-link" readonly onclick="this.select()">
+          <button class="btn btn-primary" onclick="App.copyInviteLink()">Copy link</button>
         </div>
-        <p style="font-size:var(--text-sm);color:var(--ink-3);">Share this code with your new manager. It can only be used once.</p>
-        <p id="invite-expiry-label" style="font-size:var(--text-xs);color:var(--ink-4);margin-top:var(--space-2);"></p>
       </div>
+      <div class="field">
+        <label>Or share the code</label>
+        <div style="display:flex;align-items:center;gap:var(--space-3);">
+          <div id="generated-code" style="font-size:24px;font-family:monospace;letter-spacing:0.12em;font-weight:700;"></div>
+          <button class="btn btn-outline btn-sm" onclick="App.copyInviteCode()">Copy code</button>
+        </div>
+      </div>
+      <p id="invite-expiry-label" style="font-size:var(--text-sm);color:var(--ink-3);"></p>
     </div>
     <div class="modal-foot">
       <button class="btn btn-primary" onclick="$$('invite-modal').classList.add('hidden')">Done</button>

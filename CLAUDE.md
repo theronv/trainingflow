@@ -187,7 +187,10 @@ All routes in `worker/index.js`. Auth middleware: `requireAdmin`, `requireManage
 | `PATCH` | `/api/admin/learners/:lid/team` | Admin | Move learner to another team |
 | `PUT` | `/api/admin/password` | Admin | Change admin password (current password required) |
 | `GET` | `/api/admin/invites` | Admin | List invite codes |
-| `POST` | `/api/admin/invites` | Admin | Generate an invite code |
+| `POST` | `/api/admin/invites` | Admin | Create an invite (`role` manager\|learner, `team_id`, `expires_in_days` default 7 / max 90, `max_uses`); server generates the code |
+| `GET/POST/DELETE` | `/api/invites[/:id]` | Admin/Manager | Team-scoped invite management (managers: learner invites for their own team only) |
+| `GET` | `/api/auth/invite/:code` | — | Public preview: `{role, team_name}` for a valid code |
+| `POST` | `/api/auth/register` | — | Redeem an invite (learner or manager): invitee chooses name + password, is signed in. Rate-limited |
 | `DELETE` | `/api/admin/invites/:id` | Admin | Revoke an invite code |
 | `GET` | `/api/admin/completions` | Admin/Manager | Completion log (filterable, team-scoped) |
 | `DELETE` | `/api/completions` | Admin | Clear all completion records |

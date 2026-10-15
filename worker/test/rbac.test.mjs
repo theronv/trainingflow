@@ -101,3 +101,14 @@ describe('Teams — admin delete', () => {
     expect(keep).toBeTruthy()
   })
 })
+
+describe('Learner self-service routes (/api/learners/me)', () => {
+  it('a learner can read and update their own profile', async () => {
+    const h = await setupHarness()
+    const learner = await h.createUser({ name: 'alex', role: 'learner', password: 'old-password-1' })
+    const me = await h.request('/api/learners/me', { token: h.learnerToken(learner) })
+    expect(me.status).toBe(200)
+    const patch = await h.request('/api/learners/me', { method: 'PATCH', token: h.learnerToken(learner), body: { name: 'alex-renamed' } })
+    expect(patch.status).toBe(200)
+  })
+})

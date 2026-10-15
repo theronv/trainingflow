@@ -4,6 +4,14 @@
 
 const SYSTEM_FONT_STACK = '-apple-system, BlinkMacSystemFont, "Segoe UI Variable", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
 
+// Invite links carry the code in the URL fragment so it never reaches server logs or referrers.
+function inviteLink(code) { return `${window.location.origin}${window.location.pathname}#invite=${encodeURIComponent(code)}`; }
+function inviteState(inv) {
+  if (inv.used || Number(inv.use_count) >= Number(inv.max_uses || 1)) return 'used';
+  if (inv.expires_at && new Date(inv.expires_at) < new Date()) return 'expired';
+  return 'active';
+}
+
 // Shared inline icon set (stroke icons; sized via CSS)
 const ICON = {
   moon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>',

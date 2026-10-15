@@ -20,7 +20,7 @@ const Manager = {
     });
     if(p==='dashboard') Manager.renderDash();
     if(p==='courses')   Manager.renderCourses();
-    if(p==='team')      Manager.renderTeam();
+    if(p==='team')      { Manager.renderTeam(); Manager.renderInvites(); }
     if(p==='completions') Manager.renderComps();
     if(p==='account' && curManager) { const n = $$('mcp-name'); if(n) n.value = curManager.name || ''; }
   },
@@ -103,6 +103,52 @@ const Manager = {
   },
 
   // ─── TEAM ───
+  // ─── INVITE LINKS (learners join the manager's own team) ───
+  openInviteLearners() {
+    App._inviteTeamId = curManager.team_id;
+    $$('invite-title').textContent = 'Invite learners';
+    $$('invite-subtitle').textContent = `Anyone with the link can join ${curManager.team_name || 'your team'} as a learner.`;
+    $$('invite-role-field').classList.add('hidden');
+    $$('invite-role').value = 'learner';
+    App.inviteRoleChanged();
+    $$('invite-days').value = '7';
+    $$('invite-uses').value = '25';
+    $$('invite-form').classList.remove('hidden');
+    $$('invite-result').classList.add('hidden');
+    const btn = $$('invite-form')?.querySelector('.btn-primary');
+    if (btn) { btn.disabled = false; btn.textContent = 'Create invite'; }
+    $$('invite-modal').classList.remove('hidden');
+  },
+  async renderInvites() {
+    const el = $$('m-invites'); if (!el) return;
+    try {
+      const invites = (await managerApi('/api/invites')).filter(i => inviteState(i) === 'active');
+      if (!invites.length) {
+        el.innerHTML = '<div class="empty-state-sm">No active invite links. Use "Invite link" to create one — learners choose their own password.</div>';
+        return;
+      }
+      el.innerHTML = `<div class="table-wrap"><table>
+        <thead><tr><th>Code</th><th>Sign-ups</th><th>Expires</th><th>Actions</th></tr></thead>
+        <tbody>${invites.map(inv => `<tr>
+          <td style="font-family:monospace;letter-spacing:0.08em;font-weight:600;">${esc(inv.code)}</td>
+          <td>${Number(inv.use_count) || 0} / ${Number(inv.max_uses) || 1}</td>
+          <td>${inv.expires_at ? new Date(inv.expires_at).toLocaleDateString() : 'Never'}</td>
+          <td style="white-space:nowrap;">
+            <button class="btn btn-ghost btn-sm" onclick="App.copyInviteLink('${esc(inv.code)}')">Copy link</button>
+            <button class="btn btn-ghost btn-sm btn-danger-ghost" onclick="Manager.revokeInvite(${inv.id})">Revoke</button>
+          </td>
+        </tr>`).join('')}</tbody></table></div>`;
+    } catch (e) { el.innerHTML = `<div style="color:var(--fail);font-size:var(--text-sm);">${esc(e.message)}</div>`; }
+  },
+  async revokeInvite(id) {
+    if (!confirm('Revoke this invite link? People who have not signed up yet will no longer be able to.')) return;
+    try {
+      await managerApi(`/api/invites/${id}`, { method: 'DELETE' });
+      Toast.ok('Invite revoked.');
+      Manager.renderInvites();
+    } catch (e) { Toast.err(e.message); }
+  },
+
   async renderTeam() {
     const seq = Manager._navSeq;
     const tbody = $$('m-team-tbody'); if (!tbody) return;

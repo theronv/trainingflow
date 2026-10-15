@@ -263,51 +263,76 @@ app.post('/api/admin/teams', requireAdmin, async (c) => {
   return c.json({ ok: true }, 201)
 })
 
-app.get('/api/admin/invites', requireAdmin, async (c) => {
-  const db = getDb(c.env)
-  try {
-    const res = await db.execute(`
-      SELECT ic.*, t.name AS team_name
-      FROM invite_codes ic
-      LEFT JOIN teams t ON ic.team_id = t.id
-      ORDER BY ic.created_at DESC
-    `)
-    return c.json(toObjs(res))
-  } catch { return c.json([]) }
-})
 
-app.delete('/api/admin/invites/:id', requireAdmin, async (c) => {
-  const db = getDb(c.env)
-  await db.execute({ sql: 'DELETE FROM invite_codes WHERE id = ? AND used = 0', args: [c.req.param('id')] })
-  return c.json({ ok: true })
-})
+// ── Invites ───────────────────────────────────────────────────────────────────
+// One invite model for both roles: a code carries a role (manager|learner), an optional team,
+// an expiry (default 7 days, max 90) and a use cap (managers: 1; learner team links: up to 500).
+// Redeemed at POST /api/auth/register; the invitee chooses their own name and password.
 
 // Unambiguous alphabet (no 0/O/1/I) — codes are read aloud and typed by hand.
 const INVITE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+const INVITE_DEFAULT_DAYS = 7
+const INVITE_MAX_DAYS = 90
+const INVITE_DEFAULT_LEARNER_USES = 25
+const INVITE_MAX_USES = 500
+
 function generateInviteCode() {
   const bytes = crypto.getRandomValues(new Uint8Array(8))
   return Array.from(bytes, n => INVITE_ALPHABET[n % INVITE_ALPHABET.length]).join('')
 }
 
-app.post('/api/admin/invites', requireAdmin, async (c) => {
-  const body = await c.req.json().catch(() => ({}))
+let _inviteSchemaReady = false
+async function ensureInviteSchema(db) {
+  if (_inviteSchemaReady) return
+  for (const ddl of [
+    "ALTER TABLE invite_codes ADD COLUMN role TEXT NOT NULL DEFAULT 'manager'",
+    "ALTER TABLE invite_codes ADD COLUMN max_uses INTEGER NOT NULL DEFAULT 1",
+    "ALTER TABLE invite_codes ADD COLUMN use_count INTEGER NOT NULL DEFAULT 0",
+  ]) { try { await db.execute(ddl) } catch { /* column already exists */ } }
+  try { await db.execute('UPDATE invite_codes SET use_count = 1 WHERE used = 1 AND use_count = 0') } catch {}
+  _inviteSchemaReady = true
+}
+
+/** Create an invite. `actor` is the requireManager user ({isAdmin, scopedToTeam}). */
+async function createInvite(c, actor, body) {
   const db = getDb(c.env)
-  const expiresAt = body.expires_at || null
-  if (expiresAt && isNaN(new Date(expiresAt).getTime())) return c.json({ error: 'Invalid expiry date' }, 400)
-  if (body.team_id) {
-    const team = toObj(await db.execute({ sql: 'SELECT id FROM teams WHERE id = ?', args: [body.team_id] }))
+  await ensureInviteSchema(db)
+
+  // Managers can only invite learners to their own team; admins choose.
+  const role = actor.isAdmin ? (body.role === 'learner' ? 'learner' : 'manager') : 'learner'
+  const teamId = actor.isAdmin ? (body.team_id || null) : actor.scopedToTeam
+  if (!actor.isAdmin && !teamId) return c.json({ error: 'You are not assigned to a team.' }, 400)
+  if (teamId) {
+    const team = toObj(await db.execute({ sql: 'SELECT id FROM teams WHERE id = ?', args: [teamId] }))
     if (!team) return c.json({ error: 'Team not found' }, 404)
   }
-  // The server picks the code; a client-supplied one is still honoured for older clients.
-  const supplied = typeof body.code === 'string' && body.code.trim() ? body.code.trim().toUpperCase() : null
+
+  const maxUses = role === 'manager'
+    ? 1
+    : Math.min(INVITE_MAX_USES, Math.max(1, parseInt(body.max_uses, 10) || INVITE_DEFAULT_LEARNER_USES))
+
+  let expires
+  if (body.expires_at) {
+    expires = new Date(body.expires_at)
+    if (isNaN(expires.getTime())) return c.json({ error: 'Invalid expiry date' }, 400)
+  } else {
+    const days = Number(body.expires_in_days) || INVITE_DEFAULT_DAYS
+    expires = new Date(Date.now() + days * 86400_000)
+  }
+  if (expires.getTime() <= Date.now()) return c.json({ error: 'Expiry must be in the future' }, 400)
+  if (expires.getTime() > Date.now() + INVITE_MAX_DAYS * 86400_000) return c.json({ error: `Expiry can be at most ${INVITE_MAX_DAYS} days away.` }, 400)
+  const expiresAt = expires.toISOString()
+
+  // The server picks the code; an admin-supplied one is still honoured for older clients.
+  const supplied = actor.isAdmin && typeof body.code === 'string' && body.code.trim() ? body.code.trim().toUpperCase() : null
   for (let attempt = 0; attempt < 5; attempt++) {
     const code = supplied || generateInviteCode()
     try {
-      await db.execute({
-        sql: 'INSERT INTO invite_codes (code, team_id, expires_at) VALUES (?, ?, ?)',
-        args: [code, body.team_id || null, expiresAt]
+      const res = await db.execute({
+        sql: 'INSERT INTO invite_codes (code, role, team_id, max_uses, expires_at) VALUES (?, ?, ?, ?, ?)',
+        args: [code, role, teamId, maxUses, expiresAt]
       })
-      return c.json({ ok: true, code, expires_at: expiresAt }, 201)
+      return c.json({ ok: true, id: Number(res.lastInsertRowid), code, role, team_id: teamId, max_uses: maxUses, expires_at: expiresAt }, 201)
     } catch (e) {
       if (e.message && e.message.includes('UNIQUE')) {
         if (supplied) return c.json({ error: 'That code already exists.' }, 409)
@@ -317,6 +342,69 @@ app.post('/api/admin/invites', requireAdmin, async (c) => {
     }
   }
   return c.json({ error: 'Could not generate a unique code — please try again.' }, 500)
+}
+
+const INVITE_SELECT = `SELECT ic.*, t.name AS team_name FROM invite_codes ic LEFT JOIN teams t ON ic.team_id = t.id`
+
+app.get('/api/admin/invites', requireAdmin, async (c) => {
+  const db = getDb(c.env)
+  try {
+    await ensureInviteSchema(db)
+    const res = await db.execute(`${INVITE_SELECT} ORDER BY ic.created_at DESC`)
+    return c.json(toObjs(res))
+  } catch { return c.json([]) }
+})
+
+app.post('/api/admin/invites', requireAdmin, async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  return createInvite(c, { isAdmin: true, scopedToTeam: null }, body)
+})
+
+app.delete('/api/admin/invites/:id', requireAdmin, async (c) => {
+  const db = getDb(c.env)
+  await db.execute({ sql: 'DELETE FROM invite_codes WHERE id = ? AND used = 0', args: [c.req.param('id')] })
+  return c.json({ ok: true })
+})
+
+// Team-scoped invite management for managers (admins see everything).
+app.get('/api/invites', requireManager, async (c) => {
+  const user = c.get('user')
+  const db = getDb(c.env)
+  await ensureInviteSchema(db)
+  const res = user.scopedToTeam
+    ? await db.execute({ sql: `${INVITE_SELECT} WHERE ic.team_id = ? AND ic.role = 'learner' ORDER BY ic.created_at DESC`, args: [user.scopedToTeam] })
+    : await db.execute(`${INVITE_SELECT} ORDER BY ic.created_at DESC`)
+  return c.json(toObjs(res))
+})
+
+app.post('/api/invites', requireManager, async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  return createInvite(c, c.get('user'), body)
+})
+
+app.delete('/api/invites/:id', requireManager, async (c) => {
+  const user = c.get('user')
+  const db = getDb(c.env)
+  if (user.scopedToTeam) {
+    await db.execute({ sql: "DELETE FROM invite_codes WHERE id = ? AND used = 0 AND team_id = ? AND role = 'learner'", args: [c.req.param('id'), user.scopedToTeam] })
+  } else {
+    await db.execute({ sql: 'DELETE FROM invite_codes WHERE id = ? AND used = 0', args: [c.req.param('id')] })
+  }
+  return c.json({ ok: true })
+})
+
+// Public: lets the join page say "You're joining <team> as <role>" before the form is filled in.
+app.get('/api/auth/invite/:code', async (c) => {
+  const ip = c.req.header('CF-Connecting-IP') || 'unknown'
+  if (_rateCheck(`invite-preview:${ip}`)) return c.json({ error: 'Too many attempts. Try again in a minute.' }, 429)
+  const db = getDb(c.env)
+  await ensureInviteSchema(db)
+  const inv = toObj(await db.execute({
+    sql: `${INVITE_SELECT} WHERE ic.code = ? AND ic.used = 0`,
+    args: [String(c.req.param('code') || '').trim().toUpperCase()]
+  }))
+  if (!inv || (inv.expires_at && new Date(inv.expires_at) < new Date())) return c.json({ error: 'Invalid or expired invite code' }, 404)
+  return c.json({ role: inv.role || 'manager', team_name: inv.team_name || '' })
 })
 
 app.patch('/api/admin/teams/:id', requireAdmin, async (c) => {
@@ -484,6 +572,30 @@ app.post('/api/learners', requireManager, async (c) => {
   return c.json({ id }, 201)
 })
 
+// NOTE: the /me routes must be registered before /:id, or 'me' is captured as an id.
+app.get('/api/learners/me', requireLearner, async (c) => {
+  const user = c.get('user')
+  return c.json({ id: user.id, name: user.name })
+})
+
+app.patch('/api/learners/me', requireLearner, async (c) => {
+  const user = c.get('user')
+  const body = await c.req.json().catch(() => ({}))
+  const db = getDb(c.env)
+  if (body.password) {
+    if (body.password.length < 8) return c.json({ error: 'Password must be at least 8 characters' }, 400)
+    const row = toObj(await db.execute({ sql: 'SELECT password_hash FROM users WHERE id = ?', args: [user.id] }))
+    if (!row || !(await pbkdf2Verify(body.current_password || '', row.password_hash))) return c.json({ error: 'Current password is incorrect' }, 400)
+    const hash = await pbkdf2Hash(body.password)
+    await db.execute({ sql: 'UPDATE users SET password_hash = ? WHERE id = ?', args: [hash, user.id] })
+  }
+  if (body.name && body.name.trim()) {
+    await db.execute({ sql: 'UPDATE users SET name = ? WHERE id = ?', args: [body.name.trim(), user.id] })
+    return c.json({ ok: true, name: body.name.trim() })
+  }
+  return c.json({ ok: true })
+})
+
 app.get('/api/learners/:id', requireManager, async (c) => {
   const caller = c.get('user')
   const db = getDb(c.env)
@@ -517,53 +629,64 @@ app.delete('/api/learners/:id', requireAdmin, async (c) => {
   return c.json({ ok: true })
 })
 
-app.post('/api/auth/manager/register', async (c) => {
+// Redeems an invite: the invitee picks their own name + password and is signed in.
+// `requiredRole` pins the legacy manager endpoint to manager invites.
+async function registerWithInvite(c, requiredRole) {
   const body = await c.req.json().catch(() => ({}))
   const ip = c.req.header('CF-Connecting-IP') || 'unknown'
   if (_rateCheck(`register:${ip}`)) return c.json({ error: 'Too many attempts. Try again in a minute.' }, 429)
-  const regName = typeof body.name === 'string' ? body.name.trim() : ''
-  const regCode = typeof body.code === 'string' ? body.code.trim() : ''
-  if (!regName) return c.json({ error: 'Please enter your full name.' }, 400)
+  const name = typeof body.name === 'string' ? body.name.trim() : ''
+  const code = typeof body.code === 'string' ? body.code.trim().toUpperCase() : ''
+  if (!name) return c.json({ error: 'Please enter your full name.' }, 400)
+  if (name.length > 100) return c.json({ error: 'That name is too long.' }, 400)
   if (typeof body.password !== 'string' || body.password.length < 8) return c.json({ error: 'Password must be at least 8 characters.' }, 400)
-  if (!regCode) return c.json({ error: 'Please enter your invite code.' }, 400)
-  body.name = regName
+  if (!code) return c.json({ error: 'Please enter your invite code.' }, 400)
+
   const db = getDb(c.env)
-  
-  // Verify invite code
-  const invRes = await db.execute({ sql: 'SELECT * FROM invite_codes WHERE code = ? AND used = 0', args: [regCode.toUpperCase()] })
-  const inv = toObj(invRes)
-  if (!inv) return c.json({ error: 'Invalid or expired invite code' }, 400)
-  if (inv.expires_at && new Date(inv.expires_at) < new Date()) {
-    return c.json({ error: 'Invite code has expired' }, 400)
-  }
+  await ensureInviteSchema(db)
+  const inv = toObj(await db.execute({ sql: 'SELECT * FROM invite_codes WHERE code = ? AND used = 0', args: [code] }))
+  const invalid = () => c.json({ error: 'Invalid or expired invite code' }, 400)
+  if (!inv || (requiredRole && inv.role !== requiredRole)) return invalid()
+  if (inv.expires_at && new Date(inv.expires_at) < new Date()) return c.json({ error: 'Invite code has expired' }, 400)
+  const role = inv.role === 'learner' ? 'learner' : 'manager'
+
+  // Claim a use atomically (guards the cap under concurrent redemptions), then create the user.
+  const claim = await db.execute({
+    sql: `UPDATE invite_codes
+             SET use_count = use_count + 1, used = CASE WHEN use_count + 1 >= max_uses THEN 1 ELSE 0 END
+           WHERE id = ? AND used = 0 AND use_count < max_uses`,
+    args: [inv.id]
+  })
+  if (claim.rowsAffected !== 1) return invalid()
 
   const hash = await pbkdf2Hash(body.password)
   const id = uid()
-
   try {
-    await db.batch([
-      {
-        sql: "INSERT INTO users (id, name, password_hash, role, team_id) VALUES (?, ?, ?, 'manager', ?)",
-        args: [id, body.name, hash, inv.team_id]
-      },
-      {
-        sql: 'UPDATE invite_codes SET used = 1, used_by = ? WHERE id = ?',
-        args: [id, inv.id]
-      }
-    ])
+    await db.execute({
+      sql: 'INSERT INTO users (id, name, password_hash, role, team_id) VALUES (?, ?, ?, ?, ?)',
+      args: [id, name, hash, role, inv.team_id]
+    })
+    await db.execute({ sql: 'UPDATE invite_codes SET used_by = ? WHERE id = ?', args: [id, inv.id] })
   } catch (e) {
+    // Give the use back so a typo'd name doesn't burn the invite.
+    await db.execute({ sql: 'UPDATE invite_codes SET use_count = use_count - 1, used = 0 WHERE id = ?', args: [inv.id] })
     if (e.message && e.message.includes('UNIQUE')) {
-      return c.json({ error: 'A manager account with that name already exists.' }, 409)
+      return c.json({ error: 'That name is already taken. Try adding a middle initial.' }, 409)
     }
     return c.json({ error: 'Failed to create account. Please try again.' }, 500)
   }
 
-  const teamRes = inv.team_id ? await db.execute({ sql: 'SELECT name FROM teams WHERE id = ?', args: [inv.team_id] }) : null
-  const teamName = teamRes ? (toObj(teamRes)?.name || '') : ''
+  const teamName = inv.team_id ? (toObj(await db.execute({ sql: 'SELECT name FROM teams WHERE id = ?', args: [inv.team_id] }))?.name || '') : ''
   const now = Math.floor(Date.now() / 1000)
-  const token = await sign({ id, name: body.name, role: 'manager', team_id: inv.team_id, iat: now, exp: now + CONSTANTS.ADMIN_JWT_EXP_SEC }, c.env.JWT_SECRET, 'HS256')
-  return c.json({ token, user: { id, name: body.name, team_id: inv.team_id, team_name: teamName } })
-})
+  const claims = role === 'manager'
+    ? { id, name, role, team_id: inv.team_id, iat: now, exp: now + CONSTANTS.ADMIN_JWT_EXP_SEC }
+    : { id, name, role, iat: now, exp: now + CONSTANTS.LEARNER_JWT_EXP_SEC }
+  const token = await sign(claims, c.env.JWT_SECRET, 'HS256')
+  return c.json({ token, user: { id, name, role, team_id: inv.team_id, team_name: teamName } })
+}
+
+app.post('/api/auth/register', (c) => registerWithInvite(c, null))
+app.post('/api/auth/manager/register', (c) => registerWithInvite(c, 'manager'))
 
 app.delete('/api/completions', requireAdmin, async (c) => {
   const db = getDb(c.env)
@@ -647,10 +770,6 @@ app.get('/api/learners', requireManager, async (c) => {
   return c.json(toObjs(res))
 })
 
-app.get('/api/learners/me', requireLearner, async (c) => {
-  const user = c.get('user')
-  return c.json({ id: user.id, name: user.name })
-})
 
 app.get('/api/admin/stats', requireManager, async (c) => {
   const user = c.get('user')
@@ -1295,23 +1414,6 @@ app.patch('/api/managers/me', requireManager, async (c) => {
   return c.json({ ok: true })
 })
 
-app.patch('/api/learners/me', requireLearner, async (c) => {
-  const user = c.get('user')
-  const body = await c.req.json().catch(() => ({}))
-  const db = getDb(c.env)
-  if (body.password) {
-    if (body.password.length < 8) return c.json({ error: 'Password must be at least 8 characters' }, 400)
-    const row = toObj(await db.execute({ sql: 'SELECT password_hash FROM users WHERE id = ?', args: [user.id] }))
-    if (!row || !(await pbkdf2Verify(body.current_password || '', row.password_hash))) return c.json({ error: 'Current password is incorrect' }, 400)
-    const hash = await pbkdf2Hash(body.password)
-    await db.execute({ sql: 'UPDATE users SET password_hash = ? WHERE id = ?', args: [hash, user.id] })
-  }
-  if (body.name && body.name.trim()) {
-    await db.execute({ sql: 'UPDATE users SET name = ? WHERE id = ?', args: [body.name.trim(), user.id] })
-    return c.json({ ok: true, name: body.name.trim() })
-  }
-  return c.json({ ok: true })
-})
 
 app.post('/api/admin/backup/restore', requireAdmin, async (c) => {
   const body = await c.req.json().catch(() => ({}))

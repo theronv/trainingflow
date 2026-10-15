@@ -15,7 +15,13 @@ const AppProxy = {
   // Auth
   doLogin: () => Auth.doLogin(),
   doManagerLogin: () => Auth.doManagerLogin(),
-  doManagerRegister: () => Auth.doManagerRegister(),
+  doJoin: () => Auth.doJoin(),
+  openJoin: (code) => {
+    App.show('screen-join');
+    $$('join-code').value = (code || '').toUpperCase();
+    Auth.loadInvitePreview();
+    setTimeout(() => $$(code ? 'join-name' : 'join-code').focus(), CONFIG.FOCUS_DELAY);
+  },
   adminLogout: () => Auth.adminLogout(),
   managerLogout: () => Auth.managerLogout(),
   learnerLogout: () => Auth.learnerLogout(),
@@ -172,26 +178,39 @@ const AppProxy = {
     const c = code || $$('generated-code').textContent;
     navigator.clipboard.writeText(c).then(() => Toast.ok('Code copied!')).catch(() => Toast.info(c));
   },
-  copyInviteMessage: (code, teamName) => Admin.copyInviteMessage(code, teamName),
+  copyInviteLink: (code) => {
+    const link = code ? inviteLink(code) : $$('generated-link').value;
+    navigator.clipboard.writeText(link).then(() => Toast.ok('Invite link copied!')).catch(() => Toast.info(link));
+  },
+  copyInviteMessage: (code, teamName, role) => Admin.copyInviteMessage(code, teamName, role),
+  inviteRoleChanged: () => {
+    const learner = $$('invite-role').value === 'learner';
+    $$('invite-uses-field').classList.toggle('hidden', !learner);
+  },
   submitGenerateInvite: async () => {
-    // The server generates the code. An expiry date means "valid through the end of that day"
-    // in the admin's local time, not midnight at its start.
-    const expiryVal = $$('invite-expiry')?.value;
-    const expiresAt = expiryVal ? new Date(`${expiryVal}T23:59:59`).toISOString() : null;
+    const isAdmin = !!getToken();
+    const role = isAdmin ? $$('invite-role').value : 'learner';
+    const body = { role, team_id: App._inviteTeamId || null, expires_in_days: Number($$('invite-days').value) || 7 };
+    if (role === 'learner') body.max_uses = Number($$('invite-uses').value) || 25;
     const btn = $$('invite-form')?.querySelector('.btn-primary');
-    if (btn) { btn.disabled = true; btn.textContent = 'Generating…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'Creating…'; }
     try {
-      const res = await api('/api/admin/invites', { method: 'POST', body: JSON.stringify({ team_id: App._inviteTeamId, expires_at: expiresAt }) });
+      const call = isAdmin ? api : managerApi;
+      const res = await call(isAdmin ? '/api/admin/invites' : '/api/invites', { method: 'POST', body: JSON.stringify(body) });
       $$('generated-code').textContent = res.code;
-      $$('invite-expiry-label').textContent = expiresAt ? `Expires: ${new Date(expiresAt).toLocaleDateString()}` : '';
+      $$('generated-link').value = inviteLink(res.code);
+      const uses = res.role === 'learner' ? ` Up to ${res.max_uses} sign-up${res.max_uses === 1 ? '' : 's'}.` : ' Single use.';
+      $$('invite-expiry-label').textContent = `Expires ${new Date(res.expires_at).toLocaleDateString()}.${uses}`;
       $$('invite-form').classList.add('hidden');
       $$('invite-result').classList.remove('hidden');
-      if (Admin._selectedTeamId) Admin.selectTeam(Admin._selectedTeamId);
+      if (isAdmin && Admin._selectedTeamId) Admin.selectTeam(Admin._selectedTeamId);
+      if (!isAdmin) Manager.renderInvites();
     } catch (e) {
       Toast.err(e.message);
-      if (btn) { btn.disabled = false; btn.textContent = 'Generate Code'; }
+      if (btn) { btn.disabled = false; btn.textContent = 'Create invite'; }
     }
   },
+  openInviteLearners: () => Manager.openInviteLearners(),
 
   // Learner CSV import
   openCsvImport: () => Manager.openCsvImport(),
@@ -470,6 +489,13 @@ const AppProxy = {
       applyBrand();
     }
     await App.baseInit();
+    // An invite link (#invite=CODE) always lands on the join screen, even if someone is signed in.
+    const inviteMatch = window.location.hash.match(/invite=([A-Za-z0-9]+)/);
+    if (inviteMatch) {
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+      App.openJoin(inviteMatch[1]);
+      return;
+    }
     if (getToken()) Admin.init();
     else if (getManagerToken()) Manager.init();
     else if (getLearnerToken()) Learner.init();

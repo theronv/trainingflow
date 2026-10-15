@@ -33,14 +33,16 @@ CREATE TABLE IF NOT EXISTS users (
 
 
 -- ─── INVITE CODES ────────────────────────────────────────
--- Used for manager self-registration.
+-- Invites for manager and learner self-registration.
 
 CREATE TABLE IF NOT EXISTS invite_codes (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
   code         TEXT NOT NULL UNIQUE,
-  role         TEXT NOT NULL DEFAULT 'manager',
+  role         TEXT NOT NULL DEFAULT 'manager',   -- 'manager' | 'learner'
   team_id      INTEGER REFERENCES teams(id),
-  used         INTEGER NOT NULL DEFAULT 0,
+  max_uses     INTEGER NOT NULL DEFAULT 1,        -- managers: 1; learner team links: up to 500
+  use_count    INTEGER NOT NULL DEFAULT 0,
+  used         INTEGER NOT NULL DEFAULT 0,        -- 1 once use_count reaches max_uses
   used_by      TEXT REFERENCES users(id),
   created_at   TEXT NOT NULL DEFAULT (datetime('now')),
   expires_at   TEXT

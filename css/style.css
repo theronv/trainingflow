@@ -955,7 +955,7 @@ tbody tr:hover td { background: var(--surface); }
 .landing-foot strong { color: var(--ink-2); font-weight: 600; }
 
 /* ══════════════════ LOGIN ══════════════════ */
-#screen-login, #screen-manager-login {
+#screen-login, #screen-manager-login, #screen-join {
   background: var(--bg);
   display: none;
   align-items: center;
@@ -963,7 +963,7 @@ tbody tr:hover td { background: var(--surface); }
   padding: var(--space-8);
   min-height: 100vh;
 }
-#screen-login.active, #screen-manager-login.active { display: flex; }
+#screen-login.active, #screen-manager-login.active, #screen-join.active { display: flex; }
 .login-wrap { width: 100%; max-width: 400px; }
 .login-header { margin-bottom: var(--space-8); }
 .login-title {
@@ -1887,3 +1887,7 @@ a { color: var(--accent); }
 .quiz-opt:hover { border-color: var(--accent); }
 .mod-item.active .mod-bullet { border-color: var(--accent); color: var(--accent); }
 #screen-landing .landing-wrap { text-align: left; }
+
+#screen-join { position: relative; background: var(--bg); }
+#screen-join::before { content: ''; position: absolute; inset: 0 0 auto 0; height: 340px; background: var(--hero); }
+#screen-join .login-wrap { position: relative; z-index: 1; }

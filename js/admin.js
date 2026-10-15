@@ -209,23 +209,26 @@ const Admin = {
       const teamInvites = (invites || []).filter(inv => String(inv.team_id) === String(tid));
       const invEl = $$('team-invites-detail'); if (!invEl) return;
       if (!teamInvites.length) {
-        invEl.innerHTML = '<div class="empty-state-sm">No invite codes yet. Use "+ Invite" above to generate one.</div>';
+        invEl.innerHTML = '<div class="empty-state-sm">No invites yet. Use "+ Invite" above to create a sign-up link.</div>';
       } else {
         invEl.innerHTML = `<div class="table-wrap"><table>
-          <thead><tr><th>Code</th><th>Status</th><th>Expires</th><th>Actions</th></tr></thead>
+          <thead><tr><th>Code</th><th>For</th><th>Used</th><th>Status</th><th>Expires</th><th>Actions</th></tr></thead>
           <tbody>${teamInvites.map(inv => {
-            const statusChip = inv.used
-              ? '<span class="chip chip-amber">Used</span>'
-              : '<span class="chip chip-blue">Active</span>';
+            const state = inviteState(inv);
+            const statusChip = state === 'active' ? '<span class="chip chip-blue">Active</span>'
+              : state === 'used' ? '<span class="chip chip-green">Full</span>' : '<span class="chip chip-amber">Expired</span>';
+            const role = inv.role === 'learner' ? 'Learners' : 'Manager';
             const expires = inv.expires_at ? new Date(inv.expires_at).toLocaleDateString() : 'Never';
             return `<tr>
               <td style="font-family:monospace;letter-spacing:0.08em;font-weight:600;">${esc(inv.code)}</td>
+              <td>${role}</td>
+              <td>${Number(inv.use_count) || 0} / ${Number(inv.max_uses) || 1}</td>
               <td>${statusChip}</td>
               <td>${expires}</td>
-              <td style="white-space:nowrap;">${!inv.used ? `
-                <button class="btn btn-ghost btn-sm" onclick="Admin.copyInviteCode('${esc(inv.code)}')">Copy</button>
-                <button class="btn btn-ghost btn-sm" onclick="Admin.copyInviteMessage('${esc(inv.code)}','${esc(team.name)}')" title="Copy onboarding message">Copy Msg</button>
-                <button class="btn btn-ghost btn-sm" style="color:var(--fail)" onclick="Admin.revokeInvite(${inv.id})">Revoke</button>
+              <td style="white-space:nowrap;">${state === 'active' ? `
+                <button class="btn btn-ghost btn-sm" onclick="App.copyInviteLink('${esc(inv.code)}')">Copy link</button>
+                <button class="btn btn-ghost btn-sm" onclick="Admin.copyInviteMessage('${esc(inv.code)}','${esc(team.name)}','${inv.role}')" title="Copy a ready-to-send message">Copy message</button>
+                <button class="btn btn-ghost btn-sm btn-danger-ghost" onclick="Admin.revokeInvite(${inv.id})">Revoke</button>
               ` : '—'}</td>
             </tr>`;
           }).join('')}</tbody>
@@ -266,14 +269,19 @@ const Admin = {
       Admin.renderTeams();
     } catch(e){ Toast.err(e.message); }
   },
-  openGenerateInvite(teamId, teamName) {
+  openGenerateInvite(teamId, teamName, role = 'learner') {
     App._inviteTeamId = teamId;
-    $$('invite-subtitle').textContent = `For team: ${esc(teamName)}`;
+    $$('invite-title').textContent = 'Invite to team';
+    $$('invite-subtitle').textContent = `Team: ${teamName}`;
+    $$('invite-role-field').classList.remove('hidden');
+    $$('invite-role').value = role;
+    App.inviteRoleChanged();
+    $$('invite-days').value = '7';
+    $$('invite-uses').value = '25';
     $$('invite-form').classList.remove('hidden');
     $$('invite-result').classList.add('hidden');
-    const expiry = $$('invite-expiry'); if (expiry) expiry.value = '';
     const btn = $$('invite-form')?.querySelector('.btn-primary');
-    if (btn) { btn.disabled = false; btn.textContent = 'Generate Code'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Create invite'; }
     $$('invite-modal').classList.remove('hidden');
   },
   openAddManager(teamId, teamName) {
@@ -339,12 +347,13 @@ const Admin = {
     navigator.clipboard.writeText(code).then(() => Toast.ok(`Code "${code}" copied to clipboard.`)).catch(() => Toast.err('Copy failed — please copy manually: ' + code));
   },
 
-  copyInviteMessage(code, teamName) {
+  copyInviteMessage(code, teamName, role = 'manager') {
     const orgName = brandCache.name || CONFIG.DEFAULT_BRAND_NAME;
-    const url = window.location.origin + window.location.pathname;
     const team = teamName ? ` (${teamName})` : '';
-    const msg = `Hi,\n\nYou've been added as a manager on ${orgName}${team}.\n\nTo set up your account:\n1. Go to: ${url}\n2. Click Manager → Register with Invite Code\n3. Enter your invite code: ${code}\n\nOnce registered you can add your team and assign training.\n\nWelcome aboard!`;
-    navigator.clipboard.writeText(msg).then(() => Toast.ok('Onboarding message copied to clipboard.')).catch(() => Toast.err('Copy failed.'));
+    const link = inviteLink(code);
+    const what = role === 'learner' ? 'your team\'s training' : 'a manager';
+    const msg = `Hi,\n\nYou've been invited to ${orgName} as ${role === 'learner' ? 'a learner' : 'a manager'}${team}.\n\nTo create your account, open this link and choose your own name and password:\n${link}\n\n(Or go to ${window.location.origin + window.location.pathname}, choose "Have an invite code?", and enter: ${code})\n\nWelcome aboard!`;
+    navigator.clipboard.writeText(msg).then(() => Toast.ok('Message copied to clipboard.')).catch(() => Toast.err('Copy failed.'));
   },
 
   async revokeInvite(id) {

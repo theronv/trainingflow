@@ -34,9 +34,8 @@ const Auth = {
 
   // ─── MANAGER ───
   toggleManagerReg(show) {
-    $$('m-login-form').classList.toggle('hidden', show);
-    $$('m-reg-form').classList.toggle('hidden', !show);
-    $$('m-login-sub').textContent = show ? 'Create your manager account.' : 'Sign in to manage your team.';
+    if (show) return App.openJoin();
+    $$('m-login-sub').textContent = 'Sign in to manage your team.';
   },
   async doManagerLogin() {
     const name = $$('m-login-name').value.trim(), password = $$('m-login-pw').value;
@@ -47,17 +46,44 @@ const Auth = {
       Manager.init();
     } catch(e) { Toast.err(e.message); }
   },
-  async doManagerRegister() {
-    const name = $$('m-reg-name').value.trim(), pw1 = $$('m-reg-pw1').value, pw2 = $$('m-reg-pw2').value, code = $$('m-reg-code').value.trim();
-    if (!name) return Toast.err('Please enter your full name.');
-    if (pw1.length < 8) return Toast.err('Password must be at least 8 characters.');
-    if (pw1 !== pw2) return Toast.err('Passwords do not match.');
-    if (!code) return Toast.err('Please enter your invite code.');
+  // ─── INVITES (managers + learners) ───
+  async loadInvitePreview() {
+    const code = ($$('join-code').value || '').trim();
+    const title = $$('join-title'), sub = $$('join-sub');
+    if (code.length < 6) { title.textContent = 'Join your team'; sub.textContent = 'Enter your invite code to create your account.'; return; }
     try {
-      const data = await api('/api/auth/manager/register', { method: 'POST', body: JSON.stringify({ name, password: pw1, code }) });
-      setManagerToken(data.token); scheduleExpiryWarning(data.token); setManagerUser(data.user); curManager = data.user;
-      Manager.init();
-    } catch(e) { Toast.err(e.message); }
+      const inv = await api(`/api/auth/invite/${encodeURIComponent(code)}`);
+      const role = inv.role === 'learner' ? 'learner' : 'manager';
+      title.textContent = inv.team_name ? `Join ${inv.team_name}` : 'Join your team';
+      sub.textContent = `You're being invited as a ${role}. Choose your name and password to continue.`;
+    } catch (e) {
+      title.textContent = 'Join your team';
+      sub.textContent = e.message || 'That invite code is not valid.';
+    }
+  },
+  async doJoin() {
+    const code = $$('join-code').value.trim(), name = $$('join-name').value.trim();
+    const pw1 = $$('join-pw1').value, pw2 = $$('join-pw2').value;
+    if (!code) return Toast.err('Please enter your invite code.');
+    if (!name) return Toast.err('Please enter your full name.');
+    if (pw1.length < CONFIG.MIN_PW_LEN) return Toast.err(`Password must be at least ${CONFIG.MIN_PW_LEN} characters.`);
+    if (pw1 !== pw2) return Toast.err('Passwords do not match.');
+    const btn = $$('join-btn'); btn.disabled = true; btn.textContent = 'Creating account…';
+    try {
+      const data = await api('/api/auth/register', { method: 'POST', body: JSON.stringify({ name, password: pw1, code }) });
+      ['join-code','join-name','join-pw1','join-pw2'].forEach(id => { $$(id).value = ''; });
+      scheduleExpiryWarning(data.token);
+      if (data.user.role === 'learner') {
+        setLearnerToken(data.token); curLearner = { id: data.user.id, name: data.user.name };
+        Toast.ok(`Welcome, ${data.user.name}!`);
+        Learner.init();
+      } else {
+        setManagerToken(data.token); setManagerUser(data.user); curManager = data.user;
+        Toast.ok(`Welcome, ${data.user.name}!`);
+        Manager.init();
+      }
+    } catch (e) { Toast.err(e.message); }
+    finally { btn.disabled = false; btn.textContent = 'Create account'; }
   },
   managerLogout() { clearManagerToken(); clearManagerUser(); curManager = null; curCourse = null; curModIdx = 0; quizSt = {}; App.show('screen-landing'); },
 
