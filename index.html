@@ -557,6 +557,7 @@ if (typeof marked !== 'undefined') {
             <div style="display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap;margin-bottom:var(--space-3)">
               <button class="btn btn-outline btn-sm" onclick="App.copyClaudePrompt()">Copy Claude prompt</button>
               <button class="btn btn-outline btn-sm" onclick="document.getElementById('course-json-file').click()">Upload .json</button>
+              <button class="btn btn-outline btn-sm" onclick="App.clearCourseJson()">Clear</button>
               <input type="file" id="course-json-file" accept=".json,.txt" class="hidden" onchange="App.loadCourseJsonFile(event)">
             </div>
             <textarea id="course-json-input" rows="6" placeholder='Paste the JSON from Claude here…' style="width:100%;font-family:var(--font-mono);font-size:var(--text-sm)"></textarea>

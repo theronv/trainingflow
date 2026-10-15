@@ -46,6 +46,7 @@ const AppProxy = {
   goPhase: (n) => Importer.goPhase(n),
   copyClaudePrompt: () => Importer.copyClaudePrompt(),
   loadCourseJsonFile: (e) => Importer.loadCourseJsonFile(e),
+  clearCourseJson: () => Importer.clearCourseJson(),
   previewCourseJson: () => Importer.previewCourseJson(),
 
   // Admin Extra

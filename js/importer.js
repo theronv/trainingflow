@@ -107,6 +107,11 @@ CONTENT RULES:
     e.target.value = '';
   },
 
+  clearCourseJson() {
+    const t = $$('course-json-input'); if (t) { t.value = ''; t.focus(); }
+    const st = $$('course-json-status'); if (st) st.textContent = '';
+  },
+
   // Returns { course, errors }. Tolerates code fences / surrounding prose.
   parseCourseJson(text) {
     const errors = [];
