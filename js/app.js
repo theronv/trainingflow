@@ -44,6 +44,9 @@ const AppProxy = {
   startGeneration: () => Importer.startGeneration(),
   saveAiCourse: () => Importer.saveAiCourse(),
   goPhase: (n) => Importer.goPhase(n),
+  copyClaudePrompt: () => Importer.copyClaudePrompt(),
+  loadCourseJsonFile: (e) => Importer.loadCourseJsonFile(e),
+  previewCourseJson: () => Importer.previewCourseJson(),
 
   // Admin Extra
   renderLearners: () => Admin.renderLearners(),

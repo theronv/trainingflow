@@ -76,8 +76,110 @@ const Importer = {
     finally { btn.innerHTML = orig; btn.disabled = false; }
   },
 
+  // ── Import a course authored in Claude.ai (JSON) ──────────────────────────
+  CLAUDE_PROMPT: `You are an instructional designer. Create a training course on this topic: [DESCRIBE YOUR TOPIC AND AUDIENCE HERE]
+
+Return ONLY one JSON object (no commentary) in exactly this format:
+{
+  "title": "Course title",
+  "icon": "💻",
+  "description": "One or two sentences on what learners will gain.",
+  "modules": [
+    {
+      "title": "Module title",
+      "summary": "One-sentence takeaway (max 250 chars).",
+      "learning_objectives": ["Learners will be able to ...", "..."],
+      "content": "Full lesson text in Markdown (headings, short paragraphs, bullet lists, numbered steps).",
+      "questions": [
+        {
+          "question": "Question text?",
+          "options": ["Option A", "Option B", "Option C", "Option D"],
+          "correct_index": 0,
+          "explanation": "Why this answer is correct."
+        }
+      ]
+    }
+  ]
+}
+
+Rules:
+- 3 to 6 modules, each with 300-600 words of Markdown content.
+- 3 to 5 questions per module, testing understanding rather than trivia.
+- Exactly 4 options per question; correct_index is 0-3 and varies across questions.
+- "icon" is a single emoji.
+- Output valid JSON only: double quotes, no trailing commas, escape newlines in strings as \\n.`,
+
+  async copyClaudePrompt() {
+    try { await navigator.clipboard.writeText(Importer.CLAUDE_PROMPT); Toast.ok('Prompt copied — paste it into Claude.ai.'); }
+    catch { Toast.err('Could not access the clipboard. Select and copy manually.'); }
+  },
+
+  loadCourseJsonFile(e) {
+    const f = e.target.files && e.target.files[0]; if (!f) return;
+    const r = new FileReader();
+    r.onload = () => { $$('course-json-input').value = String(r.result || ''); Importer.previewCourseJson(); };
+    r.readAsText(f);
+    e.target.value = '';
+  },
+
+  // Returns { course, errors }. Tolerates code fences / surrounding prose.
+  parseCourseJson(text) {
+    const errors = [];
+    let raw = String(text || '').replace(/```json\s*/gi, '').replace(/```/g, '').trim();
+    const a = raw.indexOf('{'), b = raw.lastIndexOf('}');
+    if (a < 0 || b <= a) return { course: null, errors: ['No JSON object found.'] };
+    let data;
+    try { data = JSON.parse(raw.slice(a, b + 1)); }
+    catch (e) { return { course: null, errors: ['Invalid JSON: ' + e.message] }; }
+
+    const str = v => (typeof v === 'string' ? v.trim() : '');
+    if (!str(data.title)) errors.push('Missing course "title".');
+    if (!Array.isArray(data.modules) || !data.modules.length) { errors.push('"modules" must be a non-empty array.'); return { course: null, errors }; }
+
+    const modules = data.modules.map((m, mi) => {
+      const label = `Module ${mi + 1}`;
+      if (!str(m.title)) errors.push(`${label}: missing "title".`);
+      if (!str(m.content)) errors.push(`${label}: missing "content".`);
+      const questions = (Array.isArray(m.questions) ? m.questions : []).map((q, qi) => {
+        const ql = `${label}, question ${qi + 1}`;
+        const opts = Array.isArray(q.options) ? q.options.map(str)
+          : [q.option_a, q.option_b, q.option_c, q.option_d].map(str);
+        if (!str(q.question)) errors.push(`${ql}: missing "question".`);
+        if (opts.filter(Boolean).length < 2 || opts.slice(0, 4).some(o => !o)) errors.push(`${ql}: needs 4 non-empty options.`);
+        let ci = q.correct_index;
+        if (typeof ci === 'string' && /^[a-d]$/i.test(ci.trim())) ci = 'abcd'.indexOf(ci.trim().toLowerCase());
+        ci = Number(ci);
+        if (!Number.isInteger(ci) || ci < 0 || ci > 3) { errors.push(`${ql}: "correct_index" must be 0-3.`); ci = 0; }
+        return { question: str(q.question), options: opts.slice(0, 4), correct_index: ci, explanation: str(q.explanation) };
+      });
+      if (!questions.length) errors.push(`${label}: no questions.`);
+      return {
+        title: str(m.title), content: str(m.content), summary: str(m.summary) || null,
+        learning_objectives: Array.isArray(m.learning_objectives) ? m.learning_objectives.map(str).filter(Boolean) : [],
+        reference_url: str(m.reference_url) || null, questions
+      };
+    });
+    return { course: { title: str(data.title), icon: str(data.icon) || '📋', description: str(data.description), modules }, errors };
+  },
+
+  previewCourseJson() {
+    const status = $$('course-json-status');
+    const { course, errors } = Importer.parseCourseJson($$('course-json-input').value);
+    if (errors.length || !course) {
+      const shown = errors.slice(0, 5).join(' ') + (errors.length > 5 ? ` (+${errors.length - 5} more)` : '');
+      if (status) { status.textContent = shown; status.style.color = 'var(--fail)'; }
+      return;
+    }
+    if (status) { status.textContent = ''; }
+    Importer.generatedCourse = course;
+    $$('btn-edit-prompt')?.classList.add('hidden');
+    Importer.renderReview();
+    Importer.goPhase(4);
+  },
+
   goPhase(n) {
     if (n === 1) Importer.loadSavedAiKeys();
+    if (n !== 4) $$('btn-edit-prompt')?.classList.remove('hidden');
     [1,2,3,4].forEach(i => {
       const pg = $$(`phase-${['upload','configure','generate','export'][i-1]}`);
       if(pg) pg.classList.toggle('hidden', i !== n);

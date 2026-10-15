@@ -551,6 +551,20 @@ if (typeof marked !== 'undefined') {
             </div>
             <ul id="imp-url-results" style="list-style:none;margin:var(--space-3) 0 0;padding:0;font-size:var(--text-sm)"></ul>
           </div>
+          <div class="card" style="margin-top:var(--space-5)">
+            <div class="card-title">Import a course from Claude (JSON)</div>
+            <div class="page-sub" style="margin-bottom:var(--space-3)">Copy the prompt, paste it into Claude.ai with your topic, then paste the JSON Claude returns (or upload the .json file) below. No API key needed.</div>
+            <div style="display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap;margin-bottom:var(--space-3)">
+              <button class="btn btn-outline btn-sm" onclick="App.copyClaudePrompt()">Copy Claude prompt</button>
+              <button class="btn btn-outline btn-sm" onclick="document.getElementById('course-json-file').click()">Upload .json</button>
+              <input type="file" id="course-json-file" accept=".json,.txt" class="hidden" onchange="App.loadCourseJsonFile(event)">
+            </div>
+            <textarea id="course-json-input" rows="6" placeholder='Paste the JSON from Claude here…' style="width:100%;font-family:var(--font-mono);font-size:var(--text-sm)"></textarea>
+            <div style="display:flex;align-items:center;gap:var(--space-3);margin-top:var(--space-3)">
+              <button class="btn btn-primary btn-sm" onclick="App.previewCourseJson()">Preview course</button>
+              <span id="course-json-status" style="font-size:var(--text-sm);color:var(--ink-3)"></span>
+            </div>
+          </div>
           <div id="file-module-list" style="margin-top:var(--space-5)"></div>
           <div id="upload-actions" class="hidden" style="margin-top:var(--space-5);display:flex;align-items:center;gap:var(--space-3)">
             <button class="btn btn-primary btn-lg" onclick="App.proceedFromUpload()">Configure course →</button>
@@ -660,7 +674,7 @@ if (typeof marked !== 'undefined') {
           <div class="page-sub">Review the generated content. Click 'Save to Database' to finalize the course.</div>
           <div style="display:flex;gap:var(--space-3);margin-bottom:var(--space-6);">
             <button class="btn btn-primary btn-lg" onclick="App.saveAiCourse()">Save to Database</button>
-            <button class="btn btn-outline btn-lg" onclick="App.goPhase(2)">← Edit Prompt</button>
+            <button class="btn btn-outline btn-lg" id="btn-edit-prompt" onclick="App.goPhase(2)">← Edit Prompt</button>
           </div>
           <div id="review-modules"></div>
         </div>
