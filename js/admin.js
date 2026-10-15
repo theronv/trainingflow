@@ -829,18 +829,16 @@ const Admin = {
 
       let html = '';
       sections.forEach(s => {
-        html += `<div style="grid-column:1/-1;margin-top:var(--space-6);padding-bottom:var(--space-2);border-bottom:2px solid var(--rule);">
-          <div style="font-size:var(--text-xs);font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-4);">Section</div>
-          <div style="font-weight:700;font-size:var(--text-lg);">${esc(s.name)}</div>
-        </div>`;
-        if(!bySec[s.id].length) {
-          html += `<div style="grid-column:1/-1;color:var(--ink-4);font-size:var(--text-sm);padding:var(--space-3) 0;">No courses in this section yet.</div>`;
+        const n = bySec[s.id].length;
+        html += `<div class="sec-head"><span class="sec-title">${esc(s.name)}</span><span class="sec-count">${n} ${n === 1 ? 'course' : 'courses'}</span></div>`;
+        if(!n) {
+          html += `<div class="sec-empty">No courses in this section yet.</div>`;
         } else {
           html += bySec[s.id].map(c => Admin._courseCard(c, sections, enrolled)).join('');
         }
       });
       if(unsec.length) {
-        if(sections.length) html += `<div style="grid-column:1/-1;margin-top:var(--space-6);padding-bottom:var(--space-2);border-bottom:2px solid var(--rule);"><div style="font-weight:700;font-size:var(--text-lg);color:var(--ink-3);">Unsectioned</div></div>`;
+        if(sections.length) html += `<div class="sec-head"><span class="sec-title">Unsectioned</span><span class="sec-count">${unsec.length} ${unsec.length === 1 ? 'course' : 'courses'}</span></div>`;
         html += unsec.map(c => Admin._courseCard(c, sections, enrolled)).join('');
       }
       grid.innerHTML = html;
@@ -853,32 +851,44 @@ const Admin = {
     const bar = $$('a-sections-bar'); if(!bar) return;
     if(!sections.length) { bar.innerHTML = '<span style="font-size:var(--text-sm);color:var(--ink-4);">No sections — click "+ New Section" to group your courses.</span>'; return; }
     bar.innerHTML = sections.map(s => `
-      <span class="chip chip-blue" style="display:inline-flex;align-items:center;gap:4px;padding-right:4px;">
+      <span class="sec-chip">
         ${esc(s.name)}
-        <button onclick="Admin.openRenameSection('${s.id}','${esc(s.name)}')" style="background:none;border:none;cursor:pointer;padding:0 2px;font-size:11px;color:inherit;opacity:.7;">✏</button>
-        <button onclick="Admin.deleteSection('${s.id}')" style="background:none;border:none;cursor:pointer;padding:0 2px;font-size:11px;color:var(--fail);">✕</button>
+        <button class="icon-btn" title="Rename section" aria-label="Rename section" onclick="Admin.openRenameSection('${s.id}','${esc(s.name)}')">${Admin._ico.pencil}</button>
+        <button class="icon-btn danger" title="Delete section" aria-label="Delete section" onclick="Admin.deleteSection('${s.id}')">${Admin._ico.x}</button>
       </span>`).join('');
+  },
+
+  _ico: {
+    pencil: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>',
+    x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>',
+    trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+    userPlus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6"/><path d="M22 11h-6"/></svg>',
   },
 
   _courseCard(c, sections, enrolled = {}) {
     const secOpts = sections.map(s => `<option value="${s.id}" ${c.section_id===s.id?'selected':''}>${esc(s.name)}</option>`).join('');
     const count = enrolled[c.id] || 0;
     const enrollBadge = count > 0
-      ? `<span class="chip chip-green" style="font-size:9px;">${count} enrolled</span>`
-      : `<span class="chip" style="font-size:9px;color:var(--ink-4);">No learners</span>`;
-    return `<div class="card">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:4px;">
-        <div style="font-weight:700;line-height:1.3;">${esc(c.title)}</div>
-        ${enrollBadge}
+      ? `<span class="chip chip-green">${count} assigned</span>`
+      : `<span class="chip">Unassigned</span>`;
+    return `<div class="card cc">
+      <div class="cc-top">
+        <div class="cc-icon" aria-hidden="true">${esc(c.icon || '📋')}</div>
+        <div class="cc-body">
+          <div class="cc-title">${esc(c.title)}</div>
+          <div class="cc-meta">
+            ${enrollBadge}
+            ${sections.length ? `<select class="cc-select" aria-label="Section" onchange="Admin.setCourseSection('${c.id}',this.value)">
+              <option value="">No section</option>${secOpts}
+            </select>` : ''}
+          </div>
+        </div>
       </div>
-      ${sections.length ? `<select class="btn btn-ghost btn-sm" style="width:100%;margin-top:8px;text-align:left;" onchange="Admin.setCourseSection('${c.id}',this.value)">
-        <option value="">No section</option>${secOpts}
-      </select>` : ''}
-      <div style="display:flex;gap:4px;margin-top:12px;">
+      <div class="cc-actions">
+        <button class="btn btn-primary btn-sm" onclick="App.openAssign('${c.id}','${esc(c.title)}')">${Admin._ico.userPlus} Assign</button>
         <button class="btn btn-outline btn-sm" onclick="App.openBuilder('${c.id}')">Edit</button>
         <button class="btn btn-outline btn-sm" onclick="Admin.previewCourse('${c.id}')">Preview</button>
-        <button class="btn btn-primary btn-sm w-full" onclick="App.openAssign('${c.id}','${esc(c.title)}')">👤 Assign</button>
-        <button class="btn btn-outline btn-sm" style="color:var(--fail);border-color:var(--fail);" onclick="Admin.deleteCourse('${c.id}','${esc(c.title)}')">Delete</button>
+        <button class="btn btn-ghost btn-sm icon-btn btn-danger-ghost" title="Delete course" aria-label="Delete course" onclick="Admin.deleteCourse('${c.id}','${esc(c.title)}')">${Admin._ico.trash}</button>
       </div>
     </div>`;
   },
