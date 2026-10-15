@@ -100,6 +100,33 @@ const Importer = {
     if (!files.length) { Toast.err('Drop .md files only.'); return; }
     files.forEach(f => Importer.readAndAddFile(f));
   },
+  async importFromUrls() {
+    const raw = $$('imp-url-input').value;
+    const urls = [...new Set(raw.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#')))];
+    if (!urls.length) return Toast.err('Paste at least one URL.');
+    if (urls.length > 20) return Toast.err('Import up to 20 pages at a time.');
+    const btn = $$('btn-imp-urls'), list = $$('imp-url-results'), status = $$('imp-url-status');
+    btn.disabled = true;
+    list.innerHTML = urls.map((u, i) => `<li id="imp-url-${i}">⏳ ${esc(u)}</li>`).join('');
+    let ok = 0;
+    for (let i = 0; i < urls.length; i++) {
+      const row = $$(`imp-url-${i}`);
+      status.textContent = `Fetching ${i + 1} of ${urls.length}…`;
+      try {
+        const data = await adminApi('/api/scrape?url=' + encodeURIComponent(urls[i]));
+        const slug = decodeURIComponent(new URL(data.url).pathname.split('/').filter(Boolean).pop() || new URL(data.url).hostname);
+        Importer.addFileModule(data.markdown, slug.replace(/^\d+[-_]/, '').replace(/\.\w+$/, ''));
+        row.innerHTML = `<span style="color:var(--pass)">✓</span> ${esc(urls[i])}`;
+        ok++;
+      } catch (err) {
+        row.innerHTML = `<span style="color:var(--fail)">✗</span> ${esc(urls[i])} — ${esc(err.message)}`;
+      }
+      if (i < urls.length - 1) await new Promise(r => setTimeout(r, 1000)); // be polite to the source
+    }
+    status.textContent = ok ? `${ok} of ${urls.length} imported.` : 'Nothing imported.';
+    btn.disabled = false;
+    if (ok) $$('imp-url-input').value = '';
+  },
   handleFileSelect(e) {
     Array.from(e.target.files).forEach(f => Importer.readAndAddFile(f));
     e.target.value = '';

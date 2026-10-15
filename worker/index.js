@@ -904,6 +904,41 @@ async function callGeminiGeneric(prompt, systemPrompt, maxTokens, apiKey) {
   return { text: data.candidates[0].content.parts[0].text, _provider: 'Gemini' }
 }
 
+// ── URL scrape (AI Importer) ──
+// Fetches a public web page as Markdown via Jina Reader. Admin-only; only public
+// http(s) hostnames are accepted so this can't be pointed at internal addresses.
+const SCRAPE_MAX_CHARS = 2 * 1024 * 1024
+
+function parseScrapeUrl(raw) {
+  let u
+  try { u = new URL(String(raw || '').trim()) } catch { return null }
+  if (u.protocol !== 'http:' && u.protocol !== 'https:') return null
+  if (u.username || u.password) return null
+  const h = u.hostname.toLowerCase()
+  const internal = h === 'localhost' || h.endsWith('.localhost') || h.endsWith('.local') || h.endsWith('.internal')
+  if (internal || !h.includes('.') || h.startsWith('[') || /^\d+\.\d+\.\d+\.\d+$/.test(h)) return null
+  return u
+}
+
+app.get('/api/scrape', requireAdmin, async (c) => {
+  const u = parseScrapeUrl(c.req.query('url'))
+  if (!u) return c.json({ error: 'A public http(s) URL is required' }, 400)
+  let res
+  try {
+    res = await fetch(`https://r.jina.ai/${u.href}`, {
+      headers: { Accept: 'text/plain', 'X-Return-Format': 'markdown', 'User-Agent': 'TrainFlow-Importer' },
+      signal: AbortSignal.timeout(25000),
+    })
+  } catch {
+    return c.json({ error: 'Could not reach the page (timed out or blocked)' }, 502)
+  }
+  if (!res.ok) return c.json({ error: `Page fetch failed (${res.status})` }, 502)
+  const markdown = await res.text()
+  if (!markdown.trim()) return c.json({ error: 'The page returned no readable content' }, 422)
+  if (markdown.length > SCRAPE_MAX_CHARS) return c.json({ error: 'Page is too large to import (max 2MB)' }, 413)
+  return c.json({ markdown, url: u.href })
+})
+
 // Generic AI proxy — reads keys from env secrets; falls back to request body for self-hosted/dev
 app.post('/api/ai/generate', requireAdmin, async (c) => {
   const body = await c.req.json()

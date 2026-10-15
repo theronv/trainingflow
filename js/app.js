@@ -33,6 +33,7 @@ const AppProxy = {
   // Importer
   handleDrop: (e) => Importer.handleDrop(e),
   handleFileSelect: (e) => Importer.handleFileSelect(e),
+  importFromUrls: () => Importer.importFromUrls(),
   proceedFromUpload: () => Importer.proceedFromUpload(),
   startGeneration: () => Importer.startGeneration(),
   saveAiCourse: () => Importer.saveAiCourse(),

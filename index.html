@@ -511,7 +511,7 @@ if (typeof marked !== 'undefined') {
 
         <!-- ── PHASE 1: Upload ── -->
         <div id="phase-upload" class="section">
-          <div class="page-sub">Add Markdown files. Each file becomes a module. Generate summaries and quiz questions automatically.</div>
+          <div class="page-sub">Add Markdown files or web pages. Each one becomes a module. Generate summaries and quiz questions automatically.</div>
           <div class="upload-zone" id="imp-drop-zone"
             onclick="document.getElementById('md-file-input').click()"
             ondragover="event.preventDefault();this.classList.add('drag-active')"
@@ -522,6 +522,16 @@ if (typeof marked !== 'undefined') {
             <div class="upload-hint">Supports .md and .txt</div>
           </div>
           <input type="file" id="md-file-input" accept=".md,.markdown,.txt" multiple class="hidden" onchange="App.handleFileSelect(event)">
+          <div class="card" style="margin-top:var(--space-5)">
+            <div class="card-title">Import from web pages</div>
+            <div class="page-sub" style="margin-bottom:var(--space-3)">Paste public article URLs, one per line. Lines starting with # are ignored. Each page becomes a file below.</div>
+            <textarea id="imp-url-input" rows="3" placeholder="https://support.example.com/articles/getting-started" style="width:100%;font-family:var(--font-mono);font-size:var(--text-sm)"></textarea>
+            <div style="display:flex;align-items:center;gap:var(--space-3);margin-top:var(--space-3)">
+              <button class="btn btn-primary btn-sm" id="btn-imp-urls" onclick="App.importFromUrls()">Import pages</button>
+              <span id="imp-url-status" style="font-size:var(--text-sm);color:var(--ink-3)"></span>
+            </div>
+            <ul id="imp-url-results" style="list-style:none;margin:var(--space-3) 0 0;padding:0;font-size:var(--text-sm)"></ul>
+          </div>
           <div id="file-module-list" style="margin-top:var(--space-5)"></div>
           <div id="upload-actions" class="hidden" style="margin-top:var(--space-5);display:flex;align-items:center;gap:var(--space-3)">
             <button class="btn btn-primary btn-lg" onclick="App.proceedFromUpload()">Configure course →</button>
