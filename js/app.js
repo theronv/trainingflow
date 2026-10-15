@@ -174,18 +174,15 @@ const AppProxy = {
   },
   copyInviteMessage: (code, teamName) => Admin.copyInviteMessage(code, teamName),
   submitGenerateInvite: async () => {
-    // Generate a cryptographically random 8-char uppercase alphanumeric code
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    const arr = new Uint8Array(8);
-    crypto.getRandomValues(arr);
-    const code = Array.from(arr).map(n => chars[n % chars.length]).join('');
+    // The server generates the code. An expiry date means "valid through the end of that day"
+    // in the admin's local time, not midnight at its start.
     const expiryVal = $$('invite-expiry')?.value;
-    const expiresAt = expiryVal ? new Date(expiryVal).toISOString() : null;
+    const expiresAt = expiryVal ? new Date(`${expiryVal}T23:59:59`).toISOString() : null;
     const btn = $$('invite-form')?.querySelector('.btn-primary');
     if (btn) { btn.disabled = true; btn.textContent = 'Generating…'; }
     try {
-      await api('/api/admin/invites', { method: 'POST', body: JSON.stringify({ code, team_id: App._inviteTeamId, expires_at: expiresAt }) });
-      $$('generated-code').textContent = code;
+      const res = await api('/api/admin/invites', { method: 'POST', body: JSON.stringify({ team_id: App._inviteTeamId, expires_at: expiresAt }) });
+      $$('generated-code').textContent = res.code;
       $$('invite-expiry-label').textContent = expiresAt ? `Expires: ${new Date(expiresAt).toLocaleDateString()}` : '';
       $$('invite-form').classList.add('hidden');
       $$('invite-result').classList.remove('hidden');

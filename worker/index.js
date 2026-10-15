@@ -282,22 +282,41 @@ app.delete('/api/admin/invites/:id', requireAdmin, async (c) => {
   return c.json({ ok: true })
 })
 
+// Unambiguous alphabet (no 0/O/1/I) — codes are read aloud and typed by hand.
+const INVITE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+function generateInviteCode() {
+  const bytes = crypto.getRandomValues(new Uint8Array(8))
+  return Array.from(bytes, n => INVITE_ALPHABET[n % INVITE_ALPHABET.length]).join('')
+}
+
 app.post('/api/admin/invites', requireAdmin, async (c) => {
-  const body = await c.req.json()
+  const body = await c.req.json().catch(() => ({}))
   const db = getDb(c.env)
-  try {
-    const expiresAt = body.expires_at || null
-    await db.execute({
-      sql: 'INSERT INTO invite_codes (code, team_id, expires_at) VALUES (?, ?, ?)',
-      args: [body.code.toUpperCase(), body.team_id || null, expiresAt]
-    })
-    return c.json({ ok: true }, 201)
-  } catch(e) {
-    if (e.message && e.message.includes('UNIQUE')) {
-      return c.json({ error: 'Code collision — please try again.' }, 409)
-    }
-    return c.json({ error: e.message }, 500)
+  const expiresAt = body.expires_at || null
+  if (expiresAt && isNaN(new Date(expiresAt).getTime())) return c.json({ error: 'Invalid expiry date' }, 400)
+  if (body.team_id) {
+    const team = toObj(await db.execute({ sql: 'SELECT id FROM teams WHERE id = ?', args: [body.team_id] }))
+    if (!team) return c.json({ error: 'Team not found' }, 404)
   }
+  // The server picks the code; a client-supplied one is still honoured for older clients.
+  const supplied = typeof body.code === 'string' && body.code.trim() ? body.code.trim().toUpperCase() : null
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const code = supplied || generateInviteCode()
+    try {
+      await db.execute({
+        sql: 'INSERT INTO invite_codes (code, team_id, expires_at) VALUES (?, ?, ?)',
+        args: [code, body.team_id || null, expiresAt]
+      })
+      return c.json({ ok: true, code, expires_at: expiresAt }, 201)
+    } catch (e) {
+      if (e.message && e.message.includes('UNIQUE')) {
+        if (supplied) return c.json({ error: 'That code already exists.' }, 409)
+        continue // random collision — try another
+      }
+      throw e
+    }
+  }
+  return c.json({ error: 'Could not generate a unique code — please try again.' }, 500)
 })
 
 app.patch('/api/admin/teams/:id', requireAdmin, async (c) => {
@@ -450,12 +469,18 @@ app.post('/api/learners', requireManager, async (c) => {
   // Scoped managers are locked to their own team; admins can specify any team
   const teamId = user.isAdmin ? (body.team_id || null) : user.scopedToTeam
   const db = getDb(c.env)
+  const name = String(body.name).trim()
   const hash = await pbkdf2Hash(body.password)
   const id = uid()
-  await db.execute({
-    sql: 'INSERT INTO users (id, name, password_hash, role, team_id) VALUES (?, ?, ?, ?, ?)',
-    args: [id, body.name, hash, role, teamId]
-  })
+  try {
+    await db.execute({
+      sql: 'INSERT INTO users (id, name, password_hash, role, team_id) VALUES (?, ?, ?, ?, ?)',
+      args: [id, name, hash, role, teamId]
+    })
+  } catch (e) {
+    if (e.message && e.message.includes('UNIQUE')) return c.json({ error: 'A user with that name already exists.' }, 409)
+    throw e
+  }
   return c.json({ id }, 201)
 })
 
@@ -493,11 +518,19 @@ app.delete('/api/learners/:id', requireAdmin, async (c) => {
 })
 
 app.post('/api/auth/manager/register', async (c) => {
-  const body = await c.req.json()
+  const body = await c.req.json().catch(() => ({}))
+  const ip = c.req.header('CF-Connecting-IP') || 'unknown'
+  if (_rateCheck(`register:${ip}`)) return c.json({ error: 'Too many attempts. Try again in a minute.' }, 429)
+  const regName = typeof body.name === 'string' ? body.name.trim() : ''
+  const regCode = typeof body.code === 'string' ? body.code.trim() : ''
+  if (!regName) return c.json({ error: 'Please enter your full name.' }, 400)
+  if (typeof body.password !== 'string' || body.password.length < 8) return c.json({ error: 'Password must be at least 8 characters.' }, 400)
+  if (!regCode) return c.json({ error: 'Please enter your invite code.' }, 400)
+  body.name = regName
   const db = getDb(c.env)
   
   // Verify invite code
-  const invRes = await db.execute({ sql: 'SELECT * FROM invite_codes WHERE code = ? AND used = 0', args: [body.code.toUpperCase()] })
+  const invRes = await db.execute({ sql: 'SELECT * FROM invite_codes WHERE code = ? AND used = 0', args: [regCode.toUpperCase()] })
   const inv = toObj(invRes)
   if (!inv) return c.json({ error: 'Invalid or expired invite code' }, 400)
   if (inv.expires_at && new Date(inv.expires_at) < new Date()) {
