@@ -834,8 +834,14 @@ tbody tr:hover td { background: var(--surface); }
   min-height: 100vh;
 }
 #screen-landing.active { display: flex; }
+#screen-landing {
+  padding: var(--space-8) var(--space-4);
+  background:
+    radial-gradient(900px 420px at 50% -10%, var(--brand-glow), transparent 70%),
+    var(--bg);
+}
 .landing-wrap {
-  width: 100%; max-width: 520px;
+  width: 100%; max-width: 760px;
   text-align: center;
 }
 .ldg-logo { text-align: center; }
@@ -878,46 +884,71 @@ tbody tr:hover td { background: var(--surface); }
   border-radius: var(--radius-md);
 }
 .landing-logo {
-  font-size: 28px;
+  font-size: clamp(2rem, 4vw, 2.5rem);
   font-weight: 700;
+  letter-spacing: -0.025em;
   color: var(--ink-1);
-  line-height: 1;
-  margin-bottom: var(--space-3);
+  line-height: 1.1;
+  margin: 0 0 var(--space-3);
 }
+.ldg-head { margin-bottom: var(--space-10); }
+.ldg-org {
+  font-size: var(--text-xs); font-weight: 600; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--brand); margin-bottom: var(--space-2);
+}
+.ldg-org:empty { display: none; }
 .landing-sub {
-  font-size: var(--text-md); color: var(--ink-3); font-weight: 300;
-  margin-bottom: var(--space-12); line-height: 1.5;
+  font-size: var(--text-md); color: var(--ink-3); font-weight: 400;
+  line-height: 1.5; max-width: 480px; margin: 0 auto;
 }
-.landing-rule { width: 100%; height: 4px; background: linear-gradient(to right, var(--brand), var(--brand-secondary)); margin: 0 auto var(--space-10); border-radius: 2px; }
-.role-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-8); }
-.role-tiles { display: flex; gap: var(--space-5); flex-wrap: wrap; justify-content: center; }
-@media (max-width: 600px) { .role-grid { grid-template-columns: 1fr; } }
+.role-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-4); margin-bottom: var(--space-6); }
+@media (max-width: 720px) { .role-grid { grid-template-columns: 1fr; } }
 .role-tile {
+  display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  padding: 28px 24px;
-  width: 200px;
+  padding: var(--space-6);
+  font: inherit; text-align: left; color: inherit;
   cursor: pointer;
-  text-align: center;
-  transition: all 0.2s;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }
 .role-tile:hover {
   border-color: var(--brand);
-  box-shadow: var(--shadow-brand);
+  box-shadow: var(--shadow-md);
   transform: translateY(-2px);
 }
+.role-tile:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 .role-tile:active { transform: scale(0.98); }
 .role-tile-icon {
-  font-size: 28px;
-  color: var(--brand);
-  margin-bottom: var(--space-3);
-  font-family: var(--font-mono);
-  font-weight: 400;
+  display: grid; place-items: center;
+  width: 44px; height: 44px; border-radius: var(--radius-md);
+  background: var(--brand-glow); color: var(--brand);
+  margin-bottom: var(--space-2);
 }
-.role-tile-name, .role-tile-title { font-size: 15px; font-weight: 600; color: var(--ink-1); margin-bottom: var(--space-2); }
-.role-tile-desc { font-size: var(--text-sm); color: var(--ink-3); }
-.landing-foot { font-size: var(--text-xs); color: var(--ink-4); }
+.role-tile-icon svg { width: 22px; height: 22px; }
+.role-tile-primary .role-tile-icon { background: var(--brand); color: #fff; }
+.role-tile-title { font-size: var(--text-md); font-weight: 600; color: var(--ink-1); }
+.role-tile-desc { font-size: var(--text-sm); color: var(--ink-3); line-height: 1.45; flex: 1; }
+.role-tile-cta {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-top: var(--space-3);
+  font-size: var(--text-sm); font-weight: 600; color: var(--brand);
+}
+.role-tile-cta svg { width: 16px; height: 16px; transition: transform 0.15s ease; }
+.role-tile:hover .role-tile-cta svg { transform: translateX(3px); }
+.ldg-demo {
+  background: none; border: 0; padding: var(--space-2) var(--space-3);
+  font: inherit; font-size: var(--text-sm); font-weight: 500; color: var(--ink-3);
+  cursor: pointer; border-radius: var(--radius-md);
+  margin-bottom: var(--space-8);
+  transition: color 0.15s ease;
+}
+.ldg-demo:hover { color: var(--brand); }
+.ldg-demo:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.landing-foot { font-size: var(--text-xs); color: var(--ink-3); line-height: 1.7; }
+.landing-foot strong { color: var(--ink-2); font-weight: 600; }
 
 /* ══════════════════ LOGIN ══════════════════ */
 #screen-login, #screen-manager-login {
