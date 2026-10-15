@@ -2046,3 +2046,18 @@ button, .nav-btn, .quiz-opt, .course-card, .role-tile, label { touch-action: man
   .nav-btn:hover, .course-card:hover, .quiz-opt:hover { background: inherit; border-color: inherit; transform: none; }
   .nav-btn.active:hover { background: var(--why-bg); color: var(--accent-strong); }
 }
+
+/* Mobile tab bar: navs with ≤5 items (learner, manager) fit the width with icon-over-label — no horizontal scroll.
+   Longer navs (admin) keep the scrolling strip. */
+@media (max-width: 860px) {
+  .sidenav:not(:has(.nav-btn:nth-of-type(6))) {
+    overflow-x: visible; justify-content: stretch; gap: 0; padding: var(--space-1) var(--space-2);
+  }
+  .sidenav:not(:has(.nav-btn:nth-of-type(6))) .nav-btn {
+    flex: 1 1 0; min-width: 0; flex-direction: column; justify-content: center; align-items: center;
+    gap: 2px; padding: 6px 2px; min-height: 52px; font-size: 12px; line-height: 1.2;
+    white-space: normal; text-align: center; border-radius: var(--radius-md);
+  }
+  .sidenav:not(:has(.nav-btn:nth-of-type(6))) .nav-icon { margin: 0; }
+  .sidenav:not(:has(.nav-btn:nth-of-type(6))) .nav-icon svg { width: 20px; height: 20px; }
+}
