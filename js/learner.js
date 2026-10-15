@@ -53,7 +53,7 @@ const Learner = {
       const sections = apiSections || [];
 
       if (!apiCourses.length) {
-        grid.innerHTML = '<div class="empty" style="grid-column:1/-1;"><div class="empty-icon">📚</div><div class="empty-title">No training assigned yet</div><div class="empty-hint">Your manager will add courses to your plan. Check back soon — or let them know you\'re ready to start.</div></div>';
+        grid.innerHTML = '<div class="empty" style="grid-column:1/-1;"><div class="empty-icon">' + ICON.book + '</div><div class="empty-title">No training assigned yet</div><div class="empty-hint">Your manager will add courses to your plan. Check back soon — or let them know you\'re ready to start.</div></div>';
         return;
       }
 
@@ -121,7 +121,7 @@ const Learner = {
       } else {
         html = apiCourses.map(renderCard).join('');
       }
-      grid.innerHTML = html || '<div class="empty" style="grid-column:1/-1;"><div class="empty-icon">📚</div><div class="empty-title">No training assigned yet</div><div class="empty-hint">Your manager will add courses to your plan. Check back soon — or let them know you\'re ready to start.</div></div>';
+      grid.innerHTML = html || '<div class="empty" style="grid-column:1/-1;"><div class="empty-icon">' + ICON.book + '</div><div class="empty-title">No training assigned yet</div><div class="empty-hint">Your manager will add courses to your plan. Check back soon — or let them know you\'re ready to start.</div></div>';
     } catch(e) {
       grid.innerHTML = `<div class="card" style="grid-column:1/-1;color:var(--fail);">${esc(e.message)}</div>`;
     }
@@ -139,7 +139,7 @@ const Learner = {
       ]);
       if (Learner._navSeq !== seq) return;
       if (!assignments || !assignments.length) {
-        el.innerHTML = '<div class="empty"><div class="empty-icon">📋</div><div class="empty-title">No training assigned yet</div><div class="empty-hint">Check back later, or contact your manager to get started.</div></div>';
+        el.innerHTML = '<div class="empty"><div class="empty-icon">' + ICON.clip + '</div><div class="empty-title">No training assigned yet</div><div class="empty-hint">Check back later, or contact your manager to get started.</div></div>';
         return;
       }
       const passedCourseIds = new Set((completions || []).filter(c => c.passed).map(c => c.course_id));
@@ -188,7 +188,7 @@ const Learner = {
             </div>
             <button class="btn btn-outline btn-sm" onclick="Learner.viewCert('${r.cert_id}')">↓ Download PDF</button>
           </div>`).join('')
-        : '<div class="empty"><div class="empty-icon">🎓</div><div class="empty-title">No certificates yet</div><div class="empty-hint">Complete a course and pass its quiz to earn your first certificate.</div></div>';
+        : '<div class="empty"><div class="empty-icon">' + ICON.award + '</div><div class="empty-title">No certificates yet</div><div class="empty-hint">Complete a course and pass its quiz to earn your first certificate.</div></div>';
     } catch(e) { $$('l-certs-content').innerHTML = `<div class="card" style="color:var(--fail);">${esc(e.message)}</div>`; }
   },
 
@@ -247,7 +247,7 @@ const Learner = {
     // "Read This First" source banner
     const sourceBanner = refUrl ? `
       <div class="source-banner">
-        <div class="source-banner-icon">📖</div>
+        <div class="source-banner-icon">${ICON.book}</div>
         <div class="source-banner-body">
           <div class="source-banner-label">Before You Begin</div>
           <div class="source-banner-text">This module is based on official source material. Reading it before the competency check will help you answer questions accurately.</div>

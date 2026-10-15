@@ -531,7 +531,7 @@ RULES:
 
       const sourceHtml = m.reference_url ? `
         <div style="margin-top:var(--space-3);display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg-2);border-radius:6px;border:1px solid var(--border);">
-          <span style="font-size:12px;">🔗</span>
+          <span style="display:inline-flex;width:14px;height:14px;color:var(--ink-3);">${ICON.link}</span>
           <span style="font-size:11px;color:var(--ink-4);">Source:</span>
           <a href="${esc(m.reference_url)}" target="_blank" rel="noopener noreferrer" style="font-size:11px;color:var(--brand-1);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(m.reference_url)}</a>
         </div>` : '';
@@ -545,7 +545,7 @@ RULES:
                 <span style="opacity:.5;margin-right:4px">${letters[oi]}</span> ${esc(opt)}
               </div>` : '').join('')}
           </div>
-          ${q.explanation ? `<div style="font-size:11px;color:var(--ink-4);margin-top:var(--space-2);padding:8px;background:var(--bg-2);border-radius:4px">💡 ${esc(q.explanation)}</div>` : ''}
+          ${q.explanation ? `<div style="font-size:11px;color:var(--ink-4);margin-top:var(--space-2);padding:8px;background:var(--bg-2);border-radius:4px"><strong>Explanation:</strong> ${esc(q.explanation)}</div>` : ''}
         </div>`).join('') : '';
 
       return `<div class="card" style="margin-bottom:var(--space-4);">

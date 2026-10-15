@@ -54,7 +54,7 @@ const Manager = {
       </div>`).join('');
 
       if (!comps.length) {
-        $$('m-recent').innerHTML = '<div class="empty"><div class="empty-icon">📊</div><div class="empty-title">No activity yet</div><div class="empty-hint">Completions from your team will appear here as learners finish their courses.</div></div>';
+        $$('m-recent').innerHTML = '<div class="empty"><div class="empty-icon">' + ICON.chart + '</div><div class="empty-title">No activity yet</div><div class="empty-hint">Completions from your team will appear here as learners finish their courses.</div></div>';
       } else {
         $$('m-recent').innerHTML = `<div class="dash-section-label">Recent team activity</div><div class="table-wrap"><table><thead><tr><th>Learner</th><th>Course</th><th>Score</th><th>Date</th></tr></thead><tbody>${comps.slice(0,5).map(r=>`<tr><td>${esc(r.user_name)}</td><td>${esc(r.course_title)}</td><td>${r.score}%</td><td>${new Date(r.completed_at*1000).toLocaleDateString()}</td></tr>`).join('')}</tbody></table></div>`;
       }
@@ -115,7 +115,7 @@ const Manager = {
         return;
       }
       tbody.innerHTML = rows.map(l => `<tr>
-        <td>${esc(l.name)} ${l.overdue_count ? `<span class="chip chip-red">⚠️ ${l.overdue_count} overdue</span>` : ''}</td>
+        <td>${esc(l.name)} ${l.overdue_count ? `<span class="chip chip-red">${l.overdue_count} overdue</span>` : ''}</td>
         <td>${l.assignment_count || 0}</td>
         <td>${l.completion_count || 0}</td>
         <td>${l.pass_rate != null ? l.pass_rate + '%' : '—'}</td>
@@ -317,7 +317,7 @@ const Manager = {
             </tbody>
           </table>
         </div>
-        ${autogen ? `<div style="font-size:var(--text-xs);color:var(--ink-4);margin-top:var(--space-3);">⚠ Save or print the credentials sheet shown after import — passwords cannot be recovered later.</div>` : ''}`;
+        ${autogen ? `<div style="font-size:var(--text-xs);color:var(--ink-4);margin-top:var(--space-3);">Save or print the credentials sheet shown after import — passwords cannot be recovered later.</div>` : ''}`;
 
       $$('lcsv-import-btn').disabled = valid.length === 0;
       $$('lcsv-import-btn').textContent = valid.length ? `Import ${valid.length} Learner${valid.length > 1 ? 's' : ''}` : 'Import Learners';

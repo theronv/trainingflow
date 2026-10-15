@@ -99,7 +99,7 @@ const Admin = {
           </tr>`).join('')}</tbody>
         </table></div>`;
       }
-      if (unassigned > 0) teamHtml += `<div class="card" onclick="Admin.nav('learners')" style="margin-top:var(--space-3);background:var(--fail-lt);color:var(--fail);cursor:pointer;">⚠ ${unassigned} unassigned learner${unassigned !== 1 ? 's' : ''} found. Click to review.</div>`;
+      if (unassigned > 0) teamHtml += `<div class="card" onclick="Admin.nav('learners')" style="margin-top:var(--space-3);background:var(--fail-lt);color:var(--fail);cursor:pointer;">${unassigned} unassigned learner${unassigned !== 1 ? 's' : ''} found. Click to review.</div>`;
       $$('a-course-stats').innerHTML = teamHtml;
 
       Admin.renderTroubleSpots();
@@ -814,7 +814,7 @@ const Admin = {
       (assignments || []).forEach(a => { enrolled[a.course_id] = (enrolled[a.course_id] || 0) + 1; });
 
       if (!courses.length) {
-        grid.innerHTML = '<div class="empty" style="grid-column:1/-1;"><div class="empty-icon">📚</div><div class="empty-title">No courses yet</div><div class="empty-hint">Create your first course with the AI Importer or build one from scratch.</div><div class="empty-action"><button class="btn btn-primary btn-sm" onclick="App.aNav(\'importer\')">+ New Course</button></div></div>';
+        grid.innerHTML = '<div class="empty" style="grid-column:1/-1;"><div class="empty-icon">' + ICON.book + '</div><div class="empty-title">No courses yet</div><div class="empty-hint">Create your first course with the AI Importer or build one from scratch.</div><div class="empty-action"><button class="btn btn-primary btn-sm" onclick="App.aNav(\'importer\')">+ New Course</button></div></div>';
         return;
       }
 

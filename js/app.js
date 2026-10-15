@@ -442,9 +442,8 @@ const AppProxy = {
     const next = isLight ? 'dark' : 'light';
     html.setAttribute('data-theme', next);
     localStorage.setItem('trainflow_theme', next);
-    const icon = next === 'light' ? '☾' : '☀';
     document.querySelectorAll('.theme-toggle').forEach(btn => {
-      btn.textContent = icon;
+      btn.innerHTML = next === 'light' ? ICON.moon : ICON.sun;
       btn.title = next === 'light' ? 'Switch to dark mode' : 'Switch to light mode';
     });
   },
@@ -455,7 +454,7 @@ const AppProxy = {
     const theme = savedTheme === 'dark' ? 'dark' : 'light';
     document.documentElement.setAttribute('data-theme', theme);
     document.querySelectorAll('.theme-toggle').forEach(btn => {
-      btn.textContent = theme === 'light' ? '☾' : '☀';
+      btn.innerHTML = theme === 'light' ? ICON.moon : ICON.sun;
       btn.title = theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode';
     });
     // Pre-apply saved brand color before API loads to prevent flash
