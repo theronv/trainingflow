@@ -72,11 +72,7 @@ cd worker && npm test            # one-shot
 cd worker && npm run test:watch  # watch mode
 ```
 
-Coverage: `worker/test/` — `auth` (login + rate limiting), `rbac` (role gates +
-manager team scoping), `scoring` (F1/F2 answer-key/score integrity). The F1/F2
-suite contains `it.fails(...)` tripwires asserting the *secure* target
-behaviour; they pass while the gap is open and turn red once F1/F2 is fixed —
-that's the cue to delete the `.fails` marker. Frontend (`js/`) has no tests yet.
+Coverage: `worker/test/` — `auth` (login + rate limiting), `rbac` (role gates + manager team scoping), `scoring` (answer-key stripping, server-side grading and score computation), `scrape` (URL import validation). Frontend (`js/`) has no tests yet.
 
 ## Environment Variables
 
@@ -141,6 +137,7 @@ All tables defined in `schema.sql`. The `course_progress` table is also created 
 | `completions` | `id TEXT PK`, `course_id → courses`, `learner_id → users CASCADE`, `score INTEGER`, `passed INTEGER`, `cert_id TEXT UNIQUE` | Multiple completions per learner/course allowed (retakes) |
 | `module_progress` | `PK (learner_id, module_id)`, `course_id`, `passed`, `score`, `completed_at` | Per-module progress for resume |
 | `course_progress` | `PK (learner_id, course_id)`, `module_idx INTEGER`, `modules TEXT` (JSON) | Resume position; created lazily by worker |
+| `quiz_answers` | `PK (learner_id, question_id)`, `selected_index`, `is_correct`, `answered_at` | Latest server-graded answer per learner/question; source of truth for completion scores; consumed on completion |
 | `question_responses` | `completion_id → completions CASCADE`, `question_id → questions CASCADE`, `is_correct INTEGER` | Used for server-side score verification |
 | `brand` | `id TEXT PK DEFAULT 'default'`, `org_name`, `tagline`, `logo_url`, `primary_color`, `secondary_color`, `pass_threshold INTEGER` | Single row; `accent_color` added via ALTER in worker |
 | `tags` | `id TEXT PK`, `name TEXT UNIQUE` | UI stub — schema exists, Admin UI is "coming soon" |
@@ -162,13 +159,13 @@ All routes in `worker/index.js`. Auth middleware: `requireAdmin`, `requireManage
 | `POST` | `/api/learners/login` | — | Learner login → JWT |
 | `GET` | `/api/brand` | — | Get org branding |
 | `PUT` | `/api/brand` | Admin | Update org branding |
-| `GET` | `/api/courses` | Any | List all courses |
+| `GET` | `/api/courses` | Any authenticated | List all courses |
 | `POST` | `/api/courses` | Admin | Create a course (batch insert via `db.batch()`) |
-| `GET` | `/api/courses/:id` | Auth required | Get course with modules + questions (correct answers stripped for learners) |
+| `GET` | `/api/courses/:id` | Auth required | Get course with modules + questions (answer key stripped for non-admin tokens) |
 | `PATCH` | `/api/courses/:id` | Admin | Update course metadata |
 | `PUT` | `/api/courses/:id` | Admin | Full course replace (modules + questions) |
 | `DELETE` | `/api/courses/:id` | Admin | Delete course (cascades to modules, questions) |
-| `GET` | `/api/sections` | Any | List all sections |
+| `GET` | `/api/sections` | Any authenticated | List all sections |
 | `POST` | `/api/sections` | Admin | Create a section |
 | `PATCH` | `/api/sections/:id` | Admin | Rename a section |
 | `DELETE` | `/api/sections/:id` | Admin | Delete a section |
@@ -201,7 +198,8 @@ All routes in `worker/index.js`. Auth middleware: `requireAdmin`, `requireManage
 | `POST` | `/api/assignments` | Admin/Manager | Assign a course (team-scoped for managers) |
 | `DELETE` | `/api/assignments` | Admin/Manager | Remove an assignment (team-scoped for managers) |
 | `GET` | `/api/completions/me` | Learner | Own completion records |
-| `POST` | `/api/completions` | Learner | Submit a course completion (score computed server-side from question_responses) |
+| `POST` | `/api/quiz/answer` | Learner | Grade one answer server-side; returns `{correct, correct_index, explanation}` |
+| `POST` | `/api/completions` | Learner | Finish a course — score/passed computed server-side from `quiz_answers`; returns `{cert_id, score, passed}` |
 | `GET` | `/api/progress/me` | Learner | Own module progress |
 | `POST` | `/api/progress` | Learner | Save module progress |
 | `DELETE` | `/api/progress/:course_id` | Learner | Clear progress for a course |
@@ -299,15 +297,14 @@ Presentation-only passes on the web app (no data flow/auth changes), all at the 
 
 ---
 
-## Security Status (last verified against code 2026-06-18)
+## Security Status (last verified against code 2026-10-14)
 
-F3–F12 verified present in code. **F1/F2 have REGRESSED** since the Auditor Review and are currently OPEN — see warning below.
+F1–F12 are fixed and covered by `worker/test/`. **F1/F2 were regressed and are now closed again** — with a different design than the original:
 
-> ⚠️ **F1/F2 (CRITICAL) — REGRESSED / OPEN.** The documented fix is **not present in the current code**:
-> - `GET /api/courses/:id` (`worker/index.js:659`) returns `SELECT *` for any authenticated token, including learners — `correct_index` and `explanation` are **not stripped**. The answer key is shipped to the browser (`js/learner.js:308` reads `q.correct_index` directly).
-> - `POST /api/completions` (`worker/index.js:688`) trusts the client-supplied `body.score`; it only re-derives the `passed` boolean from `pass_threshold`. The `question_responses` table is **never written** (only read by `/api/admin/trouble-spots`), so there is no server-side score verification.
-> - **Impact:** a learner can read all answers via the course endpoint, or POST an arbitrary score (e.g. `{score:100}`) to mint a passing certificate. Regression tests covering this live in `worker/test/` and currently document the gap.
-> - **Fix direction:** strip the answer key for learner tokens in `GET /api/courses/:id`; submit per-question responses, write them to `question_responses`, and compute `score` server-side from that table.
+- **F1 (answer key):** `GET /api/courses/:id` strips `correct_index` and `explanation` for every non-admin token. Learners grade answers one at a time with `POST /api/quiz/answer`, which returns the verdict (and key) only for the question just answered.
+- **F2 (score integrity):** `POST /api/completions` ignores any client `score`/`passed`. It computes the score from the learner's server-recorded rows in `quiz_answers` (latest answer per question), requires every course question to be answered, writes `completions` + `question_responses` in one batch, and consumes the answers so a certificate can't be re-minted without retaking the quiz.
+- **Unauthenticated catalog closed:** `GET /api/courses` and `GET /api/sections` now require a token (demo mode uses a built-in sample catalog, `DEMO_COURSES` in `js/core.js`).
+- **Known residual risk:** because retakes are allowed and the key is revealed per answered question, a determined learner can probe answers by repeated attempts. This is inherent to retake-friendly quizzes; add attempt limits/cooldowns if certificates need stronger assurance.
 
 Verified present:
 - **F3–F8 (HIGH):** Team ownership enforced on manager routes; `requireLearner` checks `role === 'learner'` (`worker/index.js:152`); `team_id` locked to manager's own team

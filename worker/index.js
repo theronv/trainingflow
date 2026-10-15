@@ -653,7 +653,7 @@ app.get('/api/admin/stats', requireManager, async (c) => {
   }
 })
 
-app.get('/api/courses', async (c) => {
+app.get('/api/courses', requireAnyAuth, async (c) => {
   const db = getDb(c.env)
   const res = await db.execute('SELECT * FROM courses ORDER BY created_at')
   return c.json(toObjs(res))
@@ -670,6 +670,13 @@ app.get('/api/courses/:id', requireAnyAuth, async (c) => {
     for (const mod of modules) {
       const qRes = await db.execute({ sql: 'SELECT * FROM questions WHERE module_id = ? ORDER BY sort_order', args: [mod.id] })
       mod.questions = toObjs(qRes)
+    }
+    // The answer key never leaves the server for learners/managers: answers are graded
+    // via POST /api/quiz/answer, and scores are computed in POST /api/completions.
+    if (c.get('user')?.role !== 'admin') {
+      for (const mod of modules) {
+        mod.questions = mod.questions.map(({ correct_index, explanation, ...safe }) => safe)
+      }
     }
     return c.json({ ...course, modules })
   } catch { return c.json({ error: 'Not found' }, 404) }
@@ -688,28 +695,87 @@ app.get('/api/assignments', requireManager, async (c) => {
   return c.json(toObjs(res))
 })
 
+// Per-learner latest answer for each question. Graded server-side; the final score is
+// computed from these rows, never from anything the client reports.
+const QUIZ_DDL = `CREATE TABLE IF NOT EXISTS quiz_answers (
+  learner_id     TEXT NOT NULL,
+  question_id    TEXT NOT NULL,
+  selected_index INTEGER NOT NULL,
+  is_correct     INTEGER NOT NULL,
+  answered_at    INTEGER NOT NULL,
+  PRIMARY KEY (learner_id, question_id)
+)`
+
+app.post('/api/quiz/answer', requireLearner, async (c) => {
+  const user = c.get('user')
+  const body = await c.req.json().catch(() => ({}))
+  const qid = String(body.question_id || '')
+  const sel = Number(body.selected_index)
+  if (!qid || !Number.isInteger(sel) || sel < 0 || sel > 3) return c.json({ error: 'question_id and selected_index (0-3) are required' }, 400)
+  const db = getDb(c.env)
+  const q = toObj(await db.execute({ sql: 'SELECT correct_index, explanation FROM questions WHERE id = ?', args: [qid] }))
+  if (!q) return c.json({ error: 'Question not found' }, 404)
+  const correctIndex = Number(q.correct_index)
+  const ok = sel === correctIndex ? 1 : 0
+  await db.execute(QUIZ_DDL)
+  await db.execute({
+    sql: 'INSERT OR REPLACE INTO quiz_answers (learner_id, question_id, selected_index, is_correct, answered_at) VALUES (?, ?, ?, ?, ?)',
+    args: [user.id, qid, sel, ok, Math.floor(Date.now() / 1000)]
+  })
+  return c.json({ correct: !!ok, correct_index: correctIndex, explanation: q.explanation || '' })
+})
+
 app.post('/api/completions', requireLearner, async (c) => {
   const user = c.get('user')
-  const body = await c.req.json()
+  const body = await c.req.json().catch(() => ({}))
+  const courseId = String(body.course_id || '')
   const db = getDb(c.env)
 
-  // Look up pass threshold server-side; never trust passed:true from the client
+  const course = toObj(await db.execute({ sql: 'SELECT id FROM courses WHERE id = ?', args: [courseId] }))
+  if (!course) return c.json({ error: 'Course not found' }, 404)
+
+  // Pass threshold is server-side; the client-supplied score/passed are ignored entirely.
   let passThreshold = 80
   try {
     const brandRow = toObj(await db.execute({ sql: 'SELECT pass_threshold FROM brand WHERE id = ?', args: ['default'] }))
     if (brandRow?.pass_threshold != null) passThreshold = Number(brandRow.pass_threshold)
   } catch {}
 
-  const score = body.score ?? 100
+  await db.execute(QUIZ_DDL)
+  const courseQuestions = 'SELECT q.id FROM questions q JOIN modules m ON q.module_id = m.id WHERE m.course_id = ?'
+  const total = Number(toObj(await db.execute({ sql: `SELECT COUNT(*) AS n FROM (${courseQuestions})`, args: [courseId] })).n)
+  const answers = toObjs(await db.execute({
+    sql: `SELECT question_id, is_correct FROM quiz_answers WHERE learner_id = ? AND question_id IN (${courseQuestions})`,
+    args: [user.id, courseId]
+  }))
+
+  if (total > 0 && answers.length < total) {
+    return c.json({ error: 'Answer every question in the course before finishing.' }, 400)
+  }
+  const correct = answers.filter(a => Number(a.is_correct) === 1).length
+  const score = total > 0 ? Math.round((correct / total) * 100) : 100
   const passed = score >= passThreshold ? 1 : 0
 
   const rid = uid()
   const cid = certId()
-  await db.execute({
-    sql: "INSERT OR REPLACE INTO completions (id, learner_id, learner_name, course_id, score, passed, cert_id, completed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-    args: [rid, user.id, user.name, body.course_id, score, passed, cid, Math.floor(Date.now() / 1000)]
+  const now = Math.floor(Date.now() / 1000)
+  const stmts = [{
+    sql: 'INSERT INTO completions (id, learner_id, learner_name, course_id, score, passed, cert_id, completed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    args: [rid, user.id, user.name, courseId, score, passed, cid, now]
+  }]
+  for (const a of answers) {
+    stmts.push({
+      sql: 'INSERT INTO question_responses (completion_id, question_id, is_correct, created_at) VALUES (?, ?, ?, ?)',
+      args: [rid, a.question_id, Number(a.is_correct), now]
+    })
+  }
+  // Consume the answers so a certificate can't be re-minted without taking the quiz again.
+  stmts.push({
+    sql: `DELETE FROM quiz_answers WHERE learner_id = ? AND question_id IN (${courseQuestions})`,
+    args: [user.id, courseId]
   })
-  return c.json({ cert_id: cid }, 201)
+  await db.batch(stmts, 'write')
+  return c.json({ cert_id: cid, score, passed: !!passed }, 201)
 })
 
 app.get('/api/admin/completions', requireManager, async (c) => {
@@ -820,7 +886,7 @@ async function setupSections(db) {
   try { await db.execute('ALTER TABLE modules ADD COLUMN learning_objectives TEXT') } catch {}
 }
 
-app.get('/api/sections', async (c) => {
+app.get('/api/sections', requireAnyAuth, async (c) => {
   const db = getDb(c.env)
   await ensureSetup(db)
   const res = await db.execute('SELECT * FROM sections ORDER BY sort_order, name')

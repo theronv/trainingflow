@@ -67,7 +67,7 @@ const Manager = {
   async renderCourses() {
     const seq = Manager._navSeq;
     try {
-      const [apiCourses, sections] = await Promise.all([managerApi('/api/courses'), api('/api/sections').catch(() => [])]);
+      const [apiCourses, sections] = await Promise.all([managerApi('/api/courses'), managerApi('/api/sections').catch(() => [])]);
       if (Manager._navSeq !== seq) return;
       const courseCard = c => {
         const nc = normCourse(c);

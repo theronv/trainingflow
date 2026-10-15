@@ -243,3 +243,15 @@ CREATE TABLE IF NOT EXISTS admin (
   created_at    INTEGER NOT NULL DEFAULT (unixepoch()),
   updated_at    INTEGER NOT NULL DEFAULT (unixepoch())
 );
+
+
+-- ─── QUIZ ANSWERS (server-graded; source of truth for completion scores) ──
+
+CREATE TABLE IF NOT EXISTS quiz_answers (
+  learner_id     TEXT    NOT NULL,
+  question_id    TEXT    NOT NULL,
+  selected_index INTEGER NOT NULL,
+  is_correct     INTEGER NOT NULL,
+  answered_at    INTEGER NOT NULL,
+  PRIMARY KEY (learner_id, question_id)
+);

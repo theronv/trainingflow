@@ -1738,3 +1738,4 @@ input[type=checkbox], input[type=radio] { accent-color: var(--brand); width: 16p
 .btn-outline { background: var(--surface); }
 .btn-outline:hover { border-color: var(--ink-4); }
 .page-sub + .upload-zone, .page-sub + .card { margin-top: var(--space-4); }
+.qr-score { font-family: var(--font-body); font-weight: 700; letter-spacing: -0.03em; }

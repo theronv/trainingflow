@@ -42,11 +42,11 @@ const Learner = {
     grid.innerHTML = '<div style="display:flex;justify-content:center;padding:40px;width:100%;"><div class="spinner"></div></div>';
     try {
       const [apiCourses, apiRecs, apiAssigns, apiProgress, apiSections] = await Promise.all([
-        api('/api/courses'),
+        isDemo ? Promise.resolve(DEMO_COURSES) : learnerApi('/api/courses'),
         learnerApi('/api/completions/me').catch(() => []),
         learnerApi('/api/assignments/me').catch(() => []),
         learnerApi('/api/progress/me').catch(() => []),
-        api('/api/sections').catch(() => [])
+        isDemo ? Promise.resolve([]) : learnerApi('/api/sections').catch(() => [])
       ]);
       if (Learner._navSeq !== seq) return;
       const recs = apiRecs.map(normRecord);
@@ -195,10 +195,12 @@ const Learner = {
   // ─── QUIZ ENGINE ───
   async startCourse(cid) {
     try {
-      const [res, progList] = await Promise.all([
-        learnerApi(`/api/courses/${cid}`),
-        learnerApi('/api/progress/me').catch(() => [])
-      ]);
+      const [res, progList] = isDemo
+        ? [DEMO_COURSES.find(c => c.id === cid), []]
+        : await Promise.all([
+            learnerApi(`/api/courses/${cid}`),
+            learnerApi('/api/progress/me').catch(() => [])
+          ]);
       curCourse = normCourse(res);
       quizSt = {};
       Learner._prog = progList.find(p => p.course_id === cid) || { course_id: cid, module_idx: 0, modules: [] };
@@ -313,21 +315,38 @@ const Learner = {
     </div>`;
   },
 
-  answer(mi, qi, sel) {
+  async answer(mi, qi, sel) {
     const q = curCourse.mods[mi].questions[qi];
-    const ok = sel === q.correct_index;
-    quizSt[mi].ans.push({ question_id: q.id, ok });
     const total = curCourse.mods[mi].questions.length;
+    const buttons = $$('mod-main').querySelectorAll('.quiz-opt');
+    buttons.forEach(btn => { btn.disabled = true; });
+
+    // Grading is server-side — the answer key is never sent to learners. Admin preview and
+    // demo have no learner session and already hold the key locally.
+    let ok, correctIndex, explanation;
+    if (window._adminPreview || isDemo) {
+      correctIndex = q.correct_index;
+      ok = sel === correctIndex;
+      explanation = q.explanation;
+    } else {
+      try {
+        const r = await learnerApi('/api/quiz/answer', { method: 'POST', body: JSON.stringify({ question_id: q.id, selected_index: sel }) });
+        ok = r.correct; correctIndex = r.correct_index; explanation = r.explanation;
+      } catch (e) {
+        buttons.forEach(btn => { btn.disabled = false; });
+        return Toast.err(e.message || 'Could not submit your answer. Please try again.');
+      }
+    }
+    quizSt[mi].ans.push({ question_id: q.id, ok, correct_index: correctIndex, explanation });
 
     // Mark all option buttons
-    $$('mod-main').querySelectorAll('.quiz-opt').forEach((btn, i) => {
-      btn.disabled = true;
+    buttons.forEach((btn, i) => {
       const letter = btn.querySelector('.opt-letter');
       if(i === sel) {
         btn.classList.add(ok ? 'correct' : 'wrong');
         if(letter) letter.classList.add(ok ? 'correct' : 'wrong');
       }
-      if(i === q.correct_index && !ok) {
+      if(i === correctIndex && !ok) {
         btn.classList.add('correct');
         if(letter) letter.classList.add('correct');
       }
@@ -347,7 +366,7 @@ const Learner = {
         <div class="fb-icon">${ok ? '✓' : '✗'}</div>
         <div class="fb-body">
           <div class="fb-verdict">${ok ? 'Correct!' : 'Incorrect'}</div>
-          ${q.explanation ? `<div class="fb-exp">${esc(q.explanation)}</div>` : ''}
+          ${explanation ? `<div class="fb-exp">${esc(explanation)}</div>` : ''}
         </div>
         <button class="btn btn-primary fb-next" onclick="${nextFn}">${nextLabel}</button>`;
       wrap.appendChild(fb);
@@ -381,8 +400,8 @@ const Learner = {
             <div class="qr-review-status">${a.ok ? '✓' : '✗'}</div>
             <div class="qr-review-body">
               <div class="qr-review-q">${esc(q.question)}</div>
-              ${!a.ok ? `<div class="qr-review-correct">Correct answer: <strong>${esc(q.options[q.correct_index] || '')}</strong></div>` : ''}
-              ${q.explanation ? `<div class="qr-review-exp">${esc(q.explanation)}</div>` : ''}
+              ${!a.ok ? `<div class="qr-review-correct">Correct answer: <strong>${esc(q.options[a.correct_index] || '')}</strong></div>` : ''}
+              ${a.explanation ? `<div class="qr-review-exp">${esc(a.explanation)}</div>` : ''}
             </div>
           </div>`;
         }).join('')}
@@ -441,28 +460,22 @@ const Learner = {
   },
 
   async completeCourse() {
-    // Combine scores from progress (prior sessions) + current quizSt (this session)
-    const prog = Learner._prog || { modules: [] };
-    const allModScores = [...prog.modules];
-    // Override with fresh answers from this session
-    Object.entries(quizSt).forEach(([mi, st]) => {
-      const ans = st.ans;
-      const score = ans.length > 0 ? Math.round(ans.filter(a => a.ok).length / ans.length * 100) : 100;
-      const idx = allModScores.findIndex(m => m.mi === Number(mi));
-      if(idx >= 0) allModScores[idx].score = score;
-      else allModScores.push({ mi: Number(mi), score });
-    });
-    
-    // Calculate final score across all modules
-    const quizScores = allModScores.filter(m => m.score !== undefined);
-    const score = quizScores.length > 0
-      ? Math.round(quizScores.reduce((s, m) => s + m.score, 0) / quizScores.length)
-      : 100;
-    const passed = score >= (brandCache.pass || 80);
-
     if (window._adminPreview) { App.exitCourse(); return; }
-    const res = await learnerApi('/api/completions', { method:'POST', body: JSON.stringify({ course_id: curCourse.id, score, passed }) });
-    
+    if (isDemo) { Toast.info('Demo mode — sign in as a learner to earn certificates.'); App.lNav('courses'); return; }
+    // The score and pass/fail are computed server-side from the answers submitted during the quizzes.
+    let res;
+    try {
+      res = await learnerApi('/api/completions', { method:'POST', body: JSON.stringify({ course_id: curCourse.id }) });
+    } catch (e) { return Toast.err(e.message || 'Could not complete the course.'); }
+    const score = res.score;
+    if (!res.passed) {
+      Toast.err(`You scored ${score}% — the pass mark is ${brandCache.pass || 80}%. Review the modules and try again.`);
+      learnerApi(`/api/progress/${curCourse.id}`, { method: 'DELETE' }).catch(() => {});
+      Learner._prog = null;
+      App.exitCourse();
+      return;
+    }
+
     // Clear progress record now that the course is done
     learnerApi(`/api/progress/${curCourse.id}`, { method: 'DELETE' }).catch(() => {});
     Learner._prog = null;

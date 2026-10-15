@@ -18,6 +18,16 @@ const ICON = {
   alert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>',
 };
 
+// Built-in sample catalogue for "Explore with demo data" — no server data is exposed pre-login.
+const DEMO_COURSES = [
+  { id: 'demo-1', icon: '🚀', title: 'Getting Started', description: 'A short tour of how training works: assignments, modules, quizzes, and certificates.',
+    modules: [{ id: 'dm1', title: 'Welcome', content: '## Welcome\n\nThis is a sample module.', questions: [] }] },
+  { id: 'demo-2', icon: '🛡️', title: 'Workplace Safety Essentials', description: 'Core safety practices every team member should know.',
+    modules: [{ id: 'dm2', title: 'Basics', content: '## Safety basics\n\nSample content.', questions: [] }, { id: 'dm3', title: 'Reporting', content: '## Reporting\n\nSample content.', questions: [] }] },
+  { id: 'demo-3', icon: '🔐', title: 'Data Privacy Fundamentals', description: 'How to handle customer and company data responsibly.',
+    modules: [{ id: 'dm4', title: 'Principles', content: '## Principles\n\nSample content.', questions: [] }] },
+];
+
 const CONFIG = {
   WORKER_URL: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? 'http://localhost:8787'
