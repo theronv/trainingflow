@@ -1,5 +1,5 @@
 /**
- * Generate an ADMIN_PASSWORD_HASH value for the TrainFlow Worker.
+ * Generate an ADMIN_PASSWORD_HASH value for the Pregame Academy Worker.
  *
  * Usage:
  *   node scripts/hash-password.mjs <your-password>

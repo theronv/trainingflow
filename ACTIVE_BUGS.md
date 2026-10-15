@@ -1,4 +1,4 @@
-# TrainFlow — Active Issues
+# Pregame Academy — Active Issues
 
 **Last updated:** 2026-04-14
 

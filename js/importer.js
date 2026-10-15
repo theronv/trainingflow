@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════════
-//  TRAINFLOW — AI Course Importer
+//  PREGAME ACADEMY — AI Course Importer
 // ══════════════════════════════════════════════════════════
 
 const Importer = {

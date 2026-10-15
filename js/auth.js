@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════════
-//  TRAINFLOW — Authentication Logic
+//  PREGAME ACADEMY — Authentication Logic
 // ══════════════════════════════════════════════════════════
 
 function scheduleExpiryWarning(token) {

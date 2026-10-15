@@ -1,5 +1,5 @@
 -- ══════════════════════════════════════════════════════════
---  TrainFlow — Turso / libSQL schema
+--  Pregame Academy — Turso / libSQL schema
 --  Compatible with libSQL (SQLite 3.44+)
 -- ══════════════════════════════════════════════════════════
 
@@ -208,11 +208,11 @@ CREATE INDEX IF NOT EXISTS idx_responses_question ON question_responses(question
 
 CREATE TABLE IF NOT EXISTS brand (
   id              TEXT    PRIMARY KEY DEFAULT 'default',
-  org_name        TEXT    NOT NULL DEFAULT 'TrainFlow',
+  org_name        TEXT    NOT NULL DEFAULT 'Pregame Academy',
   tagline         TEXT    NOT NULL DEFAULT 'Training & Certification Platform',
   logo_url        TEXT    NOT NULL DEFAULT '',
-  primary_color   TEXT    NOT NULL DEFAULT '#1B78F2',
-  secondary_color TEXT    NOT NULL DEFAULT '#241C59',
+  primary_color   TEXT    NOT NULL DEFAULT '#1565ff',
+  secondary_color TEXT    NOT NULL DEFAULT '#1b1a5c',
   pass_threshold  INTEGER NOT NULL DEFAULT 80,
   created_at      INTEGER NOT NULL DEFAULT (unixepoch()),
   updated_at      INTEGER NOT NULL DEFAULT (unixepoch())

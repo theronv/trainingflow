@@ -1,6 +1,8 @@
 // ══════════════════════════════════════════════════════════
-//  TRAINFLOW — Core Utilities & State
+//  PREGAME ACADEMY — Core Utilities & State
 // ══════════════════════════════════════════════════════════
+
+const SYSTEM_FONT_STACK = '-apple-system, BlinkMacSystemFont, "Segoe UI Variable", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
 
 // Shared inline icon set (stroke icons; sized via CSS)
 const ICON = {
@@ -32,13 +34,14 @@ const CONFIG = {
   WORKER_URL: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? 'http://localhost:8787'
     : 'https://trainflow-worker.theronv.workers.dev',
-  DEFAULT_BRAND_NAME: 'TrainFlow',
+  DEFAULT_BRAND_NAME: 'Pregame Academy',
+  DEFAULT_LOGO: 'assets/pregame-icon-192.png',
   DEFAULT_TAGLINE: 'Assign, track, and certify your team\'s training — in one place.',
-  DEFAULT_C1: '#1B78F2',
-  DEFAULT_C2: '#241C59',
-  DEFAULT_C3: '#D9631E',
+  DEFAULT_C1: '#1565ff',
+  DEFAULT_C2: '#1b1a5c',
+  DEFAULT_C3: '#d99100',
   DEFAULT_PASS: 80,
-  DEFAULT_FONT: 'Inter',
+  DEFAULT_FONT: 'System',
   DEFAULT_ICON: '📋',
   MIN_PW_LEN: 8,
   TOAST_MS: 3200,
@@ -47,7 +50,7 @@ const CONFIG = {
 
 // Google Fonts query strings for each preset (null = no load needed)
 const GFONTS = {
-  'Inter':            null,
+  'System':           null,
   'Roboto':           'Roboto:wght@400;500;600;700',
   'Open Sans':        'Open+Sans:ital,wght@0,400;0,500;0,600;0,700',
   'Lato':             'Lato:wght@400;700',
@@ -161,7 +164,29 @@ function normCourse(c) {
   };
 }
 function normRecord(r) { return { cid: r.course_id, learner: r.learner_name, score: r.score, passed: Boolean(r.passed), date: (r.completed_at || 0) * 1000, cid2: r.cert_id || '', }; }
-function normBrand(b) { return { name: b.org_name || CONFIG.DEFAULT_BRAND_NAME, tagline: b.tagline || CONFIG.DEFAULT_TAGLINE, logo: b.logo_url || '', c1: b.primary_color || CONFIG.DEFAULT_C1, c2: b.secondary_color || CONFIG.DEFAULT_C2, c3: b.accent_color || CONFIG.DEFAULT_C3, pass: b.pass_threshold ?? CONFIG.DEFAULT_PASS, font: b.font_family || CONFIG.DEFAULT_FONT, fontUrl: b.font_url || '' }; }
+// Values the app shipped with before the Pregame Academy rebrand. Rows still holding them are
+// treated as "unset" so they pick up the new defaults; anything an admin customised is kept.
+const LEGACY_BRAND = {
+  names:  ['TrainFlow', 'TrainingFlow'],
+  c1:     ['#2563eb', '#3b82f6', '#1b78f2'],
+  c2:     ['#7c3aed', '#1d4ed8', '#241c59'],
+  c3:     ['#0891b2', '#d9631e'],
+  fonts:  ['Inter'],
+};
+function normBrand(b) {
+  const legacy = (v, list) => !v || list.includes(String(v).toLowerCase()) || list.includes(v);
+  return {
+    name:    legacy(b.org_name, LEGACY_BRAND.names) ? CONFIG.DEFAULT_BRAND_NAME : b.org_name,
+    tagline: b.tagline || CONFIG.DEFAULT_TAGLINE,
+    logo:    b.logo_url || '',
+    c1:      legacy(b.primary_color,   LEGACY_BRAND.c1) ? CONFIG.DEFAULT_C1 : b.primary_color,
+    c2:      legacy(b.secondary_color, LEGACY_BRAND.c2) ? CONFIG.DEFAULT_C2 : b.secondary_color,
+    c3:      legacy(b.accent_color,    LEGACY_BRAND.c3) ? CONFIG.DEFAULT_C3 : b.accent_color,
+    pass:    b.pass_threshold ?? CONFIG.DEFAULT_PASS,
+    font:    legacy(b.font_family, LEGACY_BRAND.fonts) ? CONFIG.DEFAULT_FONT : b.font_family,
+    fontUrl: b.font_url || '',
+  };
+}
 
 // ─── Color Utilities ─────────────────────────────────────
 function hexToRgba(hex, alpha) {
@@ -216,7 +241,8 @@ function applyBrand() {
   if (taglineEl) taglineEl.textContent = b.tagline || CONFIG.DEFAULT_TAGLINE;
 
   // Logo across all surfaces (topbars + landing + course header)
-  const logoSrc = b.logo || '';
+  // Falls back to the Pregame mark so every surface (topbars, landing, certificate) carries the logo.
+  const logoSrc = b.logo || CONFIG.DEFAULT_LOGO;
   ['l-logo', 'a-logo', 'm-logo', 'ldg-logo', 'ch-logo'].forEach(id => {
     const img = $$(id); if(!img) return;
     if(logoSrc) { img.src = logoSrc; img.classList.remove('hidden'); }
@@ -241,7 +267,7 @@ function applyBrand() {
 
   // Mobile browser theme color
   const themeMeta = document.querySelector('meta[name="theme-color"]');
-  if (themeMeta) themeMeta.content = c1;
+  if (themeMeta) themeMeta.content = '#000000';
 
   // --- Font ---
   const fontFamily = b.font || CONFIG.DEFAULT_FONT;
@@ -260,7 +286,7 @@ function applyBrand() {
     style.textContent = `@font-face { font-family: 'BrandCustomFont'; src: url('${fontUrl}'); font-weight: 100 900; font-style: normal; }`;
     document.head.appendChild(style);
     root.setProperty('--font-body', "'BrandCustomFont', system-ui, sans-serif");
-  } else if (fontFamily !== 'Inter' && GFONTS[fontFamily]) {
+  } else if (fontFamily !== 'System' && GFONTS[fontFamily]) {
     const link = document.createElement('link');
     link.id   = 'brand-font-link';
     link.rel  = 'stylesheet';
@@ -268,7 +294,7 @@ function applyBrand() {
     document.head.appendChild(link);
     root.setProperty('--font-body', `'${fontFamily}', system-ui, sans-serif`);
   } else {
-    root.setProperty('--font-body', "'Inter', system-ui, sans-serif");
+    root.setProperty('--font-body', SYSTEM_FONT_STACK);
   }
 }
 
@@ -309,7 +335,7 @@ const App = {
   startDemo() {
     isDemo = true;
     curLearner = { id: 'demo-id', name: 'Demo Learner' };
-    brandCache = { name: 'TrainFlow Demo', tagline: 'Experience the new UI/UX', logo: '', c1: CONFIG.DEFAULT_C1, c2: CONFIG.DEFAULT_C2, c3: CONFIG.DEFAULT_C3, pass: CONFIG.DEFAULT_PASS, font: CONFIG.DEFAULT_FONT, fontUrl: '' };
+    brandCache = { name: CONFIG.DEFAULT_BRAND_NAME + ' Demo', tagline: 'Explore the platform with sample training', logo: '', c1: CONFIG.DEFAULT_C1, c2: CONFIG.DEFAULT_C2, c3: CONFIG.DEFAULT_C3, pass: CONFIG.DEFAULT_PASS, font: CONFIG.DEFAULT_FONT, fontUrl: '' };
     applyBrand();
     Toast.ok('Demo mode activated');
     Learner.init();

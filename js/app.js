@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════════
-//  TRAINFLOW — Unified Application Proxy
+//  PREGAME ACADEMY — Unified Application Proxy
 // ══════════════════════════════════════════════════════════
 
 function debounce(fn, ms) {
@@ -325,7 +325,7 @@ const AppProxy = {
       const [summaries, learners, comps] = await Promise.all([api('/api/courses'), api('/api/learners'), api('/api/admin/completions')]);
       const courses = await Promise.all(summaries.map(c => api(`/api/courses/${c.id}`)));
       const blob = new Blob([JSON.stringify({ courses, learners, completions: comps }, null, 2)], { type: 'application/json' });
-      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'trainflow-backup.json'; a.click();
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'pregame-academy-backup.json'; a.click();
     } catch(e) { Toast.err(e.message); }
   },
   importBackup: () => {
@@ -451,7 +451,8 @@ const AppProxy = {
   // Global
   init: async () => {
     const savedTheme = localStorage.getItem('trainflow_theme');
-    const theme = savedTheme === 'dark' ? 'dark' : 'light';
+    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const theme = savedTheme ? (savedTheme === 'dark' ? 'dark' : 'light') : (prefersDark ? 'dark' : 'light');
     document.documentElement.setAttribute('data-theme', theme);
     document.querySelectorAll('.theme-toggle').forEach(btn => {
       btn.innerHTML = theme === 'light' ? ICON.moon : ICON.sun;

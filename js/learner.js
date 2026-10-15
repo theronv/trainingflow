@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════════
-//  TRAINFLOW — Learner Experience & Quiz Engine
+//  PREGAME ACADEMY — Learner Experience & Quiz Engine
 // ══════════════════════════════════════════════════════════
 
 const Learner = {
@@ -483,11 +483,11 @@ const Learner = {
     confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
     
     // Fully populate certificate
-    const b = typeof brandCache !== 'undefined' ? brandCache : { name: 'TrainFlow' };
+    const b = typeof brandCache !== 'undefined' ? brandCache : { name: CONFIG.DEFAULT_BRAND_NAME };
     const l = typeof curLearner !== 'undefined' && curLearner ? curLearner : { name: 'Learner' };
     const c = typeof curCourse !== 'undefined' && curCourse ? curCourse : { title: 'Course' };
 
-    $$('c-org').textContent    = b.name || 'TrainFlow';
+    $$('c-org').textContent    = b.name || CONFIG.DEFAULT_BRAND_NAME;
     $$('c-name').textContent   = l.name;
     $$('c-course').textContent = c.title;
     $$('c-date').textContent   = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -496,7 +496,7 @@ const Learner = {
     
     // Logo and Signature Labels
     const sigLabel = $$('c-sig-dept');
-    if (sigLabel) sigLabel.textContent = (b.name || 'TrainFlow') + ' Training Department';
+    if (sigLabel) sigLabel.textContent = (b.name || CONFIG.DEFAULT_BRAND_NAME) + ' Training Department';
     const logoImg = $$('c-logo');
     if (logoImg) {
       if (b.logo) { logoImg.src = b.logo; $$('c-logo-wrap').classList.remove('hidden'); }
@@ -513,10 +513,10 @@ const Learner = {
     if (!r) return Toast.err('Certificate data not found locally.');
     
     // Fully populate certificate template
-    const b = typeof brandCache !== 'undefined' ? brandCache : { name: 'TrainFlow' };
+    const b = typeof brandCache !== 'undefined' ? brandCache : { name: CONFIG.DEFAULT_BRAND_NAME };
     const l = typeof curLearner !== 'undefined' && curLearner ? curLearner : { name: r.learner_name || 'Learner' };
 
-    $$('c-org').textContent    = b.name || 'TrainFlow';
+    $$('c-org').textContent    = b.name || CONFIG.DEFAULT_BRAND_NAME;
     $$('c-name').textContent   = l.name;
     $$('c-course').textContent = r.course_title || 'Course';
     $$('c-date').textContent   = new Date(r.completed_at * 1000).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -525,7 +525,7 @@ const Learner = {
 
     // Logo and Signature Labels
     const sigLabel = $$('c-sig-dept');
-    if (sigLabel) sigLabel.textContent = (b.name || 'TrainFlow') + ' Training Department';
+    if (sigLabel) sigLabel.textContent = (b.name || CONFIG.DEFAULT_BRAND_NAME) + ' Training Department';
     const logoImg = $$('c-logo');
     if (logoImg) {
       if (b.logo) { logoImg.src = b.logo; $$('c-logo-wrap').classList.remove('hidden'); }

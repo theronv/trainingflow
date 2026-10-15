@@ -1,5 +1,5 @@
 /**
- * Test harness for the TrainFlow Worker.
+ * Test harness for the Pregame Academy Worker.
  *
  * Drives the real Hono `app` (worker/index.js) against an in-memory libSQL
  * database. The worker's getDb() honours env.DB_CLIENT (a test-only hook), so

@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════════
-//  TRAINFLOW — Content Builder & AI Importer
+//  PREGAME ACADEMY — Content Builder & AI Importer
 // ══════════════════════════════════════════════════════════
 
 const Builder = {

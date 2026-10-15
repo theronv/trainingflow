@@ -1,8 +1,8 @@
-# TrainFlow — Project Guide
+# Pregame Academy — Project Guide
 
 ## What This Is
 
-TrainFlow is a full-stack LMS for professional teams. AI-assisted course creation, role-based access (Admin / Manager / Learner), targeted assignments, progress tracking, and verifiable PDF certificates.
+Pregame Academy is a full-stack LMS for professional teams. AI-assisted course creation, role-based access (Admin / Manager / Learner), targeted assignments, progress tracking, and verifiable PDF certificates.
 
 **Live app:** https://theronv.github.io/trainingflow/
 
@@ -286,6 +286,15 @@ Visual design pass on the **web app** (vanilla JS SPA — the RN/NativeWind targ
 
 ---
 
+## Brand — Pregame Academy (2026-10-15)
+
+Renamed from TrainFlow and re-skinned to match the Pregame site (pregame.vickerydigital.com):
+- Tokens: brand black + electric blue `#1565ff`, indigo `#1b1a5c`, amber `#d99100`; light surfaces `#f3f5fa`/`#fff`, dark `#05060a`/`#0e1118`. Text-safe `--accent`/`--accent-strong`/`--why-bg` for links and active states.
+- Look: black topbar, aurora page-head hero (`--hero`), uppercase tracked labels, 6px buttons, 16px cards, system font stack. Theme follows the OS until the user toggles it.
+- Logo: `assets/pregame-icon-{192,512}.png` (copied from the Pregame site) is the default logo/favicon on every surface; an admin-uploaded logo overrides it.
+- Legacy defaults (`TrainFlow`, old blues/purples, `Inter`) saved in the `brand` row are migrated to the new defaults at runtime by `normBrand()`; customised values are kept.
+- Deliberately **not** renamed (internal identifiers): the Worker/DB names (`trainflow-worker`, `trainflow-theronv`), repo/Pages path (`/trainingflow/`), and `trainflow_*` localStorage/sessionStorage keys — changing them would break the deployed URL and sign users out.
+
 ## UI Polish — 2026-10-14
 
 Presentation-only passes on the web app (no data flow/auth changes), all at the end of `css/style.css` under "ENTERPRISE POLISH" / "RESPONSIVE SHELL":
@@ -330,7 +339,7 @@ Verified present:
 
 ### Context
 
-TrainFlow is a vanilla JS SPA, not a React Native / Expo app. The "VD Canonical Stack" (Expo / Vercel Edge / Clerk / RevenueCat / Sentry / EAS) is the migration target for a future native build. All four pre-migration review stages are complete (Architect, Security, Strategist, Designer). Architecture decisions for RN are locked (see below).
+Pregame Academy is a vanilla JS SPA, not a React Native / Expo app. The "VD Canonical Stack" (Expo / Vercel Edge / Clerk / RevenueCat / Sentry / EAS) is the migration target for a future native build. All four pre-migration review stages are complete (Architect, Security, Strategist, Designer). Architecture decisions for RN are locked (see below).
 
 ---
 

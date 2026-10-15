@@ -1,5 +1,5 @@
 /**
- * TrainFlow — Cloudflare Worker (v1.5 Production Standard)
+ * Pregame Academy — Cloudflare Worker (v1.5 Production Standard)
  */
 
 import { Hono }           from 'hono'
@@ -180,9 +180,9 @@ async function setupBrand(db) {
   // These are additive migrations — each is silently skipped if the column already exists.
   try { await db.execute("ALTER TABLE brand ADD COLUMN tagline TEXT DEFAULT 'Training & Certification Platform'") } catch {}
   try { await db.execute("ALTER TABLE brand ADD COLUMN logo_url TEXT DEFAULT ''") } catch {}
-  try { await db.execute("ALTER TABLE brand ADD COLUMN primary_color TEXT DEFAULT '#1B78F2'") } catch {}
-  try { await db.execute("ALTER TABLE brand ADD COLUMN secondary_color TEXT DEFAULT '#241C59'") } catch {}
-  try { await db.execute("ALTER TABLE brand ADD COLUMN accent_color TEXT DEFAULT '#D9631E'") } catch {}
+  try { await db.execute("ALTER TABLE brand ADD COLUMN primary_color TEXT DEFAULT '#1565ff'") } catch {}
+  try { await db.execute("ALTER TABLE brand ADD COLUMN secondary_color TEXT DEFAULT '#1b1a5c'") } catch {}
+  try { await db.execute("ALTER TABLE brand ADD COLUMN accent_color TEXT DEFAULT '#d99100'") } catch {}
   try { await db.execute("ALTER TABLE brand ADD COLUMN font_family TEXT DEFAULT 'Inter'") } catch {}
   try { await db.execute("ALTER TABLE brand ADD COLUMN font_url TEXT DEFAULT ''") } catch {}
 }
@@ -198,9 +198,9 @@ app.get('/api/brand', async (c) => {
     await ensureSetup(db)
     const res = await db.execute({ sql: 'SELECT * FROM brand WHERE id = ?', args: ['default'] })
     const brand = toObj(res)
-    return brand ? c.json(brand) : c.json({ org_name: 'TrainFlow' })
+    return brand ? c.json(brand) : c.json({ org_name: 'Pregame Academy' })
   } catch {
-    return c.json({ org_name: 'TrainFlow' })
+    return c.json({ org_name: 'Pregame Academy' })
   }
 })
 
@@ -993,7 +993,7 @@ app.get('/api/scrape', requireAdmin, async (c) => {
   try {
     res = await fetch(`https://r.jina.ai/${u.href}`, {
       headers: {
-        Accept: 'text/plain', 'X-Return-Format': 'markdown', 'User-Agent': 'TrainFlow-Importer',
+        Accept: 'text/plain', 'X-Return-Format': 'markdown', 'User-Agent': 'PregameAcademy-Importer',
         // Optional: a Jina API key lifts the shared-IP rate limit (wrangler secret put JINA_API_KEY)
         ...(c.env.JINA_API_KEY ? { Authorization: `Bearer ${c.env.JINA_API_KEY}` } : {}),
       },

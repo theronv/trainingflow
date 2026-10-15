@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════════
-//  TRAINFLOW — Admin Management (Stable)
+//  PREGAME ACADEMY — Admin Management (Stable)
 // ══════════════════════════════════════════════════════════
 
 const Admin = {
@@ -339,7 +339,7 @@ const Admin = {
   },
 
   copyInviteMessage(code, teamName) {
-    const orgName = brandCache.name || 'TrainFlow';
+    const orgName = brandCache.name || CONFIG.DEFAULT_BRAND_NAME;
     const url = window.location.origin + window.location.pathname;
     const team = teamName ? ` (${teamName})` : '';
     const msg = `Hi,\n\nYou've been added as a manager on ${orgName}${team}.\n\nTo set up your account:\n1. Go to: ${url}\n2. Click Manager → Register with Invite Code\n3. Enter your invite code: ${code}\n\nOnce registered you can add your team and assign training.\n\nWelcome aboard!`;
@@ -1011,7 +1011,7 @@ const Admin = {
       const blob = new Blob([csv], { type: 'text/csv' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = `trainflow-completions-${new Date().toISOString().slice(0,10)}.csv`;
+      a.download = `pregame-academy-completions-${new Date().toISOString().slice(0,10)}.csv`;
       a.click();
       URL.revokeObjectURL(a.href);
     } catch(e) { Toast.err(e.message); }

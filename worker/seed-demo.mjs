@@ -1,5 +1,5 @@
 /**
- * TrainingFlow — Demo Seed Script
+ * Pregame Academy — Demo Seed Script
  *
  * Populates the database with realistic demo data:
  *   - 2 teams, 2 managers, 10 learners
@@ -144,10 +144,10 @@ async function seedBrand() {
        (id, org_name, tagline, primary_color, secondary_color,
         pass_threshold, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    ['default', 'Meridian Health', 'Empowering our people through learning',
-     '#0F4C81', '#1A6B3C', 80, now, now]
+    ['default', 'Pregame Academy', 'Training and certification for your team',
+     '#1565ff', '#1b1a5c', 80, now, now]
   )
-  console.log('   ✓ Brand: Meridian Health')
+  console.log('   ✓ Brand: Pregame Academy')
 }
 
 // ── Admin ─────────────────────────────────────────────────────────────────────
@@ -639,7 +639,7 @@ async function seedAssignmentsAndCompletions(userIds, courses) {
 
 async function main() {
   console.log('\n╔══════════════════════════════════════════╗')
-  console.log('║   TrainingFlow — Demo Seed Script        ║')
+  console.log('║   Pregame Academy — Demo Seed Script        ║')
   console.log('╚══════════════════════════════════════════╝')
 
   try {

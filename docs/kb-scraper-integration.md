@@ -10,7 +10,7 @@
 
 `kb_scraper.py` is a local browser-based tool that takes a list of URLs, fetches each via the Jina Reader API (`r.jina.ai/{url}`), and saves clean Markdown files to `~/Desktop/training_docs/`. It's currently a standalone Python utility.
 
-The TrainingFlow AI Importer (Upload → Configure → Generate → Review) already accepts `.md` files and parses them via `Admin.parseMdToModules()` in `js/admin.js:1190`. Jina Reader's output format — `Title:`, `URL Source:`, `##` section headings — maps directly to what the parser expects.
+The Pregame Academy AI Importer (Upload → Configure → Generate → Review) already accepts `.md` files and parses them via `Admin.parseMdToModules()` in `js/admin.js:1190`. Jina Reader's output format — `Title:`, `URL Source:`, `##` section headings — maps directly to what the parser expects.
 
 **The scraper and importer already speak the same language. No format conversion needed.**
 
@@ -43,7 +43,7 @@ app.get('/api/scrape', requireAdmin, async (c) => {
   const url = c.req.query('url')
   if (!url) return c.json({ error: 'url param required' }, 400)
   const res = await fetch(`https://r.jina.ai/${encodeURIComponent(url)}`, {
-    headers: { 'User-Agent': 'TrainingFlow-Educational' }
+    headers: { 'User-Agent': 'Pregame Academy-Educational' }
   })
   if (!res.ok) return c.json({ error: `Jina fetch failed: ${res.status}` }, 502)
   const markdown = await res.text()
@@ -66,7 +66,7 @@ The Generate step and everything downstream runs exactly as today — no other c
 
 ## Tier 3 — Full In-App Scraper (Future)
 
-Replace the Python tool entirely. Build a Scrape Queue UI inside TrainingFlow with start/stop/progress identical to the Python tool, but embedded in the Importer flow. Lower priority — Tier 2 covers the practical need.
+Replace the Python tool entirely. Build a Scrape Queue UI inside Pregame Academy with start/stop/progress identical to the Python tool, but embedded in the Importer flow. Lower priority — Tier 2 covers the practical need.
 
 ---
 

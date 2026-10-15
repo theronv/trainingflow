@@ -3,13 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#fafaf9">
-<meta name="description" content="TrainFlow — Department Training & Certification">
-<title>TrainFlow</title>
+<meta name="theme-color" content="#000000">
+<meta name="description" content="Pregame Academy — Training & Certification">
+<title>Pregame Academy</title>
+<link rel="icon" href="assets/pregame-icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="assets/pregame-icon-512.png">
 <link rel="icon" href="data:;base64,iVBORw0KGgo=">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -23,7 +22,7 @@ if (typeof marked !== 'undefined') {
 }
 </script>
 <link rel="stylesheet" href="css/style.css">
-<script>try{if(localStorage.getItem('trainflow_theme')!=='dark')document.documentElement.setAttribute('data-theme','light')}catch(e){document.documentElement.setAttribute('data-theme','light')}</script>
+<script>try{var t=localStorage.getItem('trainflow_theme');var d=t?t==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches;if(!d)document.documentElement.setAttribute('data-theme','light')}catch(e){document.documentElement.setAttribute('data-theme','light')}</script>
 </head>
 <body>
 <button class="theme-toggle" id="global-theme-toggle" onclick="App.toggleTheme()" title="Switch to dark mode" aria-label="Toggle theme" style="position:fixed;bottom:20px;right:20px;z-index:9999;box-shadow:var(--shadow-md);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg></button>
@@ -37,7 +36,8 @@ if (typeof marked !== 'undefined') {
       <div class="ldg-logo-wrap hidden" id="ldg-logo-wrap">
         <img id="ldg-logo" class="ldg-logo-img" src="" alt="">
       </div>
-      <h1 class="landing-logo" id="ldg-brand">TrainFlow</h1>
+      <div class="ldg-kicker">Training &amp; Certification</div>
+      <h1 class="landing-logo" id="ldg-brand">Pregame Academy</h1>
       <div id="ldg-org" class="ldg-org"></div>
       <p class="landing-sub" id="ldg-tagline">Assign, track, and certify your team's training — in one place.</p>
     </header>
@@ -156,7 +156,7 @@ if (typeof marked !== 'undefined') {
   <div class="topbar">
     <div class="brand">
       <img id="m-logo" class="brand-logo hidden" src="" alt="">
-      <span id="m-brand">TrainFlow</span>
+      <span id="m-brand">Pregame Academy</span>
     </div>
     <div style="margin-left:var(--space-3);">
       <span class="chip chip-blue" id="m-team-badge">Team</span>
@@ -262,7 +262,7 @@ if (typeof marked !== 'undefined') {
   <div class="topbar">
     <div class="brand">
       <img id="l-logo" class="brand-logo hidden" src="" alt="">
-      <span id="l-brand">TrainFlow</span>
+      <span id="l-brand">Pregame Academy</span>
     </div>
     <div class="topbar-right">
       <div class="user-pill" id="l-user-pill" style="display:none">
@@ -392,7 +392,7 @@ if (typeof marked !== 'undefined') {
   <div class="topbar">
     <div class="brand">
       <img id="a-logo" class="brand-logo hidden" src="" alt="">
-      <span id="a-brand">TrainFlow</span>
+      <span id="a-brand">Pregame Academy</span>
     </div>
     <div style="margin-left:var(--space-3);">
       <span class="chip chip-amber">Admin</span>
@@ -825,7 +825,7 @@ if (typeof marked !== 'undefined') {
             <div class="field" style="margin-bottom:0;">
               <label>Font Family</label>
               <select id="br-font" onchange="App.changeFontPreset(this.value)">
-                <option value="Inter">Inter (Default)</option>
+                <option value="System">System (Default)</option>
                 <option value="Roboto">Roboto</option>
                 <option value="Open Sans">Open Sans</option>
                 <option value="Lato">Lato</option>

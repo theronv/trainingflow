@@ -1,4 +1,4 @@
-# TrainFlow
+# Pregame Academy
 
 > A modern, lightweight Learning Management System (LMS) for professional teams — AI-assisted course creation, role-based access, targeted assignments, progress tracking, and verifiable certifications.
 
@@ -9,7 +9,7 @@
 
 ## What It Does
 
-TrainFlow is a full-stack LMS designed for professional environments where rapid deployment and verifiable compliance matter. It covers the entire training lifecycle — from AI-assisted content ingestion to learner certification — with three distinct role-based portals.
+Pregame Academy is a full-stack LMS designed for professional environments where rapid deployment and verifiable compliance matter. It covers the entire training lifecycle — from AI-assisted content ingestion to learner certification — with three distinct role-based portals.
 
 **Admins** manage the entire platform: create and organise courses into sections, import content via AI, manage all users and teams, configure branding, and export compliance data.
 

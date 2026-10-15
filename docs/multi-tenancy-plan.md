@@ -1,4 +1,4 @@
-# Multi-Tenancy Plan — TrainFlow
+# Multi-Tenancy Plan — Pregame Academy
 
 **Status:** Proposal · **Author:** Architecture review · **Date:** 2026-06-18
 

@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════════
-//  TRAINFLOW — Manager Dashboard & Scoping
+//  PREGAME ACADEMY — Manager Dashboard & Scoping
 // ══════════════════════════════════════════════════════════
 
 const Manager = {
@@ -241,7 +241,7 @@ const Manager = {
       : 'name,password\nJane Smith,welcome123\nJohn Doe,securepass';
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
-    a.download = 'trainflow-learners-template.csv';
+    a.download = 'pregame-academy-learners-template.csv';
     a.click();
   },
 
@@ -373,7 +373,7 @@ const Manager = {
   downloadCredsCSV() {
     const rows = Manager._credsRows || [];
     if (!rows.length) return;
-    const orgName = brandCache.name || 'TrainFlow';
+    const orgName = brandCache.name || CONFIG.DEFAULT_BRAND_NAME;
     const csv = [
       [`${orgName} — Team Credentials`, '', ''],
       ['Generated', new Date().toLocaleDateString(), ''],
