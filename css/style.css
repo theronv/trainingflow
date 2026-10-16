@@ -2070,7 +2070,20 @@ button, .nav-btn, .quiz-opt, .course-card, .role-tile, label { touch-action: man
 .auth-or { display:flex; align-items:center; gap:var(--space-3); margin:var(--space-4) 0; color:var(--ink-4); font-size:var(--text-xs); text-transform:uppercase; letter-spacing:.08em; }
 .auth-or::before, .auth-or::after { content:''; flex:1; height:1px; background:var(--border); }
 
-/* Landing: single role-aware sign-in */
-.ldg-signin { display:flex; flex-direction:column; align-items:flex-start; gap:var(--space-3); margin:var(--space-6) 0 var(--space-6); }
-.ldg-signin-sub { color:var(--ink-3); font-size:var(--text-sm); }
+/* Landing: single role-aware sign-in card, overlapping the hero edge like the old tiles */
+.ldg-signin {
+  display:flex; flex-direction:column; gap:var(--space-3); align-items:stretch;
+  width:100%; max-width:440px; margin:0 0 var(--space-6);
+  padding:var(--space-6); background:var(--surface);
+  border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow-md);
+}
+.ldg-signin-title { margin:0; font-size:var(--text-xl); font-weight:600; color:var(--ink-1); }
+.ldg-signin-sub { margin:0 0 var(--space-2); color:var(--ink-3); font-size:var(--text-sm); line-height:1.5; }
+.ldg-signin .auth-or { margin:var(--space-2) 0; }
+.ldg-signin-links { display:flex; flex-direction:column; gap:var(--space-2); align-items:center; }
+.ldg-link { background:none; border:0; padding:var(--space-2); font:inherit; font-size:var(--text-sm); font-weight:500; color:var(--accent); cursor:pointer; border-radius:var(--radius-md); }
+.ldg-link:hover { text-decoration:underline; }
+.ldg-link:focus-visible { outline:2px solid var(--brand); outline-offset:2px; }
+.ldg-link-quiet { align-self:center; color:var(--ink-3); font-size:var(--text-xs); font-weight:400; }
 .role-grid.hidden { display:none; }
+@media (max-width:720px) { .ldg-signin { max-width:none; } }

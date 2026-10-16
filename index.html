@@ -33,19 +33,25 @@ if (typeof marked !== 'undefined') {
 <div id="screen-landing" class="screen active">
   <div class="landing-wrap">
     <header class="ldg-head">
-      <div class="ldg-logo-wrap hidden" id="ldg-logo-wrap">
-        <img id="ldg-logo" class="ldg-logo-img" src="" alt="">
+      <div class="ldg-logo-wrap" id="ldg-logo-wrap">
+        <img id="ldg-logo" class="ldg-logo-img" src="assets/pregame-icon-192.png" alt="">
       </div>
       <div class="ldg-kicker">Training &amp; Certification</div>
       <h1 class="landing-logo" id="ldg-brand">Pregame Academy</h1>
       <div id="ldg-org" class="ldg-org"></div>
       <p class="landing-sub" id="ldg-tagline">Assign, track, and certify your team's training — in one place.</p>
     </header>
-    <div class="ldg-signin">
-      <button type="button" class="btn btn-primary btn-xl" onclick="App.emailSignIn()">Sign in</button>
-      <div class="ldg-signin-sub">Use your work email. We'll take you to the right place for your role.</div>
-      <button type="button" class="ldg-demo" onclick="document.getElementById('ldg-pw-signin').classList.toggle('hidden')">Sign in with a name and password instead</button>
-    </div>
+    <section class="ldg-signin" aria-labelledby="ldg-signin-title">
+      <h2 class="ldg-signin-title" id="ldg-signin-title">Sign in</h2>
+      <p class="ldg-signin-sub">Use your work email. We'll take you to the right place for your role.</p>
+      <button type="button" class="btn btn-primary btn-xl w-full" onclick="App.emailSignIn()">Continue with email</button>
+      <div class="auth-or"><span>New here?</span></div>
+      <div class="ldg-signin-links">
+        <button type="button" class="btn btn-outline w-full" onclick="App.openJoin()">I have an invite code</button>
+        <button type="button" class="ldg-link" onclick="App.startDemo()">Explore with demo data</button>
+      </div>
+      <button type="button" class="ldg-link ldg-link-quiet" aria-expanded="false" onclick="const g=document.getElementById('ldg-pw-signin');g.classList.toggle('hidden');this.setAttribute('aria-expanded',!g.classList.contains('hidden'))">Sign in with a name and password instead</button>
+    </section>
     <div class="role-grid hidden" id="ldg-pw-signin">
       <button type="button" class="role-tile role-tile-primary" onclick="App.goLearner()">
         <span class="role-tile-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"/><path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></svg></span>
@@ -71,11 +77,7 @@ if (typeof marked !== 'undefined') {
       <li><span class="ldg-feat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span><div><strong>Track</strong><span>See progress, scores, and overdue work in real time.</span></div></li>
       <li><span class="ldg-feat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg></span><div><strong>Certify</strong><span>Issue verifiable certificates when learners pass.</span></div></li>
     </ul>
-    <div class="ldg-links">
-      <button type="button" class="ldg-demo" onclick="App.openJoin()">Have an invite code? Join your team <span aria-hidden="true">→</span></button>
-      <button type="button" class="ldg-demo" onclick="App.startDemo()">Explore with demo data <span aria-hidden="true">→</span></button>
-    </div>
-    <p class="landing-foot">Invited by your manager? Use <strong>Have an invite code?</strong> above. Your data stays private — no third-party tracking.</p>
+    <p class="landing-foot">Your data stays private — no third-party tracking.</p>
   </div>
 </div>
 
