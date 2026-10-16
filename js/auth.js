@@ -26,7 +26,15 @@ const ClerkAuth = {
       sc.src = `${CONFIG.CLERK_FRONTEND_API}/npm/@clerk/clerk-js@5/dist/clerk.browser.js`;
       sc.async = true; sc.crossOrigin = 'anonymous';
       sc.setAttribute('data-clerk-publishable-key', CONFIG.CLERK_PUBLISHABLE_KEY);
-      sc.onload = async () => { try { await window.Clerk.load(); resolve(window.Clerk); } catch (e) { reject(e); } };
+      sc.onload = async () => { try {
+        // Match Clerk's sign-in modal to the app's brand.
+        const cs = getComputedStyle(document.documentElement);
+        await window.Clerk.load({ appearance: {
+          variables: { colorPrimary: (cs.getPropertyValue('--brand') || '#1565ff').trim(), borderRadius: '6px', fontFamily: 'inherit' },
+          layout: { logoImageUrl: new URL(brandCache?.logo || CONFIG.DEFAULT_LOGO, location.href).href, logoPlacement: 'inside' }
+        } });
+        resolve(window.Clerk);
+      } catch (e) { reject(e); } };
       sc.onerror = () => { ClerkAuth._loading = null; reject(new Error('Could not load email sign-in. Check your connection.')); };
       document.head.appendChild(sc);
     });
