@@ -515,6 +515,7 @@ const AppProxy = {
     }
     // Returning from Google/email sign-in (full-page redirect): finish signing in.
     if (await Auth.resumeClerk()) return;
+    Auth.showUnfinishedTrace();
     if (getToken()) Admin.init();
     else if (getManagerToken()) Manager.init();
     else if (getLearnerToken()) Learner.init();
