@@ -43,15 +43,13 @@ const ClerkAuth = {
   // Resolves with a fresh Clerk session token once the person has signed in (opens Clerk's modal if needed).
   async token(mode = 'signin') {
     const clerk = await ClerkAuth.load();
-    ClerkTrace.add('clerk-loaded', clerk.session ? 'has-session' : (clerk.user || clerk.client?.sessions?.length ? 'stale-session' : 'no-session'));
     // A leftover half-finished session makes Clerk refuse to open the sign-in form: clear it first.
-    if (!clerk.session && (clerk.user || clerk.client?.sessions?.length)) { await ClerkAuth.signOut(); ClerkTrace.add('stale-cleared'); }
+    if (!clerk.session && (clerk.user || clerk.client?.sessions?.length)) { await ClerkAuth.signOut(); }
     if (!clerk.session) {
       await new Promise(resolve => {
         const off = clerk.addListener(({ session }) => { if (session) { off(); clerk.closeSignIn(); resolve(); } });
         // Google/social sign-in is a full-page redirect; bring the person back to this exact page.
         const back = location.origin + location.pathname;
-        ClerkTrace.add('modal-open', mode);
         if (mode === 'signup') clerk.openSignUp({ forceRedirectUrl: back, signInForceRedirectUrl: back });
         // Sign-in popup: no "Sign up" link. New people use Request access or an invite code.
         else clerk.openSignIn({ forceRedirectUrl: back, signUpForceRedirectUrl: back, appearance: { elements: { footerAction: { display: 'none' } } } });
@@ -66,25 +64,6 @@ const ClerkAuth = {
       if (c && (c.session || c.user || c.client?.sessions?.length)) await new Promise(res => { c.signOut(res); setTimeout(res, 4000); });
     } catch (e) { /* ignore */ }
   }
-};
-
-// Breadcrumbs for sign-in attempts. Kept in localStorage (survives the Google redirect) so that,
-// if an attempt dies silently, the landing page can say where.
-const ClerkTrace = {
-  KEY: 'trainflow_clerk_trace',
-  get() { try { return JSON.parse(localStorage.getItem(ClerkTrace.KEY)) || []; } catch (e) { return []; } },
-  add(stage, info = '') {
-    try {
-      const t = ClerkTrace.get().slice(-14);
-      t.push(`${new Date().toISOString().slice(11, 19)} ${stage}${info ? ' ' + info : ''}`);
-      localStorage.setItem(ClerkTrace.KEY, JSON.stringify(t));
-      localStorage.setItem(ClerkTrace.KEY + '_at', String(Date.now()));
-    } catch (e) { /* ignore */ }
-  },
-  clear() { try { localStorage.removeItem(ClerkTrace.KEY); } catch (e) { /* ignore */ } },
-  // Any attempt from the last 3 minutes is shown on the landing page (finished or not): if you are looking
-  // at the landing page after signing in, something sent you back.
-  recent() { try { const t = ClerkTrace.get(); const at = +localStorage.getItem(ClerkTrace.KEY + '_at') || 0; return t.length && Date.now() - at < 180000 ? t : null; } catch (e) { return null; } }
 };
 
 const ClerkPending = {
@@ -104,10 +83,6 @@ const Auth = {
     const el = $$('ldg-notice'); if (!el) return Toast.err(msg);
     el.textContent = msg; el.classList.remove('hidden');
   },
-  showUnfinishedTrace() {
-    const t = ClerkTrace.recent();
-    if (t && !location.hash.startsWith('#invite')) Auth._landingNotice('Sign-in steps recorded: ' + t.join(' → '));
-  },
   _clearLandingNotice() { $$('ldg-notice')?.classList.add('hidden'); },
   // ─── REQUEST ACCESS (new learners) ───
   async submitRequestAccess() {
@@ -125,11 +100,9 @@ const Auth = {
   // ─── EMAIL SIGN-IN (learners + managers; role comes from the account) ───
   async emailSignIn() {
     Auth._clearLandingNotice();
-    ClerkTrace.clear(); ClerkTrace.add('click');
     ClerkPending.set({ mode: 'login' });
     try {
       const token = await ClerkAuth.token();
-      ClerkTrace.add('token-in-page');
       await Auth._clerkLogin(token);
     } catch (e) {
       await ClerkAuth.signOut();
@@ -137,11 +110,8 @@ const Auth = {
     } finally { ClerkPending.clear(); }
   },
   async _clerkLogin(token) {
-    ClerkTrace.add('exchange-start');
     const data = await api('/api/auth/clerk/login', { method: 'POST', body: JSON.stringify({ token }) });
-    ClerkTrace.add('exchange-ok', data.user?.role);
     Auth._enter(data);
-    ClerkTrace.add('done');
   },
   // Google sign-in leaves the page and comes back, losing in-memory state. Remember what the person
   // was doing, and finish it once Clerk has restored their session. Returns true if it took over.
@@ -150,7 +120,6 @@ const Auth = {
     // Coming back from Clerk's redirect always means "finish signing in", even if sessionStorage was lost.
     const pending = ClerkPending.atLoad || (returning ? { mode: 'login' } : null);
     if (!pending) return false;
-    ClerkTrace.add('resume-check', `pending=${ClerkPending.atLoad ? 'y' : 'n'} returning=${returning ? 'y' : 'n'} hash=${location.hash.slice(0, 20)}`);
     const cleanUrl = () => {
       const u = new URL(location.href);
       [...u.searchParams.keys()].filter(k => k.startsWith('__clerk')).forEach(k => u.searchParams.delete(k));
@@ -160,7 +129,6 @@ const Auth = {
     try {
       // Clerk must load BEFORE the handshake params leave the URL: it reads them to restore the session.
       const clerk = await ClerkAuth.load();
-      ClerkTrace.add('resume-clerk-loaded', clerk.session ? 'has-session' : 'no-session');
       cleanUrl();
       if (!clerk.session) { Auth._landingNotice('Sign-in did not complete (no session came back from Clerk). Please try again.'); return false; }
       const token = await clerk.session.getToken();
@@ -173,14 +141,12 @@ const Auth = {
       }
       return true;
     } catch (e) {
-      ClerkTrace.add('resume-error', e.message);
       await ClerkAuth.signOut();
       Auth._landingNotice(e.message || 'Email sign-in failed.');
       return false;
     } finally { ClerkPending.clear(); }
   },
   _enter(data) {
-    ClerkTrace.add('entering', data.user?.role);
     scheduleExpiryWarning(data.token);
     if (data.user.role === 'admin') {
       setToken(data.token); applyBrand(); App.show('screen-admin'); Admin.init();
