@@ -43,7 +43,9 @@ const ClerkAuth = {
   // Resolves with a fresh Clerk session token once the person has signed in (opens Clerk's modal if needed).
   async token(mode = 'signin') {
     const clerk = await ClerkAuth.load();
-    ClerkTrace.add('clerk-loaded', clerk.session ? 'has-session' : 'no-session');
+    ClerkTrace.add('clerk-loaded', clerk.session ? 'has-session' : (clerk.user || clerk.client?.sessions?.length ? 'stale-session' : 'no-session'));
+    // A leftover half-finished session makes Clerk refuse to open the sign-in form: clear it first.
+    if (!clerk.session && (clerk.user || clerk.client?.sessions?.length)) { await ClerkAuth.signOut(); ClerkTrace.add('stale-cleared'); }
     if (!clerk.session) {
       await new Promise(resolve => {
         const off = clerk.addListener(({ session }) => { if (session) { off(); clerk.closeSignIn(); resolve(); } });
@@ -57,7 +59,13 @@ const ClerkAuth = {
     }
     return clerk.session.getToken();
   },
-  async signOut() { try { if (window.Clerk?.session) await window.Clerk.signOut(); } catch (e) { /* ignore */ } }
+  // Passing a callback makes Clerk sign out WITHOUT redirecting, so the page (and any message on it) stays put.
+  async signOut() {
+    try {
+      const c = window.Clerk;
+      if (c && (c.session || c.user || c.client?.sessions?.length)) await new Promise(res => { c.signOut(res); setTimeout(res, 4000); });
+    } catch (e) { /* ignore */ }
+  }
 };
 
 // Breadcrumbs for sign-in attempts. Kept in localStorage (survives the Google redirect) so that,
