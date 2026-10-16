@@ -105,16 +105,20 @@ const Auth = {
   // Google sign-in leaves the page and comes back, losing in-memory state. Remember what the person
   // was doing, and finish it once Clerk has restored their session. Returns true if it took over.
   async resumeClerk() {
-    const pending = ClerkPending.get();
     const returning = /[?&]__clerk/.test(location.search);
-    if (!pending && !returning) return false;
-    // Tidy the URL (drop Clerk's handshake params) without a reload.
-    const u = new URL(location.href);
-    [...u.searchParams.keys()].filter(k => k.startsWith('__clerk')).forEach(k => u.searchParams.delete(k));
-    history.replaceState(null, '', u.pathname + (u.search || '') + u.hash);
-    if (!pending) return false; // handshake only; no sign-in was in progress
+    // Coming back from Clerk's redirect always means "finish signing in", even if sessionStorage was lost.
+    const pending = ClerkPending.get() || (returning ? { mode: 'login' } : null);
+    if (!pending) return false;
+    const cleanUrl = () => {
+      const u = new URL(location.href);
+      [...u.searchParams.keys()].filter(k => k.startsWith('__clerk')).forEach(k => u.searchParams.delete(k));
+      history.replaceState(null, '', u.pathname + (u.search || '') + u.hash);
+    };
+    if (!pending) { cleanUrl(); return false; } // handshake only; no sign-in was in progress
     try {
+      // Clerk must load BEFORE the handshake params leave the URL: it reads them to restore the session.
       const clerk = await ClerkAuth.load();
+      cleanUrl();
       if (!clerk.session) { Auth._landingNotice('Sign-in did not complete (no session came back from Clerk). Please try again.'); return false; }
       const token = await clerk.session.getToken();
       if (pending.mode === 'join') {
