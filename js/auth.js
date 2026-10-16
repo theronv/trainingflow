@@ -92,6 +92,9 @@ const ClerkPending = {
   clear() { try { sessionStorage.removeItem(ClerkPending.KEY); } catch (e) { /* ignore */ } }
 };
 
+// What was pending when THIS page loaded (a click made after load must not count as "returning").
+ClerkPending.atLoad = ClerkPending.get();
+
 const Auth = {
   // Sign-in failures stay on screen (a toast vanishes before you can read it).
   _landingNotice(msg) {
@@ -143,9 +146,9 @@ const Auth = {
   async resumeClerk() {
     const returning = /[?&]__clerk/.test(location.search);
     // Coming back from Clerk's redirect always means "finish signing in", even if sessionStorage was lost.
-    const pending = ClerkPending.get() || (returning ? { mode: 'login' } : null);
+    const pending = ClerkPending.atLoad || (returning ? { mode: 'login' } : null);
     if (!pending) return false;
-    ClerkTrace.add('resume-check', `pending=${ClerkPending.get() ? 'y' : 'n'} returning=${returning ? 'y' : 'n'} hash=${location.hash.slice(0, 20)}`);
+    ClerkTrace.add('resume-check', `pending=${ClerkPending.atLoad ? 'y' : 'n'} returning=${returning ? 'y' : 'n'} hash=${location.hash.slice(0, 20)}`);
     const cleanUrl = () => {
       const u = new URL(location.href);
       [...u.searchParams.keys()].filter(k => k.startsWith('__clerk')).forEach(k => u.searchParams.delete(k));
