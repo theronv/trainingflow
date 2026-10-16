@@ -1146,6 +1146,7 @@ tbody tr:hover td { background: var(--surface); }
 .prose-content p { margin-bottom: var(--space-4); }
 .prose-content ul, .prose-content ol { padding-left: var(--space-6); margin-bottom: var(--space-4); }
 .prose-content li { margin-bottom: 4px; }
+.prose-content img { display: block; max-width: 100%; height: auto; margin: var(--space-4) 0; border: 1px solid var(--border); border-radius: var(--radius-md); background: #fff; }
 .prose-content a { color: var(--brand); text-decoration: underline; }
 .prose-content a:hover { opacity: 0.8; }
 .prose-content code { font-family: var(--font-mono); font-size: 0.875em; background: var(--surface-2); padding: 1px 6px; border-radius: 4px; color: var(--ink-1); }
