@@ -41,14 +41,16 @@ const ClerkAuth = {
     return ClerkAuth._loading;
   },
   // Resolves with a fresh Clerk session token once the person has signed in (opens Clerk's modal if needed).
-  async token() {
+  async token(mode = 'signin') {
     const clerk = await ClerkAuth.load();
     if (!clerk.session) {
       await new Promise(resolve => {
         const off = clerk.addListener(({ session }) => { if (session) { off(); clerk.closeSignIn(); resolve(); } });
         // Google/social sign-in is a full-page redirect; bring the person back to this exact page.
         const back = location.origin + location.pathname;
-        clerk.openSignIn({ forceRedirectUrl: back, signUpForceRedirectUrl: back });
+        if (mode === 'signup') clerk.openSignUp({ forceRedirectUrl: back, signInForceRedirectUrl: back });
+        // Sign-in popup: no "Sign up" link. New people use Request access or an invite code.
+        else clerk.openSignIn({ forceRedirectUrl: back, signUpForceRedirectUrl: back, appearance: { elements: { footerAction: { display: 'none' } } } });
       });
     }
     return clerk.session.getToken();
@@ -141,7 +143,7 @@ const Auth = {
     const btn = $$('join-email-btn'); btn.disabled = true;
     ClerkPending.set({ mode: 'join', code, name });
     try {
-      const token = await ClerkAuth.token();
+      const token = await ClerkAuth.token('signup');
       const data = await api('/api/auth/register', { method: 'POST', body: JSON.stringify({ name, code, clerk_token: token }) });
       ['join-code','join-name'].forEach(id => { $$(id).value = ''; });
       Toast.ok(`Welcome, ${data.user.name}!`);
