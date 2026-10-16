@@ -708,6 +708,13 @@ app.post('/api/auth/clerk/login', async (c) => {
   if (_rateCheck(`clerk:${ip}`)) return c.json({ error: 'Too many attempts. Try again in a minute.' }, 429)
   const clerk = await verifyClerkToken(c.env, body.token)
   if (!clerk) return c.json({ error: 'Email sign-in could not be verified.' }, 401)
+  // Owner/admin emails (comma-separated secret ADMIN_EMAILS) sign in as admin. Admin has no users row.
+  const adminEmails = String(c.env.ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean)
+  if (clerk.email && adminEmails.includes(clerk.email)) {
+    const t = Math.floor(Date.now() / 1000)
+    const token = await sign({ role: 'admin', iat: t, exp: t + CONSTANTS.ADMIN_JWT_EXP_SEC }, c.env.JWT_SECRET, 'HS256')
+    return c.json({ token, user: { role: 'admin', name: 'Admin' } })
+  }
   const db = getDb(c.env)
   await ensureSetup(db)
   const find = (sql, args) => db.execute({ sql: `SELECT u.*, t.name AS team_name FROM users u LEFT JOIN teams t ON u.team_id = t.id WHERE ${sql}`, args }).then(toObj)

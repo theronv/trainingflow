@@ -60,7 +60,9 @@ const Auth = {
   },
   _enter(data) {
     scheduleExpiryWarning(data.token);
-    if (data.user.role === 'manager') {
+    if (data.user.role === 'admin') {
+      setToken(data.token); applyBrand(); App.show('screen-admin'); Admin.init();
+    } else if (data.user.role === 'manager') {
       setManagerToken(data.token); setManagerUser(data.user); curManager = data.user;
       Manager.init();
     } else {

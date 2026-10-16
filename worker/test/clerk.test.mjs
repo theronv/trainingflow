@@ -72,6 +72,16 @@ describe('Clerk email sign-in', () => {
     expect(pw.status).toBe(401)
   })
 
+  it('ADMIN_EMAILS signs the owner in as admin; others are unaffected', async () => {
+    h.env.ADMIN_EMAILS = 'Boss@Example.com, other@example.com'
+    const res = await login(await mint({ email: 'boss@example.com', sub: 'user_boss' }))
+    expect(res.status).toBe(200)
+    expect(res.json.user.role).toBe('admin')
+    expect(await verify(res.json.token, h.env.JWT_SECRET, 'HS256')).toMatchObject({ role: 'admin' })
+    expect((await h.request('/api/admin/stats', { token: res.json.token })).status).toBe(200)
+    expect((await login(await mint({ email: 'pat@example.com' }))).status).toBe(404)
+  })
+
   it('refuses everything when Clerk is not configured', async () => {
     delete h.env.CLERK_ISSUER
     expect((await login(await mint())).status).toBe(401)

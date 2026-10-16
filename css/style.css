@@ -2069,3 +2069,8 @@ button, .nav-btn, .quiz-opt, .course-card, .role-tile, label { touch-action: man
 /* Divider between password and email sign-in */
 .auth-or { display:flex; align-items:center; gap:var(--space-3); margin:var(--space-4) 0; color:var(--ink-4); font-size:var(--text-xs); text-transform:uppercase; letter-spacing:.08em; }
 .auth-or::before, .auth-or::after { content:''; flex:1; height:1px; background:var(--border); }
+
+/* Landing: single role-aware sign-in */
+.ldg-signin { display:flex; flex-direction:column; align-items:flex-start; gap:var(--space-3); margin:var(--space-6) 0 var(--space-6); }
+.ldg-signin-sub { color:var(--ink-3); font-size:var(--text-sm); }
+.role-grid.hidden { display:none; }
