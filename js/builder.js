@@ -130,28 +130,110 @@ const Builder = {
     finally { if (btn) { btn.disabled = false; if (origText) btn.textContent = origText; } }
   },
 
-  // ─── ASSIGN INDIVIDUAL (ADMIN) ───
+  // ─── ASSIGN COURSE (ADMIN + MANAGER) ───
+  // Pick whole teams and/or individual learners, optional due date, one batch submit.
+  _assign: null,
+  _assignApi: () => (curManager ? managerApi : api),
+
   async openAssign(cid, title) {
     App._assignCourseId = cid;
     $$('assign-subtitle').textContent = title;
+    $$('assign-search').value = '';
+    $$('assign-due').value = '';
     $$('assign-overlay').classList.remove('hidden');
     $$('assign-list').innerHTML = 'Loading...';
+    Builder._assign = { teams: new Set(), learners: new Set(), assigned: new Set(), people: [], teams_: [] };
+    Builder._assignUpdateBtn();
     try {
-      const [learners, assigns] = await Promise.all([api('/api/learners'), api('/api/assignments')]);
-      const cidAssigns = assigns.filter(a => a.course_id === cid).map(a => a.learner_id);
-      $$('assign-list').innerHTML = learners.map(l => `
-        <div data-name="${esc(l.name)}" style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--rule);">
-          <input type="checkbox" id="chk-ind-${l.id}" ${cidAssigns.includes(l.id)?'checked':''} onchange="Builder.toggleAssign('${l.id}', this.checked)">
-          <label for="chk-ind-${l.id}" style="margin:0;">${esc(l.name)}</label>
-        </div>`).join('');
+      const call = Builder._assignApi();
+      const [people, teams, assigns] = await Promise.all([
+        call('/api/learners?role=learner'),
+        call('/api/admin/teams').catch(() => []),
+        call('/api/assignments')
+      ]);
+      const st = Builder._assign;
+      st.people = (people || []).filter(l => !l.role || l.role === 'learner');
+      st.teams_ = (teams || []).filter(t => st.people.some(l => l.team_id === t.id));
+      assigns.filter(a => a.course_id === cid).forEach(a => st.assigned.add(a.learner_id));
+      Builder._assignRender();
     } catch(e) { $$('assign-list').innerHTML = `<p style="color:var(--fail);">${esc(e.message)}</p>`; }
   },
-  async toggleAssign(lid, checked) {
-    if (!App._assignCourseId) return Toast.err('No course selected.');
+
+  _assignRender() {
+    const st = Builder._assign;
+    const row = (id, label, meta, checked, disabled, data) => `
+      <label data-name="${esc(data)}" style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border);cursor:${disabled ? 'default' : 'pointer'};">
+        <input type="checkbox" ${checked ? 'checked' : ''} ${disabled ? 'disabled' : ''} onchange="${id}">
+        <span style="flex:1;margin:0;">${label}</span>${meta}
+      </label>`;
+    const chip = t => `<span class="chip">${t}</span>`;
+    let html = '';
+    if (st.teams_.length) {
+      html += '<div class="modal-sub" style="margin:4px 0;font-weight:600;">Teams</div>';
+      html += st.teams_.map(t => {
+        const members = st.people.filter(l => l.team_id === t.id);
+        const open = members.filter(l => !st.assigned.has(l.id)).length;
+        const all = open === 0;
+        return row(`Builder._assignToggleTeam(${t.id}, this.checked)`, esc(t.name),
+          chip(all ? 'All assigned' : `${open} of ${members.length} to add`),
+          st.teams.has(t.id) || all, all, `${t.name} team`);
+      }).join('');
+    }
+    html += '<div class="modal-sub" style="margin:12px 0 4px;font-weight:600;">Learners</div>';
+    html += st.people.map(l => {
+      const done = st.assigned.has(l.id);
+      const team = st.teams_.find(t => t.id === l.team_id);
+      return row(`Builder._assignToggleLearner('${l.id}', this.checked)`, esc(l.name),
+        done ? `<span class="chip chip-green">Assigned</span>`
+             : chip(team ? esc(team.name) : 'No team'),
+        done || st.learners.has(l.id) || st.teams.has(l.team_id), done, l.name);
+    }).join('') || '<p style="color:var(--ink-3);">No learners yet.</p>';
+    $$('assign-list').innerHTML = html;
+    App.filterAssignList($$('assign-search').value);
+  },
+
+  _assignToggleTeam(id, on) {
+    const st = Builder._assign;
+    on ? st.teams.add(id) : st.teams.delete(id);
+    Builder._assignRender(); Builder._assignUpdateBtn();
+  },
+  _assignToggleLearner(id, on) {
+    const st = Builder._assign;
+    on ? st.learners.add(id) : st.learners.delete(id);
+    Builder._assignUpdateBtn();
+  },
+  _assignCount() {
+    const st = Builder._assign;
+    const ids = new Set(st.learners);
+    st.people.filter(l => st.teams.has(l.team_id)).forEach(l => ids.add(l.id));
+    st.assigned.forEach(id => ids.delete(id));
+    return ids.size;
+  },
+  _assignUpdateBtn() {
+    const btn = $$('assign-submit-btn');
+    const n = Builder._assign ? Builder._assignCount() : 0;
+    btn.disabled = n === 0;
+    btn.textContent = n ? `Assign to ${n} learner${n === 1 ? '' : 's'}` : 'Assign';
+  },
+
+  async submitAssign() {
+    const st = Builder._assign;
+    if (!App._assignCourseId || !st) return Toast.err('No course selected.');
+    const btn = $$('assign-submit-btn');
+    btn.disabled = true; btn.textContent = 'Assigning…';
     try {
-      const method = checked ? 'POST' : 'DELETE';
-      await api('/api/assignments', { method, body: JSON.stringify({ course_id: App._assignCourseId, learner_id: lid }) });
-      Toast.ok(checked ? 'Course assigned.' : 'Assignment removed.');
-    } catch(e) { Toast.err(e.message); }
+      const res = await Builder._assignApi()('/api/assignments/bulk', {
+        method: 'POST',
+        body: JSON.stringify({
+          course_id: App._assignCourseId,
+          team_ids: [...st.teams],
+          learner_ids: [...st.learners],
+          due_at: $$('assign-due').value || null
+        })
+      });
+      Toast.ok(`Assigned to ${res.added} learner${res.added === 1 ? '' : 's'}.`);
+      $$('assign-overlay').classList.add('hidden');
+      if (curManager) Manager.init(); else Admin.renderCourses?.();
+    } catch(e) { Toast.err(e.message); Builder._assignUpdateBtn(); }
   }
 };

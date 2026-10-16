@@ -195,43 +195,7 @@ const Manager = {
   },
 
   // ─── TEAM ASSIGN ───
-  async openTeamAssign(cid, title) {
-    App._assignCourseId = cid;
-    $$('assign-subtitle').textContent = `Assign ${title} to your team`;
-    $$('assign-overlay').classList.remove('hidden');
-    $$('assign-list').innerHTML = 'Loading team...';
-    try {
-      const [learners, assigns] = await Promise.all([
-        managerApi(`/api/learners?team_id=${curManager.team_id}`),
-        managerApi('/api/assignments')
-      ]);
-      const cidAssigns = assigns.filter(a => a.course_id === cid).map(a => a.learner_id);
-      $$('assign-list').innerHTML = `<div class="field"><label>Due Date (Optional)</label><input type="date" id="team-due-date"></div>` + learners.map(l => {
-        const exists = cidAssigns.includes(l.id);
-        return `<div style="display:flex;align-items:center;gap:12px;padding:8px 0;">
-          <input type="checkbox" id="chk-${l.id}" ${exists?'disabled checked':'checked'}>
-          <label style="margin:0;">${esc(l.name)} ${exists?'(Already assigned)':''}</label>
-        </div>`;
-      }).join('') + `<button class="btn btn-primary w-full" id="team-assign-btn" style="margin-top:12px;" onclick="Manager.submitTeamAssign()">Assign Now</button>`;
-    } catch(e) { $$('assign-list').innerHTML = `<p style="color:var(--fail);">${esc(e.message)}</p>`; }
-  },
-  async submitTeamAssign() {
-    if (!App._assignCourseId) return Toast.err('No course selected.');
-    const btn = $$('team-assign-btn');
-    const orig = btn ? btn.textContent : '';
-    if (btn) { btn.disabled = true; btn.textContent = 'Assigning…'; }
-    try {
-      const due_at = $$('team-due-date').value || null;
-      const checks = $$('assign-list').querySelectorAll('input[type=checkbox]:not(:disabled):checked');
-      for(const chk of checks) {
-        const lid = chk.id.replace('chk-','');
-        await managerApi('/api/assignments', { method:'POST', body:JSON.stringify({ course_id:App._assignCourseId, learner_id:lid, due_at }) });
-      }
-      Toast.ok('Team assigned.');
-      $$('assign-overlay').classList.add('hidden');
-    } catch(e) { Toast.err(e.message); }
-    finally { if (btn) { btn.disabled = false; btn.textContent = orig; } }
-  },
+  openTeamAssign(cid, title) { return Builder.openAssign(cid, title); },
 
   // ─── CSV IMPORT ───
   _csvRows: null,

@@ -7,6 +7,7 @@ const Importer = {
   parsedModules: [],
   generatedCourse: null,
   isGenerating: false,
+  MODULE_CHAR_LIMIT: 12000, // per-module text sent to the AI (merged pages run long)
 
   // AI Settings persistence
   saveAiKeys() {
@@ -216,32 +217,69 @@ CONTENT RULES:
     } catch { /* fall through to the Worker proxy */ }
     return adminApi('/api/scrape?url=' + encodeURIComponent(u.href));
   },
+  // Blank lines split the textarea into groups. A group with 2+ URLs is merged into ONE
+  // module (its first "# Name" comment line, if any, becomes the module title); a
+  // single-URL group imports as before (split into modules by headings).
+  parseUrlGroups(raw) {
+    const groups = []; let cur = { name: '', urls: [] };
+    const flush = () => { if (cur.urls.length) groups.push(cur); cur = { name: '', urls: [] }; };
+    for (const line of raw.split('\n').map(l => l.trim())) {
+      if (!line) { flush(); continue; }
+      if (line.startsWith('#')) { if (!cur.name && !cur.urls.length) cur.name = line.replace(/^#+\s*/, ''); continue; }
+      if (!cur.urls.includes(line)) cur.urls.push(line);
+    }
+    flush();
+    return groups;
+  },
   async importFromUrls() {
-    const raw = $$('imp-url-input').value;
-    const urls = [...new Set(raw.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#')))];
-    if (!urls.length) return Toast.err('Paste at least one URL.');
-    if (urls.length > 20) return Toast.err('Import up to 20 pages at a time.');
+    const groups = Importer.parseUrlGroups($$('imp-url-input').value);
+    const total = groups.reduce((n, g) => n + g.urls.length, 0);
+    if (!total) return Toast.err('Paste at least one URL.');
+    if (total > 40) return Toast.err('Import up to 40 pages at a time.');
     const btn = $$('btn-imp-urls'), list = $$('imp-url-results'), status = $$('imp-url-status');
     btn.disabled = true;
-    list.innerHTML = urls.map((u, i) => `<li id="imp-url-${i}">⏳ ${esc(u)}</li>`).join('');
-    let ok = 0;
-    for (let i = 0; i < urls.length; i++) {
-      const row = $$(`imp-url-${i}`);
-      status.textContent = `Fetching ${i + 1} of ${urls.length}…`;
-      try {
-        const data = await Importer.fetchPage(urls[i]);
-        const slug = decodeURIComponent(new URL(data.url).pathname.split('/').filter(Boolean).pop() || new URL(data.url).hostname);
-        Importer.addFileModule(data.markdown, slug.replace(/^\d+[-_]/, '').replace(/\.\w+$/, ''));
-        row.innerHTML = `<span style="color:var(--pass)">✓</span> ${esc(urls[i])}`;
-        ok++;
-      } catch (err) {
-        row.innerHTML = `<span style="color:var(--fail)">✗</span> ${esc(urls[i])} — ${esc(err.message)}`;
+    let n = 0;
+    list.innerHTML = groups.map((g, gi) => (g.urls.length > 1 ? `<li style="margin-top:8px;font-weight:600;">${esc(g.name || 'Merged module')} (${g.urls.length} pages → 1 module)</li>` : '') +
+      g.urls.map((u, ui) => `<li id="imp-url-${gi}-${ui}">⏳ ${esc(u)}</li>`).join('')).join('');
+    let ok = 0, done = 0;
+    for (let gi = 0; gi < groups.length; gi++) {
+      const g = groups[gi], merge = g.urls.length > 1, pages = [];
+      for (let ui = 0; ui < g.urls.length; ui++) {
+        const row = $$(`imp-url-${gi}-${ui}`);
+        status.textContent = `Fetching ${++done} of ${total}…`;
+        try {
+          const data = await Importer.fetchPage(g.urls[ui]);
+          const slug = decodeURIComponent(new URL(data.url).pathname.split('/').filter(Boolean).pop() || new URL(data.url).hostname).replace(/^\d+[-_]/, '').replace(/\.\w+$/, '');
+          if (merge) {
+            const parsed = Importer.parseMdToModules(data.markdown, slug, { single: true });
+            if (!parsed.modules.length) throw new Error('No readable content');
+            pages.push({ title: parsed.docTitle, content: parsed.modules[0].content, url: parsed.docUrl || data.url });
+          } else {
+            Importer.addFileModule(data.markdown, slug);
+          }
+          row.innerHTML = `<span style="color:var(--pass)">✓</span> ${esc(g.urls[ui])}`;
+          ok++;
+        } catch (err) {
+          row.innerHTML = `<span style="color:var(--fail)">✗</span> ${esc(g.urls[ui])} — ${esc(err.message)}`;
+        }
+        if (done < total) await new Promise(r => setTimeout(r, 1000)); // be polite to the source
       }
-      if (i < urls.length - 1) await new Promise(r => setTimeout(r, 1000)); // be polite to the source
+      if (merge && pages.length) {
+        const name = g.name || pages[0].title;
+        Importer.fileModules.push({
+          id: Date.now() + Math.random(), name, description: '', icon: '', sourceUrl: pages[0].url,
+          subModules: [{ title: name, content: Importer.combinePages(pages), reference_url: pages[0].url }]
+        });
+        Importer.renderFileModuleList();
+      }
     }
-    status.textContent = ok ? `${ok} of ${urls.length} imported.` : 'Nothing imported.';
+    status.textContent = ok ? `${ok} of ${total} pages imported.` : 'Nothing imported.';
     btn.disabled = false;
     if (ok) $$('imp-url-input').value = '';
+  },
+  // Join several pages into one module body: each page keeps its title as a "##" heading.
+  combinePages(pages) {
+    return pages.map(p => `## ${p.title}\n\n${p.content}`).join('\n\n');
   },
   handleFileSelect(e) {
     Array.from(e.target.files).forEach(f => Importer.readAndAddFile(f));
@@ -278,7 +316,7 @@ CONTENT RULES:
     }
     return s.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
   },
-  parseMdToModules(raw, defaultTitle) {
+  parseMdToModules(raw, defaultTitle, { single = false } = {}) {
     let lines = raw.split('\n');
     let docTitle = defaultTitle, docDesc = '', docIcon = '', docUrl = '';
 
@@ -328,6 +366,15 @@ CONTENT RULES:
 
     const metaLines = lines.slice(0, i).filter(l => l.trim() !== '');
     const cleanLines = [...metaLines, ...filteredContent];
+
+    // single: keep the whole page as ONE module (used when several pages are merged)
+    if (single) {
+      const body = filteredContent.filter(l => !/^URL Source:/i.test(l.trim())).join('\n').trim();
+      return {
+        docTitle: Importer.cleanTitle(docTitle), docDesc: '', docIcon, docUrl,
+        modules: body ? [{ title: Importer.cleanTitle(docTitle), content: body, reference_url: docUrl }] : []
+      };
+    }
 
     const hasH2 = cleanLines.some(l => l.startsWith('## '));
     const hasH3 = !hasH2 && cleanLines.some(l => l.startsWith('### '));
@@ -430,12 +477,17 @@ CONTENT RULES:
     el.innerHTML = `
       <div style="font-size:var(--text-sm);font-weight:600;color:var(--ink-2);margin-bottom:var(--space-3);">
         Review and edit module titles and source URLs before generating.
+      </div>
+      <div style="display:flex;align-items:center;gap:var(--space-3);margin-bottom:var(--space-3);">
+        <button class="btn btn-secondary btn-sm" id="btn-merge-modules" onclick="Importer.mergeSelected()" disabled>Merge selected</button>
+        <span style="font-size:var(--text-xs);color:var(--ink-3);">Tick short modules on the same topic to combine them into one.</span>
       </div>` +
     Importer.parsedModules.map((m, i) => {
       const wc = (m.content || '').trim().split(/\s+/).length;
       return `
       <div class="card" style="margin-bottom:var(--space-2);padding:var(--space-3);">
         <div style="display:flex;align-items:center;gap:var(--space-2);margin-bottom:var(--space-2);">
+          <input type="checkbox" class="merge-chk" data-i="${i}" onchange="Importer.updateMergeBtn()" aria-label="Select module ${i+1} to merge">
           <span style="font-size:var(--text-xs);font-weight:700;color:var(--ink-4);white-space:nowrap;">MODULE ${i+1}</span>
           <span style="font-size:10px;color:var(--ink-4);margin-left:auto;">~${wc} words</span>
         </div>
@@ -451,6 +503,26 @@ CONTENT RULES:
     }).join('');
   },
 
+  updateMergeBtn() {
+    const n = document.querySelectorAll('.merge-chk:checked').length;
+    const btn = $$('btn-merge-modules');
+    if (btn) { btn.disabled = n < 2; btn.textContent = n >= 2 ? `Merge ${n} selected` : 'Merge selected'; }
+  },
+  mergeSelected() {
+    const idx = [...document.querySelectorAll('.merge-chk:checked')].map(c => +c.dataset.i).sort((a, b) => a - b);
+    if (idx.length < 2) return Toast.err('Select at least two modules to merge.');
+    const picked = idx.map(i => Importer.parsedModules[i]);
+    const merged = {
+      title: picked[0].title,
+      content: Importer.combinePages(picked.map(m => ({ title: m.title, content: m.content }))),
+      reference_url: picked.map(m => m.reference_url).find(Boolean) || ''
+    };
+    Importer.parsedModules = Importer.parsedModules.filter((_, i) => !idx.includes(i) || i === idx[0]);
+    Importer.parsedModules[idx[0]] = merged;
+    Importer.renderModulePreview();
+    Toast.ok(`Merged ${idx.length} modules. Rename it if needed.`);
+  },
+
   async startGeneration() {
     if (Importer.isGenerating) return;
     const claudeInput = $$('claude-api-key')?.value.trim();
@@ -458,7 +530,7 @@ CONTENT RULES:
     if (claudeInput) sessionStorage.setItem('trainflow_claude_key', claudeInput);
     if (geminiInput) sessionStorage.setItem('trainflow_gemini_key', geminiInput);
 
-    const CHAR_LIMIT = 4000;
+    const CHAR_LIMIT = Importer.MODULE_CHAR_LIMIT;
     const longMods = Importer.parsedModules.filter(m => (m.content || '').length > CHAR_LIMIT);
     if (longMods.length > 0) {
       Toast.info(`${longMods.length} module(s) exceed ${CHAR_LIMIT} characters — only the first ${CHAR_LIMIT} chars will be used for AI generation. Consider trimming long modules for best results.`);
@@ -532,7 +604,7 @@ CONTENT RULES:
       try {
         const prompt = `Write a learner-friendly summary of this training module.
         MODULE: ${mod.title}
-        CONTENT: ${mod.content.slice(0, 4000)}
+        CONTENT: ${mod.content.slice(0, Importer.MODULE_CHAR_LIMIT)}
 
         Return a single string (max 250 chars) that provides a clear overview of the key takeaways.`;
         const res = await Importer.callAI(prompt, "You are a senior instructional designer.", 500);
@@ -581,7 +653,7 @@ CONTENT RULES:
 
 MODULE TITLE (may be generic): ${title}
 CONTENT:
-${content.slice(0, 4000)}
+${content.slice(0, Importer.MODULE_CHAR_LIMIT)}
 
 Return ONLY this JSON structure (no markdown, no extra text):
 {

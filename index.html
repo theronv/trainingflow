@@ -372,15 +372,18 @@ if (typeof marked !== 'undefined') {
       <div id="assign-subtitle" class="modal-sub"></div>
     </div>
     <div class="modal-body">
-      <div id="assign-view-learners">
-        <div class="field" style="margin-bottom:var(--space-4);">
-          <input type="text" id="assign-search" placeholder="Search learners..." oninput="App.filterAssignList(this.value)" style="margin-bottom:0;">
-        </div>
-        <div id="assign-list" style="max-height:400px;overflow-y:auto;"></div>
+      <div class="field" style="margin-bottom:var(--space-3);">
+        <input type="text" id="assign-search" placeholder="Search teams or learners..." oninput="App.filterAssignList(this.value)" style="margin-bottom:0;">
+      </div>
+      <div id="assign-list" style="max-height:340px;overflow-y:auto;"></div>
+      <div class="field" style="margin:var(--space-4) 0 0;">
+        <label>Due date <span style="font-weight:400;color:var(--ink-4);">(optional)</span></label>
+        <input type="date" id="assign-due">
       </div>
     </div>
     <div class="modal-foot">
-      <button class="btn btn-primary" onclick="App.closeAssign()">Done</button>
+      <button class="btn btn-ghost" onclick="App.closeAssign()">Cancel</button>
+      <button class="btn btn-primary" id="assign-submit-btn" onclick="Builder.submitAssign()" disabled>Assign</button>
     </div>
   </div>
 </div>
@@ -543,8 +546,8 @@ if (typeof marked !== 'undefined') {
           <input type="file" id="md-file-input" accept=".md,.markdown,.txt" multiple class="hidden" onchange="App.handleFileSelect(event)">
           <div class="card" style="margin-top:var(--space-5)">
             <div class="card-title">Import from web pages</div>
-            <div class="page-sub" style="margin-bottom:var(--space-3)">Paste public article URLs, one per line. Lines starting with # are ignored. Each page becomes a file below.</div>
-            <textarea id="imp-url-input" rows="3" placeholder="https://support.example.com/articles/getting-started" style="width:100%;font-family:var(--font-mono);font-size:var(--text-sm)"></textarea>
+            <div class="page-sub" style="margin-bottom:var(--space-3)">Paste public article URLs, one per line. URLs on <strong>consecutive lines are merged into one module</strong> (good for short articles on one topic); leave a blank line between groups. A "# Name" line above a group names the module. A lone URL is imported on its own.</div>
+            <textarea id="imp-url-input" rows="8" placeholder="# Managing Users&#10;https://support.example.com/articles/add-users&#10;https://support.example.com/articles/user-roles&#10;https://support.example.com/articles/remove-users&#10;&#10;# In-Browser Player&#10;https://support.example.com/articles/player-overview&#10;https://support.example.com/articles/player-controls" style="width:100%;font-family:var(--font-mono);font-size:var(--text-sm)"></textarea>
             <div style="display:flex;align-items:center;gap:var(--space-3);margin-top:var(--space-3)">
               <button class="btn btn-primary btn-sm" id="btn-imp-urls" onclick="App.importFromUrls()">Import pages</button>
               <span id="imp-url-status" style="font-size:var(--text-sm);color:var(--ink-3)"></span>
