@@ -515,12 +515,48 @@ const Admin = {
     $$('bulk-role').value = '';
   },
 
+  // ─── ACCESS REQUESTS ───
+  async renderAccessRequests() {
+    const card = $$('access-requests-card'); if (!card) return;
+    let list = [];
+    try { list = await api('/api/admin/access-requests'); } catch (e) { /* keep the card hidden */ }
+    if (!list.length) { card.classList.add('hidden'); card.innerHTML = ''; return; }
+    if (!(teamsCache || []).length) { try { teamsCache = await api('/api/admin/teams'); } catch (e) { /* no team choices */ } }
+    const teams = teamsCache || [];
+    const opts = '<option value="">No team</option>' + teams.map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join('');
+    card.classList.remove('hidden');
+    card.innerHTML = `<div class="card-title">Access requests <span class="chip chip-amber">${list.length}</span></div>` +
+      list.map(r => `
+      <div style="display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap;padding:var(--space-3) 0;border-top:1px solid var(--border);">
+        <div style="flex:1;min-width:200px;">
+          <div style="font-weight:600;color:var(--ink-1);">${esc(r.name)}</div>
+          <div style="font-size:var(--text-sm);color:var(--ink-3);">${esc(r.email)}${r.message ? ' · ' + esc(r.message) : ''}</div>
+        </div>
+        <select id="ar-team-${r.id}" class="btn btn-outline btn-sm" style="width:auto;" aria-label="Team for ${esc(r.name)}">${opts}</select>
+        <button class="btn btn-primary btn-sm" onclick="App.approveAccess('${r.id}')">Approve</button>
+        <button class="btn btn-ghost btn-sm" onclick="App.dismissAccess('${r.id}')">Dismiss</button>
+      </div>`).join('');
+  },
+  async approveAccess(id) {
+    const team = $$(`ar-team-${id}`)?.value || null;
+    try {
+      const r = await api(`/api/admin/access-requests/${id}/approve`, { method: 'POST', body: JSON.stringify({ team_id: team }) });
+      Toast.ok(`${r.user.name} approved. They can now sign in with ${r.user.email}.`);
+      Admin.renderLearners();
+    } catch (e) { Toast.err(e.message); Admin.renderAccessRequests(); }
+  },
+  async dismissAccess(id) {
+    try { await api(`/api/admin/access-requests/${id}`, { method: 'DELETE' }); Admin.renderAccessRequests(); }
+    catch (e) { Toast.err(e.message); }
+  },
+
   async renderLearners(page = 1) {
     const seq = Admin._navSeq;
     Admin._learnersPage = page;
     Admin._selectedUsers.clear();
     Admin.updateBulkBar();
     const tbody = $$('learners-tbody'); if(!tbody) return;
+    Admin.renderAccessRequests();
     try {
       const tid = $$('l-team-filter').value;
       const role = $$('l-role-filter')?.value || '';

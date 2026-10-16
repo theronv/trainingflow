@@ -64,6 +64,19 @@ const ClerkPending = {
 };
 
 const Auth = {
+  // ─── REQUEST ACCESS (new learners) ───
+  async submitRequestAccess() {
+    const name = $$('ra-name').value.trim(), email = $$('ra-email').value.trim();
+    if (!name) return Toast.err('Please enter your full name.');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return Toast.err('Please enter a valid email address.');
+    const btn = $$('ra-submit'); btn.disabled = true; btn.textContent = 'Sending…';
+    try {
+      await api('/api/access-requests', { method: 'POST', body: JSON.stringify({ name, email, message: $$('ra-msg').value.trim(), website: $$('ra-website').value }) });
+      $$('ra-form').classList.add('hidden'); $$('ra-done').classList.remove('hidden');
+      btn.classList.add('hidden'); $$('ra-cancel').textContent = 'Close';
+    } catch (e) { Toast.err(e.message || 'Could not send your request.'); }
+    finally { btn.disabled = false; btn.textContent = 'Send request'; }
+  },
   // ─── EMAIL SIGN-IN (learners + managers; role comes from the account) ───
   async emailSignIn() {
     ClerkPending.set({ mode: 'login' });

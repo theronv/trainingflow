@@ -17,6 +17,16 @@ const AppProxy = {
   doManagerLogin: () => Auth.doManagerLogin(),
   doJoin: () => Auth.doJoin(),
   emailSignIn: () => Auth.emailSignIn(),
+  openRequestAccess: () => {
+    ['ra-name','ra-email','ra-msg','ra-website'].forEach(id => { $$(id).value = ''; });
+    $$('ra-form').classList.remove('hidden'); $$('ra-done').classList.add('hidden');
+    $$('ra-submit').classList.remove('hidden'); $$('ra-cancel').textContent = 'Cancel';
+    $$('request-access-overlay').classList.remove('hidden');
+    setTimeout(() => $$('ra-name').focus(), CONFIG.FOCUS_DELAY);
+  },
+  closeRequestAccess: () => $$('request-access-overlay').classList.add('hidden'),
+  approveAccess: (id) => Admin.approveAccess(id),
+  dismissAccess: (id) => Admin.dismissAccess(id),
   openJoin: (code) => {
     App.show('screen-join');
     $$('join-code').value = (code || '').toUpperCase();

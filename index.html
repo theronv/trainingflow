@@ -41,20 +41,18 @@ if (typeof marked !== 'undefined') {
       <h1 class="landing-logo" id="ldg-brand">Pregame Academy</h1>
       <div id="ldg-org" class="ldg-org"></div>
       <p class="landing-sub" id="ldg-tagline">Assign, track, and certify your team's training — in one place.</p>
-      <ul class="ldg-badges" aria-label="Highlights">
-        <li>Role-based access</li><li>Verifiable certificates</li><li>Private by design</li>
-      </ul>
     </header>
     <section class="ldg-signin" aria-labelledby="ldg-signin-title">
-      <h2 class="ldg-signin-title" id="ldg-signin-title">Sign in</h2>
-      <p class="ldg-signin-sub">Use your work email. We'll take you to the right place for your role.</p>
+      <h2 class="ldg-signin-title" id="ldg-signin-title">Welcome back</h2>
+      <p class="ldg-signin-sub">Sign in with your work email. We'll take you to the right place for your role.</p>
       <button type="button" class="btn btn-primary btn-xl w-full" onclick="App.emailSignIn()">Continue with email</button>
-      <div class="auth-or"><span>New here?</span></div>
-      <div class="ldg-signin-links">
-        <button type="button" class="btn btn-outline w-full" onclick="App.openJoin()">I have an invite code</button>
-        <button type="button" class="ldg-link" onclick="App.startDemo()">Explore with demo data</button>
+      <div class="auth-or"><span>New to <span class="ldg-appname">Pregame Academy</span>?</span></div>
+      <button type="button" class="btn btn-outline w-full" onclick="App.openRequestAccess()">Request access</button>
+      <div class="ldg-signin-foot">
+        <button type="button" class="ldg-link" onclick="App.openJoin()">Have an invite code?</button>
+        <span aria-hidden="true">·</span>
+        <button type="button" class="ldg-link" aria-expanded="false" onclick="const g=document.getElementById('ldg-pw-signin');g.classList.toggle('hidden');this.setAttribute('aria-expanded',!g.classList.contains('hidden'))">Use a name and password</button>
       </div>
-      <button type="button" class="ldg-link ldg-link-quiet" aria-expanded="false" onclick="const g=document.getElementById('ldg-pw-signin');g.classList.toggle('hidden');this.setAttribute('aria-expanded',!g.classList.contains('hidden'))">Sign in with a name and password instead</button>
     </section>
     </div>
   </div>
@@ -79,12 +77,31 @@ if (typeof marked !== 'undefined') {
         <span class="role-tile-cta">Sign in <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></span>
       </button>
     </div>
-    <ul class="ldg-features">
-      <li><span class="ldg-feat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6"/><path d="M22 11h-6"/></svg></span><div><strong>Assign</strong><span>Give courses to people or whole teams, with due dates.</span></div></li>
-      <li><span class="ldg-feat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span><div><strong>Track</strong><span>See progress, scores, and overdue work in real time.</span></div></li>
-      <li><span class="ldg-feat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg></span><div><strong>Certify</strong><span>Issue verifiable certificates when learners pass.</span></div></li>
-    </ul>
-    <p class="landing-foot">Your data stays private — no third-party tracking.</p>
+    <p class="landing-foot">Your data stays private — no third-party tracking. <button type="button" class="ldg-link" onclick="App.startDemo()">Explore with demo data</button></p>
+  </div>
+</div>
+
+<!-- ══════════ OVERLAY: REQUEST ACCESS ══════════ -->
+<div class="overlay hidden" id="request-access-overlay">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">Request access</div>
+      <div class="modal-sub">Tell us who you are. An administrator will review your request and set you up.</div>
+    </div>
+    <div class="modal-body" id="ra-form">
+      <div class="field"><label for="ra-name">Full name</label><input type="text" id="ra-name" autocomplete="name" placeholder="e.g. Jane Doe" maxlength="100"></div>
+      <div class="field"><label for="ra-email">Work email</label><input type="email" id="ra-email" autocomplete="email" placeholder="name@company.com" maxlength="200"></div>
+      <div class="field"><label for="ra-msg">Team or manager <span style="font-weight:400;color:var(--ink-4);">(optional)</span></label><textarea id="ra-msg" rows="2" maxlength="500" placeholder="Who should we confirm with?"></textarea></div>
+      <input type="text" id="ra-website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;opacity:0;height:0;width:0;">
+    </div>
+    <div class="modal-body hidden" id="ra-done" style="text-align:center;">
+      <div style="font-size:var(--text-lg);font-weight:600;color:var(--ink-1);margin-bottom:var(--space-2);">Request sent</div>
+      <p style="color:var(--ink-3);margin:0;">Thanks! Once an administrator approves it, sign in with that email address.</p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="App.closeRequestAccess()" id="ra-cancel">Cancel</button>
+      <button class="btn btn-primary" id="ra-submit" onclick="Auth.submitRequestAccess()">Send request</button>
+    </div>
   </div>
 </div>
 
@@ -737,6 +754,7 @@ if (typeof marked !== 'undefined') {
             <button class="btn btn-primary" onclick="App.openAddLearner()">+ Add User</button>
           </div>
         </div>
+        <div id="access-requests-card" class="card hidden" style="margin-bottom:var(--space-4);"></div>
         <div class="field" style="margin-bottom:var(--space-3);">
           <input type="text" id="learners-search" placeholder="Search by name..." oninput="App.filterLearners(this.value)">
         </div>

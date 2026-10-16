@@ -660,6 +660,101 @@ app.delete('/api/learners/:id', requireAdmin, async (c) => {
 
 // Redeems an invite: the invitee picks their own name + password and is signed in.
 // `requiredRole` pins the legacy manager endpoint to manager invites.
+// ── Access requests (new learners ask to join; an admin approves) ─────────────
+async function ensureAccessSchema(db) {
+  await db.execute(`CREATE TABLE IF NOT EXISTS access_requests (
+    id         TEXT PRIMARY KEY,
+    name       TEXT NOT NULL,
+    email      TEXT NOT NULL,
+    message    TEXT NOT NULL DEFAULT '',
+    status     TEXT NOT NULL DEFAULT 'pending',
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+  )`)
+}
+const _requestAttempts = new Map()
+function _requestRateLimited(ip) {
+  const now = Date.now()
+  const e = _requestAttempts.get(ip) || { count: 0, reset: now + 3600_000 }
+  if (now > e.reset) { e.count = 0; e.reset = now + 3600_000 }
+  e.count++
+  _requestAttempts.set(ip, e)
+  return e.count > 5 // 5 requests per hour per IP
+}
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+// Public. Always answers the same way so it can't be used to discover who has an account.
+app.post('/api/access-requests', async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  const ip = c.req.header('CF-Connecting-IP') || 'unknown'
+  if (body.website) return c.json({ ok: true }, 201) // honeypot: bots fill hidden fields
+  if (_requestRateLimited(ip)) return c.json({ error: 'Too many requests. Please try again later.' }, 429)
+  const name = typeof body.name === 'string' ? body.name.trim() : ''
+  const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
+  const message = typeof body.message === 'string' ? body.message.trim().slice(0, 500) : ''
+  if (!name || name.length > 100) return c.json({ error: 'Please enter your full name.' }, 400)
+  if (!EMAIL_RE.test(email) || email.length > 200) return c.json({ error: 'Please enter a valid email address.' }, 400)
+  const db = getDb(c.env)
+  await ensureSetup(db)
+  await ensureAccessSchema(db)
+  const existingUser = await db.execute({ sql: 'SELECT 1 FROM users WHERE lower(email) = ?', args: [email] })
+  const pending = await db.execute({ sql: "SELECT 1 FROM access_requests WHERE lower(email) = ? AND status = 'pending'", args: [email] })
+  const total = toObj(await db.execute("SELECT COUNT(*) AS n FROM access_requests WHERE status = 'pending'"))?.n || 0
+  if (!existingUser.rows.length && !pending.rows.length && Number(total) < 200) {
+    await db.execute({ sql: 'INSERT INTO access_requests (id, name, email, message) VALUES (?, ?, ?, ?)', args: [uid(), name, email, message] })
+  }
+  return c.json({ ok: true }, 201)
+})
+
+app.get('/api/admin/access-requests', requireAdmin, async (c) => {
+  const db = getDb(c.env)
+  await ensureAccessSchema(db)
+  const res = await db.execute("SELECT id, name, email, message, created_at FROM access_requests WHERE status = 'pending' ORDER BY created_at")
+  return c.json(toObjs(res))
+})
+
+// Approve: creates a learner with that email. They then sign in with their email (no password to hand over).
+app.post('/api/admin/access-requests/:id/approve', requireAdmin, async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  const db = getDb(c.env)
+  await ensureSetup(db)
+  await ensureAccessSchema(db)
+  const reqRow = toObj(await db.execute({ sql: "SELECT * FROM access_requests WHERE id = ? AND status = 'pending'", args: [c.req.param('id')] }))
+  if (!reqRow) return c.json({ error: 'Request not found' }, 404)
+  if ((await db.execute({ sql: 'SELECT 1 FROM users WHERE lower(email) = ?', args: [reqRow.email] })).rows.length) {
+    await db.execute({ sql: "UPDATE access_requests SET status = 'approved' WHERE id = ?", args: [reqRow.id] })
+    return c.json({ error: 'That email already has an account.' }, 409)
+  }
+  let teamId = null
+  if (body.team_id) {
+    const t = await db.execute({ sql: 'SELECT id FROM teams WHERE id = ?', args: [body.team_id] })
+    if (!t.rows.length) return c.json({ error: 'Team not found' }, 400)
+    teamId = t.rows[0].id
+  }
+  const hash = await pbkdf2Hash(_b64(crypto.getRandomValues(new Uint8Array(32)))) // unusable; sign-in is by email
+  const id = uid()
+  let name = reqRow.name
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      await db.execute({
+        sql: 'INSERT INTO users (id, name, password_hash, role, team_id, email) VALUES (?, ?, ?, ?, ?, ?)',
+        args: [id, name, hash, 'learner', teamId, reqRow.email]
+      })
+      await db.execute({ sql: "UPDATE access_requests SET status = 'approved' WHERE id = ?", args: [reqRow.id] })
+      return c.json({ ok: true, user: { id, name, email: reqRow.email, team_id: teamId } }, 201)
+    } catch (e) {
+      if (!(e.message || '').includes('UNIQUE') || attempt) return c.json({ error: 'Could not create the account (name already in use).' }, 409)
+      name = `${reqRow.name} (${reqRow.email.split('@')[0]})` // name taken: disambiguate once
+    }
+  }
+})
+
+app.delete('/api/admin/access-requests/:id', requireAdmin, async (c) => {
+  const db = getDb(c.env)
+  await ensureAccessSchema(db)
+  await db.execute({ sql: "UPDATE access_requests SET status = 'dismissed' WHERE id = ? AND status = 'pending'", args: [c.req.param('id')] })
+  return c.json({ ok: true })
+})
+
 // ── Clerk email sign-in ───────────────────────────────────────────────────────
 // The browser signs in with Clerk, then exchanges the Clerk session token here for the
 // app's own JWT, so every existing role check, team scope and test keeps working unchanged.
