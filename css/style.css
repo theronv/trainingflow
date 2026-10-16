@@ -2134,3 +2134,24 @@ button, .nav-btn, .quiz-opt, .course-card, .role-tile, label { touch-action: man
 .ldg-band { flex: 1 0 auto; display: flex; align-items: center; min-height: calc(100vh - 130px); }
 .ldg-body { flex: 0 0 auto; padding-top: var(--space-4); padding-bottom: var(--space-4); }
 .ldg-body .landing-foot { padding-top: var(--space-4); margin-top: 0; border-top: 0; }
+
+/* ── Landing v3: one centred column, one primary action ── */
+#screen-landing { display:flex; flex-direction:column; align-items:center; min-height:100vh; padding:0 var(--space-4); background:var(--hero); }
+#screen-landing::before { content:none; }
+.ldg-stage { flex:1; width:100%; max-width:640px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:var(--space-12) 0; }
+.ldg-stage .ldg-logo-wrap { justify-content:center; margin-bottom:var(--space-6); }
+.ldg-stage .ldg-logo-img { max-height:72px; border-radius:16px; }
+.ldg-stage .ldg-kicker { margin-bottom:var(--space-3); }
+.ldg-stage .landing-logo { text-align:center; font-size:clamp(40px, 7vw, 72px); }
+.ldg-stage .landing-sub { text-align:center; text-wrap:balance; max-width:36ch; margin:var(--space-4) auto 0; font-size:clamp(17px, 2.2vw, 20px); line-height:1.45; color:#c4cce0; }
+.ldg-actions { display:flex; flex-direction:column; align-items:center; gap:var(--space-4); margin-top:var(--space-10); width:100%; }
+.ldg-cta { min-width:220px; }
+.ldg-textlink { background:none; border:0; padding:var(--space-2) var(--space-3); font:inherit; font-size:var(--text-sm); font-weight:500; color:#aebbdc; cursor:pointer; border-radius:var(--radius-md); }
+.ldg-textlink:hover { color:#fff; text-decoration:underline; }
+.ldg-textlink:focus-visible, .ldg-footer .ldg-link:focus-visible { outline:2px solid var(--brand-hi, #4d8dff); outline-offset:2px; }
+.ldg-tiles { width:100%; max-width:880px; margin-top:var(--space-10); text-align:left; }
+.ldg-footer { width:100%; max-width:640px; padding:var(--space-4) 0 var(--space-6); text-align:center; display:flex; flex-direction:column; gap:var(--space-2); align-items:center; }
+.ldg-more { display:flex; align-items:center; gap:var(--space-2); color:#6f7a96; }
+.ldg-footer .ldg-link { color:#8d99b8; font-size:var(--text-xs); }
+.ldg-footer .ldg-link:hover { color:#fff; }
+.ldg-footer .landing-foot { margin:0; padding:0; border:0; color:#5f6a86; font-size:var(--text-xs); text-align:center; max-width:none; }

@@ -31,33 +31,19 @@ if (typeof marked !== 'undefined') {
 
 <!-- ══════════ SCREEN: LANDING ══════════ -->
 <div id="screen-landing" class="screen active">
-  <div class="ldg-band">
-    <div class="ldg-container ldg-hero">
-    <header class="ldg-head">
-      <div class="ldg-logo-wrap" id="ldg-logo-wrap">
-        <img id="ldg-logo" class="ldg-logo-img" src="assets/pregame-icon-192.png" alt="">
-      </div>
-      <div class="ldg-kicker">Training &amp; Certification</div>
-      <h1 class="landing-logo" id="ldg-brand">Pregame Academy</h1>
-      <div id="ldg-org" class="ldg-org"></div>
-      <p class="landing-sub" id="ldg-tagline">Assign, track, and certify your team's training — in one place.</p>
-    </header>
-    <section class="ldg-signin" aria-labelledby="ldg-signin-title">
-      <h2 class="ldg-signin-title" id="ldg-signin-title">Welcome back</h2>
-      <p class="ldg-signin-sub">Sign in with your work email. We'll take you to the right place for your role.</p>
-      <button type="button" class="btn btn-primary btn-xl w-full" onclick="App.emailSignIn()">Continue with email</button>
-      <div class="auth-or"><span>New to <span class="ldg-appname">Pregame Academy</span>?</span></div>
-      <button type="button" class="btn btn-outline w-full" onclick="App.openRequestAccess()">Request access</button>
-      <div class="ldg-signin-foot">
-        <button type="button" class="ldg-link" onclick="App.openJoin()">Have an invite code?</button>
-        <span aria-hidden="true">·</span>
-        <button type="button" class="ldg-link" aria-expanded="false" onclick="const g=document.getElementById('ldg-pw-signin');g.classList.toggle('hidden');this.setAttribute('aria-expanded',!g.classList.contains('hidden'))">Use a name and password</button>
-      </div>
-    </section>
+  <main class="ldg-stage">
+    <div class="ldg-logo-wrap" id="ldg-logo-wrap">
+      <img id="ldg-logo" class="ldg-logo-img" src="assets/pregame-icon-192.png" alt="">
     </div>
-  </div>
-  <div class="ldg-container ldg-body">
-    <div class="role-grid hidden" id="ldg-pw-signin">
+    <div class="ldg-kicker">Training &amp; Certification</div>
+    <h1 class="landing-logo" id="ldg-brand">Pregame Academy</h1>
+    <div id="ldg-org" class="ldg-org"></div>
+    <p class="landing-sub" id="ldg-tagline">Assign, track, and certify your team's training — in one place.</p>
+    <div class="ldg-actions">
+      <button type="button" class="btn btn-primary btn-xl ldg-cta" onclick="App.emailSignIn()">Sign in</button>
+      <button type="button" class="ldg-textlink" onclick="App.openRequestAccess()">Request access</button>
+    </div>
+    <div class="role-grid ldg-tiles hidden" id="ldg-pw-signin">
       <button type="button" class="role-tile role-tile-primary" onclick="App.goLearner()">
         <span class="role-tile-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"/><path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></svg></span>
         <span class="role-tile-title">Learner</span>
@@ -77,8 +63,17 @@ if (typeof marked !== 'undefined') {
         <span class="role-tile-cta">Sign in <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></span>
       </button>
     </div>
-    <p class="landing-foot">Your data stays private — no third-party tracking. <button type="button" class="ldg-link" onclick="App.startDemo()">Explore with demo data</button></p>
-  </div>
+  </main>
+  <footer class="ldg-footer">
+    <nav class="ldg-more" aria-label="Other ways in">
+      <button type="button" class="ldg-link" onclick="App.openJoin()">Invite code</button>
+      <span aria-hidden="true">·</span>
+      <button type="button" class="ldg-link" aria-expanded="false" onclick="const g=document.getElementById('ldg-pw-signin');g.classList.toggle('hidden');this.setAttribute('aria-expanded',!g.classList.contains('hidden'))">Name &amp; password</button>
+      <span aria-hidden="true">·</span>
+      <button type="button" class="ldg-link" onclick="App.startDemo()">Demo</button>
+    </nav>
+    <p class="landing-foot">Your data stays private — no third-party tracking.</p>
+  </footer>
 </div>
 
 <!-- ══════════ OVERLAY: REQUEST ACCESS ══════════ -->
