@@ -78,11 +78,13 @@ const ClerkTrace = {
       const t = ClerkTrace.get().slice(-14);
       t.push(`${new Date().toISOString().slice(11, 19)} ${stage}${info ? ' ' + info : ''}`);
       localStorage.setItem(ClerkTrace.KEY, JSON.stringify(t));
+      localStorage.setItem(ClerkTrace.KEY + '_at', String(Date.now()));
     } catch (e) { /* ignore */ }
   },
   clear() { try { localStorage.removeItem(ClerkTrace.KEY); } catch (e) { /* ignore */ } },
-  // An attempt that never reached "done" is shown on the landing page.
-  unfinished() { const t = ClerkTrace.get(); return t.length && !/ done$/.test(t[t.length - 1]) ? t : null; }
+  // Any attempt from the last 3 minutes is shown on the landing page (finished or not): if you are looking
+  // at the landing page after signing in, something sent you back.
+  recent() { try { const t = ClerkTrace.get(); const at = +localStorage.getItem(ClerkTrace.KEY + '_at') || 0; return t.length && Date.now() - at < 180000 ? t : null; } catch (e) { return null; } }
 };
 
 const ClerkPending = {
@@ -103,8 +105,8 @@ const Auth = {
     el.textContent = msg; el.classList.remove('hidden');
   },
   showUnfinishedTrace() {
-    const t = ClerkTrace.unfinished();
-    if (t && !location.hash.startsWith('#invite')) Auth._landingNotice('Your last sign-in did not finish. Steps recorded: ' + t.join(' → '));
+    const t = ClerkTrace.recent();
+    if (t && !location.hash.startsWith('#invite')) Auth._landingNotice('Sign-in steps recorded: ' + t.join(' → '));
   },
   _clearLandingNotice() { $$('ldg-notice')?.classList.add('hidden'); },
   // ─── REQUEST ACCESS (new learners) ───
@@ -178,6 +180,7 @@ const Auth = {
     } finally { ClerkPending.clear(); }
   },
   _enter(data) {
+    ClerkTrace.add('entering', data.user?.role);
     scheduleExpiryWarning(data.token);
     if (data.user.role === 'admin') {
       setToken(data.token); applyBrand(); App.show('screen-admin'); Admin.init();

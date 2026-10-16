@@ -164,7 +164,7 @@ function makeApi(getTokenFn, on401) {
     const token = getTokenFn();
     if (token) headers['Authorization'] = `Bearer ${token}`;
     const res = await fetch(WORKER_URL + path, { ...opts, headers });
-    if (res.status === 401 && token) { on401(); throw new Error('Session expired'); }
+    if (res.status === 401 && token) { if (typeof ClerkTrace !== 'undefined') ClerkTrace.add('api-401', path); on401(); throw new Error('Session expired'); }
     if (!res.ok) {
       const body = await res.json().catch(() => ({ error: res.statusText }));
       throw Object.assign(new Error(body.error || res.statusText), { status: res.status, detail: body.detail });
