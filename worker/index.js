@@ -712,6 +712,20 @@ app.get('/api/admin/access-requests', requireAdmin, async (c) => {
   return c.json(toObjs(res))
 })
 
+// Ask Clerk to email a sign-up invitation (needed once Clerk's Access mode is Restricted).
+// Never blocks approval: returns false if Clerk isn't configured or the call fails.
+async function sendClerkInvitation(env, email) {
+  if (!env.CLERK_SECRET_KEY) return false
+  try {
+    const res = await fetch('https://api.clerk.com/v1/invitations', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${String(env.CLERK_SECRET_KEY).trim()}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email_address: email, redirect_url: env.APP_URL || 'https://pregame-academy.vickerydigital.com', notify: true, ignore_existing: true }),
+    })
+    return res.ok
+  } catch { return false }
+}
+
 // Approve: creates a learner with that email. They then sign in with their email (no password to hand over).
 app.post('/api/admin/access-requests/:id/approve', requireAdmin, async (c) => {
   const body = await c.req.json().catch(() => ({}))
@@ -740,7 +754,8 @@ app.post('/api/admin/access-requests/:id/approve', requireAdmin, async (c) => {
         args: [id, name, hash, 'learner', teamId, reqRow.email]
       })
       await db.execute({ sql: "UPDATE access_requests SET status = 'approved' WHERE id = ?", args: [reqRow.id] })
-      return c.json({ ok: true, user: { id, name, email: reqRow.email, team_id: teamId } }, 201)
+      const invited = await sendClerkInvitation(c.env, reqRow.email)
+      return c.json({ ok: true, invited, user: { id, name, email: reqRow.email, team_id: teamId } }, 201)
     } catch (e) {
       if (!(e.message || '').includes('UNIQUE') || attempt) return c.json({ error: 'Could not create the account (name already in use).' }, 409)
       name = `${reqRow.name} (${reqRow.email.split('@')[0]})` // name taken: disambiguate once

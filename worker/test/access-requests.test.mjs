@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { setupHarness } from './helpers.mjs'
 
 describe('access requests', () => {
@@ -66,5 +66,35 @@ describe('access requests', () => {
     const ok = await h.request(`/api/admin/access-requests/${id}/approve`, { method: 'POST', token: h.adminToken(), body: {} })
     expect(ok.status).toBe(201)
     expect(ok.json.user.name).toBe('Pat Lee (pat)')
+  })
+
+  describe('Clerk invitation on approve', () => {
+    afterEach(() => vi.unstubAllGlobals())
+    it('emails an invitation when CLERK_SECRET_KEY is set, and still approves if Clerk fails', async () => {
+      h.env.CLERK_SECRET_KEY = 'sk_test_x'
+      await submit({ name: 'Pat', email: 'pat@example.com' })
+      await submit({ name: 'Sam', email: 'sam@example.com' })
+      const [pat, sam] = await pending()
+      const calls = []
+      vi.stubGlobal('fetch', async (url, init) => { calls.push({ url, init }); return { ok: true } })
+      const ok = await h.request(`/api/admin/access-requests/${pat.id}/approve`, { method: 'POST', token: h.adminToken(), body: {} })
+      expect(ok.json.invited).toBe(true)
+      expect(calls[0].url).toBe('https://api.clerk.com/v1/invitations')
+      expect(calls[0].init.headers.Authorization).toBe('Bearer sk_test_x')
+      expect(JSON.parse(calls[0].init.body)).toMatchObject({ email_address: 'pat@example.com', notify: true, ignore_existing: true })
+      vi.stubGlobal('fetch', async () => { throw new Error('network') })
+      const ok2 = await h.request(`/api/admin/access-requests/${sam.id}/approve`, { method: 'POST', token: h.adminToken(), body: {} })
+      expect(ok2.status).toBe(201)
+      expect(ok2.json.invited).toBe(false)
+    })
+    it('skips Clerk entirely when no secret key is configured', async () => {
+      delete h.env.CLERK_SECRET_KEY
+      await submit({ name: 'Pat', email: 'pat@example.com' })
+      const id = (await pending())[0].id
+      const spy = vi.fn(); vi.stubGlobal('fetch', spy)
+      const ok = await h.request(`/api/admin/access-requests/${id}/approve`, { method: 'POST', token: h.adminToken(), body: {} })
+      expect(ok.json.invited).toBe(false)
+      expect(spy).not.toHaveBeenCalled()
+    })
   })
 })

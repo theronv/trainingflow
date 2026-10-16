@@ -541,7 +541,7 @@ const Admin = {
     const team = $$(`ar-team-${id}`)?.value || null;
     try {
       const r = await api(`/api/admin/access-requests/${id}/approve`, { method: 'POST', body: JSON.stringify({ team_id: team }) });
-      Toast.ok(`${r.user.name} approved. They can now sign in with ${r.user.email}.`);
+      Toast.ok(r.invited ? `${r.user.name} approved. An invitation was emailed to ${r.user.email}.` : `${r.user.name} approved. They can now sign in with ${r.user.email}.`);
       Admin.renderLearners();
     } catch (e) { Toast.err(e.message); Admin.renderAccessRequests(); }
   },
