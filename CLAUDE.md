@@ -97,6 +97,8 @@ cd worker && npx wrangler deploy         # Worker
 # Push to GitHub → Pages auto-deploys frontend
 ```
 
+**Auto-deploy in Claude sessions:** the owner has authorised Claude to ship its own changes (rules in the gitignored `.claude/settings.local.json`). After tests pass: commit, `git push origin main` (Pages auto-deploys the frontend), and `cd worker && npx wrangler deploy` only when `worker/` changed. Then check `gh run list --limit 1`. Never run DB migrations, `wrangler secret`, or destructive `turso` commands without asking.
+
 ## Demo Data Seeding
 
 ```bash
