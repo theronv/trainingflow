@@ -80,7 +80,15 @@ const Learner = {
         return;
       }
 
-      const renderCard = c => {
+      const isPassed = id => recs.some(r => r.cid === id && r.passed);
+      const progOf = id => !isPassed(id) && apiProgress.find(p => p.course_id === id);
+      // Started but not passed, most recently touched first: these go in their own section at the top.
+      const resumeCourses = apiCourses
+        .filter(c => progOf(normCourse(c).id))
+        .sort((a, z) => (progOf(normCourse(z).id).updated_at || 0) - (progOf(normCourse(a).id).updated_at || 0));
+      const resumeIds = new Set(resumeCourses.map(c => normCourse(c).id));
+
+      const renderCard = (c, resume = false) => {
         const nc = normCourse(c);
         const assignment = apiAssigns.find(a => a.course_id === nc.id);
         const assigned = !!assignment;
@@ -106,43 +114,48 @@ const Learner = {
         const pct = prog && totalMods ? Math.min(100, Math.round(modsDone / totalMods * 100)) : 0;
         const bar = prog && totalMods ? `<div class="lc-progress" aria-hidden="true"><span style="width:${pct}%"></span></div>` : '';
         const cta = passed ? 'Review' : (prog ? 'Continue' : 'Start');
-        return `<div class="course-card lc" role="button" tabindex="0" onclick="Learner.startCourse('${nc.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();Learner.startCourse('${nc.id}')}">
+        return `<div class="course-card lc${resume ? ' lc-resume' : ''}" role="button" tabindex="0" onclick="Learner.startCourse('${nc.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();Learner.startCourse('${nc.id}')}">
           <div class="lc-top">
             <div class="lc-icon" aria-hidden="true">${courseIcon(nc.icon)}</div>
             <div class="lc-body">
               <div class="lc-title">${esc(nc.title)}</div>
-              <div class="lc-meta">${modCount}${dueStr ? ` · ${dueStr}` : ''}</div>
+              <div class="lc-meta">${resume && totalMods ? `Module ${Math.min((prog.module_idx || 0) + 1, totalMods)} of ${totalMods}` : modCount}${dueStr ? ` · ${dueStr}` : ''}</div>
             </div>
           </div>
           ${desc}
           ${bar}
           <div class="lc-foot">
             <span>${chip}</span>
-            <span class="lc-cta">${cta} <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></span>
+            <span class="lc-cta">${resume ? 'Continue where you left off' : cta} <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></span>
           </div>
         </div>`;
       };
 
       let html = '';
+      if (resumeCourses.length) {
+        html += `<div class="section-header" style="grid-column:1/-1;">Continue where you left off</div>`;
+        html += resumeCourses.map(c => renderCard(c, true)).join('');
+      }
+      const restCourses = apiCourses.filter(c => !resumeIds.has(normCourse(c).id));
       if(sections.length) {
         const bySec = {};
         const unsec = [];
         sections.forEach(s => { bySec[s.id] = []; });
-        apiCourses.forEach(c => {
+        restCourses.forEach(c => {
           if(c.section_id && bySec[c.section_id]) bySec[c.section_id].push(c);
           else unsec.push(c);
         });
         sections.forEach(s => {
           if(!bySec[s.id].length) return;
           html += `<div class="section-header" style="grid-column:1/-1;">${esc(s.label)}</div>`;
-          html += bySec[s.id].map(renderCard).join('');
+          html += bySec[s.id].map(c => renderCard(c)).join('');
         });
         if(unsec.length) {
           html += `<div class="section-header" style="grid-column:1/-1;">Other</div>`;
-          html += unsec.map(renderCard).join('');
+          html += unsec.map(c => renderCard(c)).join('');
         }
       } else {
-        html = apiCourses.map(renderCard).join('');
+        html += restCourses.map(c => renderCard(c)).join('');
       }
       grid.innerHTML = html || '<div class="empty" style="grid-column:1/-1;"><div class="empty-icon">' + ICON.book + '</div><div class="empty-title">No training assigned yet</div><div class="empty-hint">Your manager will add courses to your plan. Check back soon — or let them know you\'re ready to start.</div></div>';
     } catch(e) {
@@ -160,21 +173,32 @@ const Learner = {
     }
     el.innerHTML = Skeleton.list(3);
     try {
-      const [assignments, completions] = await Promise.all([
+      const [assigned, completions, progress, courses] = await Promise.all([
         learnerApi('/api/assignments/me'),
-        learnerApi('/api/completions/me').catch(() => [])
+        learnerApi('/api/completions/me').catch(() => []),
+        learnerApi('/api/progress/me').catch(() => []),
+        learnerApi('/api/courses').catch(() => [])
       ]);
       if (Learner._navSeq !== seq) return;
-      if (!assignments || !assignments.length) {
+      // Courses the learner has started count even if nobody assigned them.
+      const assignments = [...(assigned || [])];
+      (progress || []).forEach(p => {
+        if (assignments.some(a => a.course_id === p.course_id)) return;
+        const c = (courses || []).find(x => x.id === p.course_id);
+        if (c) assignments.push({ course_id: p.course_id, course_title: c.title, due_at: null });
+      });
+      if (!assignments.length) {
         el.innerHTML = '<div class="empty"><div class="empty-icon">' + ICON.clip + '</div><div class="empty-title">No training assigned yet</div><div class="empty-hint">Check back later, or contact your manager to get started.</div></div>';
         return;
       }
       const passedCourseIds = new Set((completions || []).filter(c => c.passed).map(c => c.course_id));
-      const pending = assignments.filter(a => !passedCourseIds.has(a.course_id));
+      const progOf = id => (progress || []).find(p => p.course_id === id);
+      const pending = assignments.filter(a => !passedCourseIds.has(a.course_id))
+        .sort((a, z) => ((progOf(z.course_id) || {}).updated_at || 0) - ((progOf(a.course_id) || {}).updated_at || 0));
       const done = assignments.filter(a => passedCourseIds.has(a.course_id));
       let html = '';
       if (pending.length) {
-        html += `<div style="font-weight:700;margin-bottom:var(--space-3);">In Progress (${pending.length})</div>`;
+        html += `<div style="font-weight:700;margin-bottom:var(--space-3);">To Do (${pending.length})</div>`;
         html += pending.map(a => {
           const overdue = a.due_at && (new Date(a.due_at).getTime() || a.due_at * 1000) < Date.now();
           const dueTs = a.due_at ? (isNaN(a.due_at) ? new Date(a.due_at).getTime() : a.due_at * 1000) : null;
@@ -182,9 +206,9 @@ const Learner = {
           return `<div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);margin-bottom:var(--space-3);">
             <div>
               <div style="font-weight:600;">${esc(a.course_title)}</div>
-              ${dueStr}
+              ${progOf(a.course_id) ? '<span class="chip chip-blue">In progress</span> ' : ''}${dueStr}
             </div>
-            <button class="btn btn-primary btn-sm" onclick="Learner.startCourse('${a.course_id}')">Start →</button>
+            <button class="btn btn-primary btn-sm" onclick="Learner.startCourse('${a.course_id}')">${progOf(a.course_id) ? 'Continue' : 'Start'} →</button>
           </div>`;
         }).join('');
       }
