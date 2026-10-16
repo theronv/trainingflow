@@ -38,7 +38,9 @@ const ClerkAuth = {
     if (!clerk.session) {
       await new Promise(resolve => {
         const off = clerk.addListener(({ session }) => { if (session) { off(); clerk.closeSignIn(); resolve(); } });
-        clerk.openSignIn({});
+        // Google/social sign-in is a full-page redirect; bring the person back to this exact page.
+        const back = location.origin + location.pathname;
+        clerk.openSignIn({ forceRedirectUrl: back, signUpForceRedirectUrl: back });
       });
     }
     return clerk.session.getToken();
@@ -46,17 +48,57 @@ const ClerkAuth = {
   async signOut() { try { if (window.Clerk?.session) await window.Clerk.signOut(); } catch (e) { /* ignore */ } }
 };
 
+const ClerkPending = {
+  KEY: 'trainflow_clerk_pending',
+  set(v) { try { sessionStorage.setItem(ClerkPending.KEY, JSON.stringify(v)); } catch (e) { /* ignore */ } },
+  get() { try { return JSON.parse(sessionStorage.getItem(ClerkPending.KEY)); } catch (e) { return null; } },
+  clear() { try { sessionStorage.removeItem(ClerkPending.KEY); } catch (e) { /* ignore */ } }
+};
+
 const Auth = {
   // ─── EMAIL SIGN-IN (learners + managers; role comes from the account) ───
   async emailSignIn() {
+    ClerkPending.set({ mode: 'login' });
     try {
       const token = await ClerkAuth.token();
-      const data = await api('/api/auth/clerk/login', { method: 'POST', body: JSON.stringify({ token }) });
-      Auth._enter(data);
+      await Auth._clerkLogin(token);
     } catch (e) {
       await ClerkAuth.signOut();
       Toast.err(e.message || 'Email sign-in failed.');
-    }
+    } finally { ClerkPending.clear(); }
+  },
+  async _clerkLogin(token) {
+    const data = await api('/api/auth/clerk/login', { method: 'POST', body: JSON.stringify({ token }) });
+    Auth._enter(data);
+  },
+  // Google sign-in leaves the page and comes back, losing in-memory state. Remember what the person
+  // was doing, and finish it once Clerk has restored their session. Returns true if it took over.
+  async resumeClerk() {
+    const pending = ClerkPending.get();
+    const returning = /[?&]__clerk/.test(location.search);
+    if (!pending && !returning) return false;
+    // Tidy the URL (drop Clerk's handshake params) without a reload.
+    const u = new URL(location.href);
+    [...u.searchParams.keys()].filter(k => k.startsWith('__clerk')).forEach(k => u.searchParams.delete(k));
+    history.replaceState(null, '', u.pathname + (u.search || '') + u.hash);
+    if (!pending) return false; // handshake only; no sign-in was in progress
+    try {
+      const clerk = await ClerkAuth.load();
+      if (!clerk.session) return false;
+      const token = await clerk.session.getToken();
+      if (pending.mode === 'join') {
+        const data = await api('/api/auth/register', { method: 'POST', body: JSON.stringify({ name: pending.name, code: pending.code, clerk_token: token }) });
+        Toast.ok(`Welcome, ${data.user.name}!`);
+        Auth._enter(data);
+      } else {
+        await Auth._clerkLogin(token);
+      }
+      return true;
+    } catch (e) {
+      await ClerkAuth.signOut();
+      Toast.err(e.message || 'Email sign-in failed.');
+      return false;
+    } finally { ClerkPending.clear(); }
   },
   _enter(data) {
     scheduleExpiryWarning(data.token);
@@ -76,6 +118,7 @@ const Auth = {
     if (!code) return Toast.err('Please enter your invite code.');
     if (!name) return Toast.err('Please enter your full name.');
     const btn = $$('join-email-btn'); btn.disabled = true;
+    ClerkPending.set({ mode: 'join', code, name });
     try {
       const token = await ClerkAuth.token();
       const data = await api('/api/auth/register', { method: 'POST', body: JSON.stringify({ name, code, clerk_token: token }) });
@@ -85,7 +128,7 @@ const Auth = {
     } catch (e) {
       await ClerkAuth.signOut();
       Toast.err(e.message || 'Email sign-up failed.');
-    } finally { btn.disabled = false; }
+    } finally { btn.disabled = false; ClerkPending.clear(); }
   },
 
   // ─── ADMIN ───

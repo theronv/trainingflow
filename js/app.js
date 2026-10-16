@@ -503,6 +503,8 @@ const AppProxy = {
       App.openJoin(inviteMatch[1]);
       return;
     }
+    // Returning from Google/email sign-in (full-page redirect): finish signing in.
+    if (await Auth.resumeClerk()) return;
     if (getToken()) Admin.init();
     else if (getManagerToken()) Manager.init();
     else if (getLearnerToken()) Learner.init();
