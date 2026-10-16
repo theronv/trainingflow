@@ -791,34 +791,41 @@ async function getClerkKeys(env) {
   return _jwks.keys
 }
 
-/** Returns { sub, email } for a valid Clerk session token, otherwise null. */
-async function verifyClerkToken(env, token) {
+/** Returns { sub, email } for a valid Clerk session token, otherwise null.
+ *  `why` (optional object) receives a short, non-secret reason when verification fails. */
+async function verifyClerkToken(env, token, why = {}) {
+  const fail = (reason) => { why.reason = reason; return null }
   try {
-    if (!env.CLERK_ISSUER || typeof token !== 'string') return null
+    if (!env.CLERK_ISSUER) return fail('CLERK_ISSUER not set on the worker')
+    if (typeof token !== 'string') return fail('no token')
     const [h, p, sig] = token.split('.')
-    if (!h || !p || !sig) return null
+    if (!h || !p || !sig) return fail('malformed token')
     const header = JSON.parse(new TextDecoder().decode(_b64urlToBytes(h)))
-    if (header.alg !== 'RS256') return null
+    if (header.alg !== 'RS256') return fail(`unexpected alg ${header.alg}`)
     const jwk = (await getClerkKeys(env)).find(k => k.kid === header.kid)
-    if (!jwk) return null
+    if (!jwk) return fail('signing key not found for this token (kid mismatch)')
     const key = await crypto.subtle.importKey('jwk', { ...jwk, alg: 'RS256', ext: true }, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['verify'])
     const ok = await crypto.subtle.verify('RSASSA-PKCS1-v1_5', key, _b64urlToBytes(sig), ENC.encode(`${h}.${p}`))
-    if (!ok) return null
+    if (!ok) return fail('bad signature')
     const claims = JSON.parse(new TextDecoder().decode(_b64urlToBytes(p)))
     const now = Math.floor(Date.now() / 1000)
-    if (claims.iss !== env.CLERK_ISSUER.trim().replace(/\/$/, '')) return null
-    if (!claims.sub || (claims.exp && claims.exp < now) || (claims.nbf && claims.nbf > now + 5)) return null
+    const expected = env.CLERK_ISSUER.trim().replace(/\/$/, '')
+    if (claims.iss !== expected) return fail(`issuer mismatch: token says "${claims.iss}", worker expects "${expected}"`)
+    if (!claims.sub) return fail('no subject')
+    if (claims.exp && claims.exp < now) return fail('token expired')
+    if (claims.nbf && claims.nbf > now + 5) return fail('token not yet valid')
     const email = typeof claims.email === 'string' ? claims.email.trim().toLowerCase() : ''
     return { sub: claims.sub, email }
-  } catch { return null }
+  } catch (e) { return fail(`error: ${e.message}`) }
 }
 
 app.post('/api/auth/clerk/login', async (c) => {
   const body = await c.req.json().catch(() => ({}))
   const ip = c.req.header('CF-Connecting-IP') || 'unknown'
   if (_rateCheck(`clerk:${ip}`)) return c.json({ error: 'Too many attempts. Try again in a minute.' }, 429)
-  const clerk = await verifyClerkToken(c.env, body.token)
-  if (!clerk) return c.json({ error: 'Email sign-in could not be verified.' }, 401)
+  const why = {}
+  const clerk = await verifyClerkToken(c.env, body.token, why)
+  if (!clerk) return c.json({ error: `Email sign-in could not be verified (${why.reason || 'unknown'}).` }, 401)
   // Owner/admin emails (comma-separated secret ADMIN_EMAILS) sign in as admin. Admin has no users row.
   const adminEmails = String(c.env.ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean)
   if (clerk.email && adminEmails.includes(clerk.email)) {
