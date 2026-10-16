@@ -2155,3 +2155,5 @@ button, .nav-btn, .quiz-opt, .course-card, .role-tile, label { touch-action: man
 .ldg-footer .ldg-link { color:#8d99b8; font-size:var(--text-xs); }
 .ldg-footer .ldg-link:hover { color:#fff; }
 .ldg-footer .landing-foot { margin:0; padding:0; border:0; color:#5f6a86; font-size:var(--text-xs); text-align:center; max-width:none; }
+
+.ldg-notice { max-width:46ch; padding:var(--space-3) var(--space-4); border-radius:var(--radius-md); background:rgba(255,90,90,.12); border:1px solid rgba(255,120,120,.45); color:#ffd0d0; font-size:var(--text-sm); line-height:1.5; }

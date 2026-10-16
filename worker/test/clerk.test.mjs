@@ -82,6 +82,12 @@ describe('Clerk email sign-in', () => {
     expect((await login(await mint({ email: 'pat@example.com' }))).status).toBe(404)
   })
 
+  it('explains when the token carries no email claim', async () => {
+    const res = await login(await mint({ email: undefined, sub: 'user_noemail' }))
+    expect(res.status).toBe(401)
+    expect(res.json.code).toBe('no_email_claim')
+  })
+
   it('refuses everything when Clerk is not configured', async () => {
     delete h.env.CLERK_ISSUER
     expect((await login(await mint())).status).toBe(401)

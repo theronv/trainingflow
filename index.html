@@ -42,6 +42,7 @@ if (typeof marked !== 'undefined') {
     <div class="ldg-actions">
       <button type="button" class="btn btn-primary btn-xl ldg-cta" onclick="App.emailSignIn()">Sign in</button>
       <button type="button" class="ldg-textlink" onclick="App.openRequestAccess()">Request access</button>
+      <div id="ldg-notice" class="ldg-notice hidden" role="alert"></div>
     </div>
     <div class="role-grid ldg-tiles hidden" id="ldg-pw-signin">
       <button type="button" class="role-tile role-tile-primary" onclick="App.goLearner()">

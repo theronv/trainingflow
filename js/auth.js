@@ -66,6 +66,13 @@ const ClerkPending = {
 };
 
 const Auth = {
+  // Sign-in failures stay on screen (a toast vanishes before you can read it).
+  _landingNotice(msg) {
+    App.show('screen-landing');
+    const el = $$('ldg-notice'); if (!el) return Toast.err(msg);
+    el.textContent = msg; el.classList.remove('hidden');
+  },
+  _clearLandingNotice() { $$('ldg-notice')?.classList.add('hidden'); },
   // ─── REQUEST ACCESS (new learners) ───
   async submitRequestAccess() {
     const name = $$('ra-name').value.trim(), email = $$('ra-email').value.trim();
@@ -81,13 +88,14 @@ const Auth = {
   },
   // ─── EMAIL SIGN-IN (learners + managers; role comes from the account) ───
   async emailSignIn() {
+    Auth._clearLandingNotice();
     ClerkPending.set({ mode: 'login' });
     try {
       const token = await ClerkAuth.token();
       await Auth._clerkLogin(token);
     } catch (e) {
       await ClerkAuth.signOut();
-      Toast.err(e.message || 'Email sign-in failed.');
+      Auth._landingNotice(e.message || 'Email sign-in failed.');
     } finally { ClerkPending.clear(); }
   },
   async _clerkLogin(token) {
@@ -107,7 +115,7 @@ const Auth = {
     if (!pending) return false; // handshake only; no sign-in was in progress
     try {
       const clerk = await ClerkAuth.load();
-      if (!clerk.session) return false;
+      if (!clerk.session) { Auth._landingNotice('Sign-in did not complete (no session came back from Clerk). Please try again.'); return false; }
       const token = await clerk.session.getToken();
       if (pending.mode === 'join') {
         const data = await api('/api/auth/register', { method: 'POST', body: JSON.stringify({ name: pending.name, code: pending.code, clerk_token: token }) });
@@ -119,7 +127,7 @@ const Auth = {
       return true;
     } catch (e) {
       await ClerkAuth.signOut();
-      Toast.err(e.message || 'Email sign-in failed.');
+      Auth._landingNotice(e.message || 'Email sign-in failed.');
       return false;
     } finally { ClerkPending.clear(); }
   },

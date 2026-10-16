@@ -768,8 +768,9 @@ const _b64urlToBytes = (s) => {
 let _jwks = { at: 0, keys: null }
 async function getClerkKeys(env) {
   if (env.CLERK_JWKS) return JSON.parse(env.CLERK_JWKS).keys || []
+  env = { ...env, CLERK_ISSUER: String(env.CLERK_ISSUER).trim() }
   if (_jwks.keys && Date.now() - _jwks.at < 3600_000) return _jwks.keys
-  const res = await fetch(`${env.CLERK_ISSUER.replace(/\/$/, '')}/.well-known/jwks.json`)
+  const res = await fetch(`${env.CLERK_ISSUER.trim().replace(/\/$/, '')}/.well-known/jwks.json`)
   if (!res.ok) throw new Error('JWKS fetch failed')
   _jwks = { at: Date.now(), keys: (await res.json()).keys || [] }
   return _jwks.keys
@@ -790,7 +791,7 @@ async function verifyClerkToken(env, token) {
     if (!ok) return null
     const claims = JSON.parse(new TextDecoder().decode(_b64urlToBytes(p)))
     const now = Math.floor(Date.now() / 1000)
-    if (claims.iss !== env.CLERK_ISSUER.replace(/\/$/, '')) return null
+    if (claims.iss !== env.CLERK_ISSUER.trim().replace(/\/$/, '')) return null
     if (!claims.sub || (claims.exp && claims.exp < now) || (claims.nbf && claims.nbf > now + 5)) return null
     const email = typeof claims.email === 'string' ? claims.email.trim().toLowerCase() : ''
     return { sub: claims.sub, email }
@@ -819,7 +820,8 @@ app.post('/api/auth/clerk/login', async (c) => {
     user = await find('lower(u.email) = ? AND u.clerk_id IS NULL', [clerk.email])
     if (user) await db.execute({ sql: 'UPDATE users SET clerk_id = ? WHERE id = ?', args: [clerk.sub, user.id] })
   }
-  if (!user) return c.json({ error: 'No account found for that email. Ask your manager for an invite.', code: 'no_account' }, 404)
+  if (!user && !clerk.email) return c.json({ error: 'Signed in, but your sign-in token has no email. In Clerk (Sessions → Customize session token) add { "email": "{{user.primary_email_address}}" } and click Save.', code: 'no_email_claim' }, 401)
+  if (!user) return c.json({ error: `No account found for ${clerk.email}. Ask for an invite or use Request access.`, code: 'no_account' }, 404)
   const now = Math.floor(Date.now() / 1000)
   await db.execute({ sql: 'UPDATE users SET last_login_at = ? WHERE id = ?', args: [now, user.id] })
   const manager = user.role === 'manager'
