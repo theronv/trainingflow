@@ -288,7 +288,7 @@ const Admin = {
     App._editLearnerId = null;
     $$('al-modal-title').textContent = 'Add Manager';
     $$('al-modal-sub').textContent = `Create a manager account for team: ${esc(teamName)}`;
-    $$('al-name').value = ''; $$('al-pw1').value = ''; $$('al-pw2').value = '';
+    $$('al-name').value = ''; $$('al-email').value = ''; $$('al-pw1').value = ''; $$('al-pw2').value = '';
     $$('al-role').value = 'manager';
     const sel = $$('al-team');
     if(sel) {
@@ -632,7 +632,7 @@ const Admin = {
     const orig = btn ? btn.textContent : '';
     if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
     try {
-      await api('/api/learners', { method:'POST', body:JSON.stringify({ name, password: pw1, role, team_id: teamId }) });
+      await api('/api/learners', { method:'POST', body:JSON.stringify({ name, password: pw1, role, team_id: teamId, email: $$('al-email').value.trim() }) });
       Admin.closeAddUser();
       Toast.ok('Account created.');
       Admin.renderLearners();
@@ -642,8 +642,9 @@ const Admin = {
   openEditLearner(id, name, teamId, role) {
     App._editLearnerId = id;
     $$('al-modal-title').textContent = 'Edit User';
-    $$('al-modal-sub').textContent = 'Update name, team, or role. Password is unchanged.';
+    $$('al-modal-sub').textContent = 'Update name, email, team, or role. Password is unchanged.';
     $$('al-name').value = name;
+    $$('al-email').value = (_allLearners.find(l => l.id === id) || {}).email || '';
     $$('al-role').value = role || 'learner';
     const sel = $$('al-team');
     if(sel) {
@@ -662,7 +663,7 @@ const Admin = {
     const teamId = $$('al-team').value || null;
     if (!name) return Toast.err('Name is required.');
     try {
-      await api(`/api/learners/${App._editLearnerId}`, { method:'PATCH', body:JSON.stringify({ name, role, team_id: teamId }) });
+      await api(`/api/learners/${App._editLearnerId}`, { method:'PATCH', body:JSON.stringify({ name, role, team_id: teamId, email: $$('al-email').value.trim() }) });
       Admin.closeAddUser();
       Toast.ok('User updated.');
       Admin.renderLearners();

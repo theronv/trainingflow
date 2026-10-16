@@ -2065,3 +2065,7 @@ button, .nav-btn, .quiz-opt, .course-card, .role-tile, label { touch-action: man
 /* Course tiles: line icon in brand colour instead of emoji */
 .cc-icon, .lc-icon { color: var(--brand); }
 .cc-icon svg, .lc-icon svg { width: 22px; height: 22px; display: block; }
+
+/* Divider between password and email sign-in */
+.auth-or { display:flex; align-items:center; gap:var(--space-3); margin:var(--space-4) 0; color:var(--ink-4); font-size:var(--text-xs); text-transform:uppercase; letter-spacing:.08em; }
+.auth-or::before, .auth-or::after { content:''; flex:1; height:1px; background:var(--border); }

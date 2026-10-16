@@ -13,7 +13,79 @@ function scheduleExpiryWarning(token) {
   } catch(e) { /* ignore */ }
 }
 
+// ─── CLERK (email sign-in) ───
+// Clerk handles the email/code UI. We exchange its session token at the Worker for the app's
+// own JWT, so everything after sign-in is identical to name + password login.
+const ClerkAuth = {
+  _loading: null,
+  load() {
+    if (window.Clerk?.loaded) return Promise.resolve(window.Clerk);
+    if (ClerkAuth._loading) return ClerkAuth._loading;
+    ClerkAuth._loading = new Promise((resolve, reject) => {
+      const sc = document.createElement('script');
+      sc.src = `${CONFIG.CLERK_FRONTEND_API}/npm/@clerk/clerk-js@5/dist/clerk.browser.js`;
+      sc.async = true; sc.crossOrigin = 'anonymous';
+      sc.setAttribute('data-clerk-publishable-key', CONFIG.CLERK_PUBLISHABLE_KEY);
+      sc.onload = async () => { try { await window.Clerk.load(); resolve(window.Clerk); } catch (e) { reject(e); } };
+      sc.onerror = () => { ClerkAuth._loading = null; reject(new Error('Could not load email sign-in. Check your connection.')); };
+      document.head.appendChild(sc);
+    });
+    return ClerkAuth._loading;
+  },
+  // Resolves with a fresh Clerk session token once the person has signed in (opens Clerk's modal if needed).
+  async token() {
+    const clerk = await ClerkAuth.load();
+    if (!clerk.session) {
+      await new Promise(resolve => {
+        const off = clerk.addListener(({ session }) => { if (session) { off(); clerk.closeSignIn(); resolve(); } });
+        clerk.openSignIn({});
+      });
+    }
+    return clerk.session.getToken();
+  },
+  async signOut() { try { if (window.Clerk?.session) await window.Clerk.signOut(); } catch (e) { /* ignore */ } }
+};
+
 const Auth = {
+  // ─── EMAIL SIGN-IN (learners + managers; role comes from the account) ───
+  async emailSignIn() {
+    try {
+      const token = await ClerkAuth.token();
+      const data = await api('/api/auth/clerk/login', { method: 'POST', body: JSON.stringify({ token }) });
+      Auth._enter(data);
+    } catch (e) {
+      await ClerkAuth.signOut();
+      Toast.err(e.message || 'Email sign-in failed.');
+    }
+  },
+  _enter(data) {
+    scheduleExpiryWarning(data.token);
+    if (data.user.role === 'manager') {
+      setManagerToken(data.token); setManagerUser(data.user); curManager = data.user;
+      Manager.init();
+    } else {
+      setLearnerToken(data.token); curLearner = { id: data.user.id, name: data.user.name };
+      Learner.init();
+    }
+  },
+  // Invite sign-up with email instead of a password
+  async joinWithEmail() {
+    const code = $$('join-code').value.trim(), name = $$('join-name').value.trim();
+    if (!code) return Toast.err('Please enter your invite code.');
+    if (!name) return Toast.err('Please enter your full name.');
+    const btn = $$('join-email-btn'); btn.disabled = true;
+    try {
+      const token = await ClerkAuth.token();
+      const data = await api('/api/auth/register', { method: 'POST', body: JSON.stringify({ name, code, clerk_token: token }) });
+      ['join-code','join-name'].forEach(id => { $$(id).value = ''; });
+      Toast.ok(`Welcome, ${data.user.name}!`);
+      Auth._enter(data);
+    } catch (e) {
+      await ClerkAuth.signOut();
+      Toast.err(e.message || 'Email sign-up failed.');
+    } finally { btn.disabled = false; }
+  },
+
   // ─── ADMIN ───
   async doLogin() {
     const password = $$('pw-input').value;
@@ -30,7 +102,7 @@ const Auth = {
       else Toast.err(e.message);
     }
   },
-  adminLogout() { clearToken(); curCourse = null; curModIdx = 0; quizSt = {}; App.show('screen-landing'); },
+  adminLogout() { ClerkAuth.signOut(); clearToken(); curCourse = null; curModIdx = 0; quizSt = {}; App.show('screen-landing'); },
 
   // ─── MANAGER ───
   toggleManagerReg(show) {
@@ -85,7 +157,7 @@ const Auth = {
     } catch (e) { Toast.err(e.message); }
     finally { btn.disabled = false; btn.textContent = 'Create account'; }
   },
-  managerLogout() { clearManagerToken(); clearManagerUser(); curManager = null; curCourse = null; curModIdx = 0; quizSt = {}; App.show('screen-landing'); },
+  managerLogout() { ClerkAuth.signOut(); clearManagerToken(); clearManagerUser(); curManager = null; curCourse = null; curModIdx = 0; quizSt = {}; App.show('screen-landing'); },
 
   // ─── LEARNER ───
   async doLearnerLogin() {
@@ -96,5 +168,5 @@ const Auth = {
       Learner.init();
     } catch(e) { $$('l-login-error').textContent = e.message; $$('l-login-error').style.display='block'; }
   },
-  learnerLogout() { if (Learner._preview) return Learner.exitPreview(); clearLearnerToken(); curLearner = null; curCourse = null; curModIdx = 0; quizSt = {}; App.show('screen-landing'); }
+  learnerLogout() { if (Learner._preview) return Learner.exitPreview(); ClerkAuth.signOut(); clearLearnerToken(); curLearner = null; curCourse = null; curModIdx = 0; quizSt = {}; App.show('screen-landing'); }
 };

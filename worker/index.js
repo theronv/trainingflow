@@ -573,13 +573,16 @@ app.post('/api/learners', requireManager, async (c) => {
   const name = String(body.name).trim()
   const hash = await pbkdf2Hash(body.password)
   const id = uid()
+  const email = String(body.email || '').trim().toLowerCase()
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return c.json({ error: 'Enter a valid email address.' }, 400)
+  await ensureSetup(db)
   try {
     await db.execute({
-      sql: 'INSERT INTO users (id, name, password_hash, role, team_id) VALUES (?, ?, ?, ?, ?)',
-      args: [id, name, hash, role, teamId]
+      sql: 'INSERT INTO users (id, name, password_hash, role, team_id, email) VALUES (?, ?, ?, ?, ?, ?)',
+      args: [id, name, hash, role, teamId, email || null]
     })
   } catch (e) {
-    if (e.message && e.message.includes('UNIQUE')) return c.json({ error: 'A user with that name already exists.' }, 409)
+    if (e.message && e.message.includes('UNIQUE')) return c.json({ error: 'A user with that name or email already exists.' }, 409)
     throw e
   }
   return c.json({ id }, 201)

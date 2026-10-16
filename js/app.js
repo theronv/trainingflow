@@ -16,6 +16,7 @@ const AppProxy = {
   doLogin: () => Auth.doLogin(),
   doManagerLogin: () => Auth.doManagerLogin(),
   doJoin: () => Auth.doJoin(),
+  emailSignIn: () => Auth.emailSignIn(),
   openJoin: (code) => {
     App.show('screen-join');
     $$('join-code').value = (code || '').toUpperCase();

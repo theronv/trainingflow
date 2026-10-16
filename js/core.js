@@ -117,6 +117,9 @@ const CONFIG = {
   DEFAULT_FONT: 'System',
   DEFAULT_ICON: '📋',
   MIN_PW_LEN: 8,
+  // Clerk email sign-in (publishable key is public by design; the issuer is set on the Worker)
+  CLERK_PUBLISHABLE_KEY: 'pk_test_Y3VkZGx5LWdydWItOTkwNS5jbGVyay5hY2NvdW50cy5kZXYk',
+  CLERK_FRONTEND_API: 'https://cuddly-grub-9905.clerk.accounts.dev',
   TOAST_MS: 3200,
   FOCUS_DELAY: 80,
 };

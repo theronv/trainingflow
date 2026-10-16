@@ -90,6 +90,7 @@ if (typeof marked !== 'undefined') {
         <label for="join-name">Your full name</label>
         <input type="text" id="join-name" placeholder="e.g. Jane Doe" autocomplete="name">
       </div>
+      <div id="join-pw-block">
       <div class="field">
         <label for="join-pw1">Create a password</label>
         <input type="password" id="join-pw1" placeholder="At least 8 characters" autocomplete="new-password">
@@ -98,8 +99,10 @@ if (typeof marked !== 'undefined') {
         <label for="join-pw2">Confirm password</label>
         <input type="password" id="join-pw2" placeholder="Re-enter password" autocomplete="new-password" onkeydown="if(event.key==='Enter')App.doJoin()">
       </div>
+      </div>
       <div style="display:flex;flex-direction:column;gap:var(--space-3);">
         <button class="btn btn-primary" id="join-btn" onclick="App.doJoin()">Create account</button>
+        <button class="btn btn-outline btn-sm" id="join-email-btn" onclick="Auth.joinWithEmail()">Use my email instead of a password</button>
         <button class="btn btn-ghost btn-sm" onclick="App.show('screen-landing')">Back</button>
       </div>
     </div>
@@ -124,6 +127,8 @@ if (typeof marked !== 'undefined') {
       </div>
       <div style="display:flex;flex-direction:column;gap:var(--space-3);">
         <button class="btn btn-primary" onclick="App.doManagerLogin()">Sign In</button>
+        <div class="auth-or"><span>or</span></div>
+        <button class="btn btn-outline" onclick="App.emailSignIn()">Sign in with email</button>
         <button class="btn btn-ghost btn-sm" onclick="App.openJoin()">Have an invite code?</button>
         <button class="btn btn-outline btn-sm" onclick="App.show('screen-landing')">Back</button>
       </div>
@@ -313,6 +318,8 @@ if (typeof marked !== 'undefined') {
             <input type="password" id="learner-pw-input" placeholder="Password…" autocomplete="current-password" onkeydown="if(event.key==='Enter')App.doLearnerLogin()">
           </div>
           <button class="btn btn-primary btn-xl w-full" onclick="App.doLearnerLogin()">Sign In</button>
+          <div class="auth-or"><span>or</span></div>
+          <button class="btn btn-outline w-full" onclick="App.emailSignIn()">Sign in with email</button>
         </div>
       </div>
       <div class="page hidden" id="lp-courses">
@@ -980,6 +987,7 @@ if (typeof marked !== 'undefined') {
         </select>
       </div>
       <div class="field"><label>Name</label><input type="text" id="al-name" placeholder="Full name…" autocomplete="off"></div>
+      <div class="field"><label>Email <span style="font-weight:400;color:var(--ink-4);">(optional — enables email sign-in)</span></label><input type="email" id="al-email" placeholder="name@company.com" autocomplete="off"></div>
       <div class="field">
         <label>Team (Optional)</label>
         <select id="al-team"></select>
