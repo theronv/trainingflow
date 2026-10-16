@@ -97,6 +97,7 @@ async function ensureSetup(db) {
   await setupBrand(db)
   await setupSections(db)
   await setupTags(db)
+  await setupClerk(db)
   _setupComplete = true
 }
 
@@ -189,6 +190,14 @@ async function setupBrand(db) {
   try { await db.execute("ALTER TABLE brand ADD COLUMN accent_color TEXT DEFAULT '#d99100'") } catch {}
   try { await db.execute("ALTER TABLE brand ADD COLUMN font_family TEXT DEFAULT 'Inter'") } catch {}
   try { await db.execute("ALTER TABLE brand ADD COLUMN font_url TEXT DEFAULT ''") } catch {}
+}
+
+// Email sign-in (Clerk): users may link an email and a Clerk user id. Both nullable.
+async function setupClerk(db) {
+  try { await db.execute('ALTER TABLE users ADD COLUMN email TEXT') } catch {}
+  try { await db.execute('ALTER TABLE users ADD COLUMN clerk_id TEXT') } catch {}
+  try { await db.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_clerk_id ON users(clerk_id)') } catch {}
+  try { await db.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(lower(email))') } catch {}
 }
 
 async function setupTags(db) {
@@ -621,9 +630,22 @@ app.patch('/api/learners/:id', requireAdmin, async (c) => {
   if (body.name !== undefined)    { fields.push('name = ?');    args.push(body.name.trim()) }
   if (body.team_id !== undefined) { fields.push('team_id = ?'); args.push(body.team_id || null) }
   if (body.role !== undefined)    { fields.push('role = ?');    args.push(body.role === 'manager' ? 'manager' : 'learner') }
+  if (body.email !== undefined) {
+    const email = String(body.email || '').trim().toLowerCase()
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return c.json({ error: 'Enter a valid email address.' }, 400)
+    await ensureSetup(db)
+    fields.push('email = ?'); args.push(email || null)
+    // Changing the email unlinks Clerk so the next sign-in re-links against the new address.
+    fields.push('clerk_id = NULL')
+  }
   if (!fields.length) return c.json({ error: 'Nothing to update' }, 400)
   args.push(c.req.param('id'))
-  await db.execute({ sql: `UPDATE users SET ${fields.join(', ')} WHERE id = ?`, args })
+  try {
+    await db.execute({ sql: `UPDATE users SET ${fields.join(', ')} WHERE id = ?`, args })
+  } catch (e) {
+    if (e.message && e.message.includes('UNIQUE')) return c.json({ error: 'That email or name is already in use.' }, 409)
+    throw e
+  }
   return c.json({ ok: true })
 })
 
@@ -635,6 +657,73 @@ app.delete('/api/learners/:id', requireAdmin, async (c) => {
 
 // Redeems an invite: the invitee picks their own name + password and is signed in.
 // `requiredRole` pins the legacy manager endpoint to manager invites.
+// ── Clerk email sign-in ───────────────────────────────────────────────────────
+// The browser signs in with Clerk, then exchanges the Clerk session token here for the
+// app's own JWT, so every existing role check, team scope and test keeps working unchanged.
+// Setup: set CLERK_ISSUER (e.g. https://your-app.clerk.accounts.dev) and, in the Clerk
+// dashboard (Sessions → Customize session token), add:  { "email": "{{user.primary_email_address}}" }
+// CLERK_JWKS (JSON) may be set to pin the public keys instead of fetching them.
+const _b64urlToBytes = (s) => {
+  s = s.replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '='
+  return Uint8Array.from(atob(s), ch => ch.charCodeAt(0))
+}
+let _jwks = { at: 0, keys: null }
+async function getClerkKeys(env) {
+  if (env.CLERK_JWKS) return JSON.parse(env.CLERK_JWKS).keys || []
+  if (_jwks.keys && Date.now() - _jwks.at < 3600_000) return _jwks.keys
+  const res = await fetch(`${env.CLERK_ISSUER.replace(/\/$/, '')}/.well-known/jwks.json`)
+  if (!res.ok) throw new Error('JWKS fetch failed')
+  _jwks = { at: Date.now(), keys: (await res.json()).keys || [] }
+  return _jwks.keys
+}
+
+/** Returns { sub, email } for a valid Clerk session token, otherwise null. */
+async function verifyClerkToken(env, token) {
+  try {
+    if (!env.CLERK_ISSUER || typeof token !== 'string') return null
+    const [h, p, sig] = token.split('.')
+    if (!h || !p || !sig) return null
+    const header = JSON.parse(new TextDecoder().decode(_b64urlToBytes(h)))
+    if (header.alg !== 'RS256') return null
+    const jwk = (await getClerkKeys(env)).find(k => k.kid === header.kid)
+    if (!jwk) return null
+    const key = await crypto.subtle.importKey('jwk', { ...jwk, alg: 'RS256', ext: true }, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['verify'])
+    const ok = await crypto.subtle.verify('RSASSA-PKCS1-v1_5', key, _b64urlToBytes(sig), ENC.encode(`${h}.${p}`))
+    if (!ok) return null
+    const claims = JSON.parse(new TextDecoder().decode(_b64urlToBytes(p)))
+    const now = Math.floor(Date.now() / 1000)
+    if (claims.iss !== env.CLERK_ISSUER.replace(/\/$/, '')) return null
+    if (!claims.sub || (claims.exp && claims.exp < now) || (claims.nbf && claims.nbf > now + 5)) return null
+    const email = typeof claims.email === 'string' ? claims.email.trim().toLowerCase() : ''
+    return { sub: claims.sub, email }
+  } catch { return null }
+}
+
+app.post('/api/auth/clerk/login', async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  const ip = c.req.header('CF-Connecting-IP') || 'unknown'
+  if (_rateCheck(`clerk:${ip}`)) return c.json({ error: 'Too many attempts. Try again in a minute.' }, 429)
+  const clerk = await verifyClerkToken(c.env, body.token)
+  if (!clerk) return c.json({ error: 'Email sign-in could not be verified.' }, 401)
+  const db = getDb(c.env)
+  await ensureSetup(db)
+  const find = (sql, args) => db.execute({ sql: `SELECT u.*, t.name AS team_name FROM users u LEFT JOIN teams t ON u.team_id = t.id WHERE ${sql}`, args }).then(toObj)
+  let user = await find('u.clerk_id = ?', [clerk.sub])
+  if (!user && clerk.email) {
+    // First email sign-in for an existing account: link it by (case-insensitive) email.
+    user = await find('lower(u.email) = ? AND u.clerk_id IS NULL', [clerk.email])
+    if (user) await db.execute({ sql: 'UPDATE users SET clerk_id = ? WHERE id = ?', args: [clerk.sub, user.id] })
+  }
+  if (!user) return c.json({ error: 'No account found for that email. Ask your manager for an invite.', code: 'no_account' }, 404)
+  const now = Math.floor(Date.now() / 1000)
+  await db.execute({ sql: 'UPDATE users SET last_login_at = ? WHERE id = ?', args: [now, user.id] })
+  const manager = user.role === 'manager'
+  const token = await sign(manager
+    ? { id: user.id, name: user.name, role: 'manager', team_id: user.team_id, iat: now, exp: now + CONSTANTS.ADMIN_JWT_EXP_SEC }
+    : { id: user.id, name: user.name, role: 'learner', iat: now, exp: now + CONSTANTS.LEARNER_JWT_EXP_SEC }, c.env.JWT_SECRET, 'HS256')
+  return c.json({ token, user: { id: user.id, name: user.name, role: user.role, team_id: user.team_id, team_name: user.team_name || '' } })
+})
+
 async function registerWithInvite(c, requiredRole) {
   const body = await c.req.json().catch(() => ({}))
   const ip = c.req.header('CF-Connecting-IP') || 'unknown'
@@ -643,11 +732,23 @@ async function registerWithInvite(c, requiredRole) {
   const code = typeof body.code === 'string' ? body.code.trim().toUpperCase() : ''
   if (!name) return c.json({ error: 'Please enter your full name.' }, 400)
   if (name.length > 100) return c.json({ error: 'That name is too long.' }, 400)
-  if (typeof body.password !== 'string' || body.password.length < 8) return c.json({ error: 'Password must be at least 8 characters.' }, 400)
+  // Email sign-up: a verified Clerk session replaces the password.
+  let clerk = null
+  if (body.clerk_token) {
+    clerk = await verifyClerkToken(c.env, body.clerk_token)
+    if (!clerk) return c.json({ error: 'Email sign-in could not be verified. Please try again.' }, 401)
+  } else if (typeof body.password !== 'string' || body.password.length < 8) {
+    return c.json({ error: 'Password must be at least 8 characters.' }, 400)
+  }
   if (!code) return c.json({ error: 'Please enter your invite code.' }, 400)
 
   const db = getDb(c.env)
+  await ensureSetup(db)
   await ensureInviteSchema(db)
+  if (clerk) {
+    const taken = await db.execute({ sql: 'SELECT id FROM users WHERE clerk_id = ? OR lower(email) = ?', args: [clerk.sub, clerk.email || ''] })
+    if (taken.rows.length) return c.json({ error: 'That email already has an account. Sign in instead.' }, 409)
+  }
   const inv = toObj(await db.execute({ sql: 'SELECT * FROM invite_codes WHERE code = ? AND used = 0', args: [code] }))
   const invalid = () => c.json({ error: 'Invalid or expired invite code' }, 400)
   if (!inv || (requiredRole && inv.role !== requiredRole)) return invalid()
@@ -663,12 +764,13 @@ async function registerWithInvite(c, requiredRole) {
   })
   if (claim.rowsAffected !== 1) return invalid()
 
-  const hash = await pbkdf2Hash(body.password)
+  // Clerk users get a random, never-disclosed password hash so name+password login can't be used.
+  const hash = await pbkdf2Hash(clerk ? _b64(crypto.getRandomValues(new Uint8Array(32))) : body.password)
   const id = uid()
   try {
     await db.execute({
-      sql: 'INSERT INTO users (id, name, password_hash, role, team_id) VALUES (?, ?, ?, ?, ?)',
-      args: [id, name, hash, role, inv.team_id]
+      sql: 'INSERT INTO users (id, name, password_hash, role, team_id, email, clerk_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      args: [id, name, hash, role, inv.team_id, clerk?.email || null, clerk?.sub || null]
     })
     await db.execute({ sql: 'UPDATE invite_codes SET used_by = ? WHERE id = ?', args: [id, inv.id] })
   } catch (e) {
@@ -717,6 +819,7 @@ app.get('/api/admin/teams', requireManager, async (c) => {
 app.get('/api/learners', requireManager, async (c) => {
   const user = c.get('user')
   const db = getDb(c.env)
+  await ensureSetup(db) // selects users.email, which older databases only gain via setupClerk
   const tid = c.req.query('team_id')
   const roleFilter = c.req.query('role')
   const page = parseInt(c.req.query('page') || '0')
@@ -759,7 +862,7 @@ app.get('/api/learners', requireManager, async (c) => {
         AND NOT EXISTS (SELECT 1 FROM completions c WHERE c.learner_id = u.id AND c.course_id = a.course_id AND c.passed = 1)
     ) AS overdue_count`
 
-  const safeColumns = 'u.id, u.name, u.role, u.team_id, u.last_login_at, u.created_at'
+  const safeColumns = 'u.id, u.name, u.email, u.role, u.team_id, u.last_login_at, u.created_at'
 
   if (page > 0) {
     const [countRes, rowsRes] = await Promise.all([
