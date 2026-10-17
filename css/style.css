@@ -535,7 +535,8 @@ textarea { resize: vertical; min-height: 90px; line-height: 1.6; }
   margin-bottom: var(--space-8);
   align-items: start;
 }
-@media (max-width: 960px) { .dash-mid { grid-template-columns: 1fr; } }
+@media (max-width: 960px) { .dash-mid { grid-template-columns: minmax(0, 1fr); } }
+.dash-mid > * { min-width: 0; }
 
 .dash-section-label {
   font-family: var(--font-mono);
@@ -2056,16 +2057,16 @@ button, .nav-btn, .quiz-opt, .course-card, .role-tile, label { touch-action: man
 /* Mobile tab bar: navs with ≤5 items (learner, manager) fit the width with icon-over-label — no horizontal scroll.
    Longer navs (admin) keep the scrolling strip. */
 @media (max-width: 860px) {
-  .sidenav:not(:has(.nav-btn:nth-of-type(6))) {
+  .sidenav:not(.sidenav-scroll):not(:has(.nav-btn:nth-of-type(6))) {
     overflow-x: visible; justify-content: stretch; gap: 0; padding: var(--space-1) var(--space-2);
   }
-  .sidenav:not(:has(.nav-btn:nth-of-type(6))) .nav-btn {
+  .sidenav:not(.sidenav-scroll):not(:has(.nav-btn:nth-of-type(6))) .nav-btn {
     flex: 1 1 0; min-width: 0; flex-direction: column; justify-content: center; align-items: center;
     gap: 2px; padding: 6px 2px; min-height: 52px; font-size: 12px; line-height: 1.2;
     white-space: normal; text-align: center; border-radius: var(--radius-md);
   }
-  .sidenav:not(:has(.nav-btn:nth-of-type(6))) .nav-icon { margin: 0; }
-  .sidenav:not(:has(.nav-btn:nth-of-type(6))) .nav-icon svg { width: 20px; height: 20px; }
+  .sidenav:not(.sidenav-scroll):not(:has(.nav-btn:nth-of-type(6))) .nav-icon { margin: 0; }
+  .sidenav:not(.sidenav-scroll):not(:has(.nav-btn:nth-of-type(6))) .nav-icon svg { width: 20px; height: 20px; }
 }
 
 /* Course tiles: line icon in brand colour instead of emoji */
@@ -2218,3 +2219,23 @@ button, .nav-btn, .quiz-opt, .course-card, .role-tile, label { touch-action: man
 .img-zoom { position: fixed; inset: 0; z-index: 10000; background: var(--scrim-strong); overflow: auto; -webkit-overflow-scrolling: touch; touch-action: pan-x pan-y pinch-zoom; padding: calc(56px + env(safe-area-inset-top)) var(--space-3) calc(var(--space-6) + env(safe-area-inset-bottom)); }
 .img-zoom img { display: block; max-width: none; width: max(100%, min(1200px, 220vw)); height: auto; margin: 0 auto; background: #fff; border-radius: var(--radius-md); cursor: zoom-out; }
 .img-zoom-close { position: fixed; top: calc(8px + env(safe-area-inset-top)); right: calc(8px + env(safe-area-inset-right)); width: 44px; height: 44px; border-radius: 999px; border: 0; background: var(--surface); color: var(--ink-1); font-size: 22px; line-height: 1; cursor: pointer; z-index: 1; box-shadow: var(--shadow-md); }
+
+/* Admin tab strip (8 items): icon over label, fixed-width tabs, swipe to scroll */
+@media (max-width: 860px) {
+  .sidenav-scroll { overflow-x: auto; gap: var(--space-1); padding: var(--space-1) var(--space-2); }
+  .sidenav-scroll .nav-btn {
+    flex: 0 0 auto; min-width: 76px; flex-direction: column; justify-content: center; align-items: center;
+    gap: 2px; padding: 6px 10px; min-height: 52px; font-size: 12px; line-height: 1.2;
+    white-space: nowrap; text-align: center; border-radius: var(--radius-md);
+  }
+  .sidenav-scroll .nav-icon { margin: 0; }
+  .sidenav-scroll .nav-icon svg { width: 20px; height: 20px; }
+}
+@media (max-width: 520px) {
+  .topbar-right .btn { font-size: 11px; letter-spacing: 0.03em; padding-left: 10px; padding-right: 10px; }
+  .topbar .chip { font-size: 10px; padding-left: 8px; padding-right: 8px; }
+  .brand > span { max-width: 30vw; }
+}
+@media (max-width: 520px) {
+  .topbar:has(.chip-amber) .brand > span { display: none; }
+}
