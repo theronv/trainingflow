@@ -559,7 +559,15 @@ app.patch('/api/learners/bulk', requireAdmin, async (c) => {
   const db = getDb(c.env)
   const fields = [], args = []
   if (body.team_id !== undefined) { fields.push('team_id = ?'); args.push(body.team_id || null) }
-  if (body.role) { fields.push('role = ?'); args.push(body.role) }
+  if (body.role) {
+    if (body.role !== 'manager' && body.role !== 'learner') return c.json({ error: 'role must be manager or learner' }, 400)
+    fields.push('role = ?'); args.push(body.role)
+  }
+  if (body.is_admin !== undefined) {
+    if (!body.is_admin && ids.includes(c.get('user').id)) return c.json({ error: 'You cannot remove your own admin access.' }, 400)
+    await ensureSetup(db)
+    fields.push('is_admin = ?'); args.push(body.is_admin ? 1 : 0)
+  }
   if (!fields.length) return c.json({ error: 'Nothing to update' }, 400)
   args.push(...ids)
   await db.execute({

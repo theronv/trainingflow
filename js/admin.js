@@ -506,9 +506,12 @@ const Admin = {
   async bulkChangeRole(role) {
     const ids = Array.from(Admin._selectedUsers);
     if (!ids.length || !role) return;
+    const adminChange = role === 'make_admin' || role === 'remove_admin';
+    const body = adminChange ? { ids, is_admin: role === 'make_admin' } : { ids, role };
+    const label = { manager: 'Manager', learner: 'User', make_admin: 'administrators', remove_admin: 'non-administrators' }[role];
     try {
-      await api('/api/learners/bulk', { method: 'PATCH', body: JSON.stringify({ ids, role }) });
-      Toast.ok(`${ids.length} user(s) updated to ${role === 'manager' ? 'Manager' : 'User'}.`);
+      await api('/api/learners/bulk', { method: 'PATCH', body: JSON.stringify(body) });
+      Toast.ok(`${ids.length} user(s) updated${adminChange ? ` — now ${label}` : ` to ${label}`}.`);
       Admin._selectedUsers.clear();
       Admin.renderLearners(Admin._learnersPage);
     } catch(e) { Toast.err(e.message); }

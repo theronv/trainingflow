@@ -126,4 +126,18 @@ describe('multi-role accounts', () => {
       expect(res.status).toBe(401)
     })
   })
+
+  it('bulk: grant/revoke admin, reject bad roles, never self-revoke', async () => {
+    const a = await h.createUser({ name: 'a' }), b = await h.createUser({ name: 'b' })
+    const me = await h.createUser({ name: 'boss' })
+    const boss = await h.mint({ id: me.id, name: me.name, role: 'admin', roles: ['learner', 'admin'] })
+    const patch = (body) => h.request('/api/learners/bulk', { method: 'PATCH', token: boss, body })
+    expect((await patch({ ids: [a.id, b.id], is_admin: true })).status).toBe(200)
+    const flags = async () => (await h.db.execute('SELECT name, is_admin FROM users WHERE name IN (\'a\',\'b\')')).rows.map(r => Number(r.is_admin))
+    expect(await flags()).toEqual([1, 1])
+    expect((await patch({ ids: [a.id], is_admin: false })).status).toBe(200)
+    expect(await flags()).toEqual([0, 1])
+    expect((await patch({ ids: [me.id, a.id], is_admin: false })).status).toBe(400)
+    expect((await patch({ ids: [a.id], role: 'admin' })).status).toBe(400)
+  })
 })
