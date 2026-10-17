@@ -2163,3 +2163,58 @@ button, .nav-btn, .quiz-opt, .course-card, .role-tile, label { touch-action: man
 .ldg-footer .landing-foot { margin:0; padding:0; border:0; color:#5f6a86; font-size:var(--text-xs); text-align:center; max-width:none; }
 
 .ldg-notice { max-width:46ch; padding:var(--space-3) var(--space-4); border-radius:var(--radius-md); background:rgba(255,90,90,.12); border:1px solid rgba(255,120,120,.45); color:#ffd0d0; font-size:var(--text-sm); line-height:1.5; }
+
+/* ══════════════════ MOBILE / iOS PASS II — 2026-10-16 ══════════════════
+   Presentation-only. Fixes found by auditing at 320/390/768px: later 100vh rules beat the dvh fix,
+   the floating theme button covered content, sub-44px tap targets, tall stacked module list. */
+@supports (height: 100dvh) {
+  #app, .screen, .screen.active, #screen-landing { min-height: 100dvh; }
+  .ldg-band { min-height: calc(100dvh - 130px); }
+}
+
+/* markdown lessons: wide tables scroll, long URLs/words wrap instead of pushing the page sideways */
+.prose-content { overflow-wrap: break-word; }
+.prose-content table { display: block; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+@media (max-width: 860px) {
+  /* floating theme button: clear of the home indicator, big enough to hit, and content gets room beneath it */
+  #global-theme-toggle { width: 44px; height: 44px; bottom: calc(12px + env(safe-area-inset-bottom)) !important; right: calc(12px + env(safe-area-inset-right)) !important; }
+  .main, .module-main, .mod-main { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
+  .ldg-footer { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
+
+  /* landscape iPhones: keep content out from under the notch */
+  .main, .sidenav, .module-main, .ldg-footer { padding-left: max(var(--space-4), env(safe-area-inset-left)); padding-right: max(var(--space-4), env(safe-area-inset-right)); }
+
+  /* course player: modules become a swipeable pill strip instead of a tall stacked list */
+  .module-nav, .mod-sidebar { max-height: none; padding: var(--space-3) var(--space-4); }
+  .module-nav .module-nav-title { margin-bottom: var(--space-2); }
+  #mod-nav-list { display: flex; gap: var(--space-2); overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; scroll-snap-type: x proximity; padding-bottom: 2px; }
+  #mod-nav-list::-webkit-scrollbar { display: none; }
+  #mod-nav-list .mod-item { flex: 0 0 auto; max-width: 72vw; scroll-snap-align: start; align-items: center; border: 1px solid var(--border); padding: var(--space-2) var(--space-3); min-height: 44px; }
+  #mod-nav-list .mod-item.active { border-color: var(--brand); }
+  #mod-nav-list .mod-item-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #mod-nav-list .mod-item-summary { display: none; }
+}
+
+/* touch devices: every tappable control reaches Apple's 44pt minimum */
+@media (pointer: coarse) {
+  .btn-sm, .btn-ghost, .topbar .btn, #focus-mode-btn, .course-header .btn { min-height: 44px; }
+  .ldg-link, .ldg-textlink, .source-banner-link { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+  .ldg-more { gap: 0; }
+}
+
+/* phones: source banner and quiz feedback stack instead of squeezing text into a sliver */
+@media (max-width: 600px) {
+  .source-banner { flex-wrap: wrap; padding: var(--space-4); gap: var(--space-3); }
+  .source-banner-body { flex: 1 1 calc(100% - 56px); }
+  .source-banner-link { flex: 1 1 100%; text-align: center; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+  .quiz-feedback { flex-wrap: wrap; padding: var(--space-4); gap: var(--space-3); }
+  .quiz-feedback .fb-body { flex: 1 1 0; min-width: 0; }
+  .quiz-feedback .fb-next { flex: 1 1 100%; width: 100%; }
+}
+
+/* tap a lesson screenshot to see it full size (scroll / pinch to inspect) */
+.prose-content img { cursor: zoom-in; }
+.img-zoom { position: fixed; inset: 0; z-index: 10000; background: var(--scrim-strong); overflow: auto; -webkit-overflow-scrolling: touch; touch-action: pan-x pan-y pinch-zoom; padding: calc(56px + env(safe-area-inset-top)) var(--space-3) calc(var(--space-6) + env(safe-area-inset-bottom)); }
+.img-zoom img { display: block; max-width: none; width: max(100%, min(1200px, 220vw)); height: auto; margin: 0 auto; background: #fff; border-radius: var(--radius-md); cursor: zoom-out; }
+.img-zoom-close { position: fixed; top: calc(8px + env(safe-area-inset-top)); right: calc(8px + env(safe-area-inset-right)); width: 44px; height: 44px; border-radius: 999px; border: 0; background: var(--surface); color: var(--ink-1); font-size: 22px; line-height: 1; cursor: pointer; z-index: 1; box-shadow: var(--shadow-md); }

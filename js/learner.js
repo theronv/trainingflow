@@ -297,6 +297,9 @@ const Learner = {
       const item = $$(`mod-nav-${i}`);
       if(item) item.classList.toggle('active', i === mi);
     });
+    // On phones the module list is a horizontal strip: keep the current module in view.
+    const cur = $$(`mod-nav-${mi}`);
+    if (cur && cur.parentElement) cur.parentElement.scrollTo({ left: Math.max(0, cur.offsetLeft - 16), behavior: 'smooth' });
     // Update progress bar
     const pct = Math.round((mi / curCourse.mods.length) * 100);
     if($$('ch-prog')) $$('ch-prog').style.width = pct + '%';
@@ -614,3 +617,18 @@ const Learner = {
     }, 150);
   }
 };
+
+// Tap a lesson screenshot to open it full size (scrollable / pinch-zoomable); tap again or Esc to close.
+(function () {
+  const close = () => { const z = document.querySelector('.img-zoom'); if (z) z.remove(); };
+  document.addEventListener('click', e => {
+    if (e.target.closest('.img-zoom')) { close(); return; }
+    const img = e.target.closest('.prose-content img');
+    if (!img) return;
+    const z = document.createElement('div');
+    z.className = 'img-zoom'; z.setAttribute('role', 'dialog'); z.setAttribute('aria-label', 'Screenshot, full size');
+    z.innerHTML = `<button class="img-zoom-close" aria-label="Close">×</button><img src="${img.currentSrc || img.src}" alt="${esc(img.alt || '')}">`;
+    document.body.appendChild(z);
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+})();
