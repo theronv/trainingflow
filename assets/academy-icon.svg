@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" fill="#121826"/>
+  <!-- progress bars (the Pregame motif) -->
+  <rect x="102" y="332" width="62" height="88" fill="#5fc3ff"/>
+  <rect x="225" y="292" width="62" height="128" fill="#ffffff"/>
+  <rect x="348" y="362" width="62" height="58" fill="#5fc3ff"/>
+  <!-- mortarboard -->
+  <path d="M168 176 V232 Q256 282 344 232 V176 L256 214 Z" fill="#5fc3ff"/>
+  <path d="M256 84 L420 150 L256 216 L92 150 Z" fill="#ffffff"/>
+  <!-- tassel -->
+  <path d="M400 158 V228" stroke="#5fc3ff" stroke-width="10" stroke-linecap="round" fill="none"/>
+  <rect x="389" y="224" width="22" height="34" rx="6" fill="#5fc3ff"/>
+</svg>

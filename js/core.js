@@ -108,7 +108,7 @@ const CONFIG = {
     ? 'http://localhost:8787'
     : 'https://trainflow-worker.theronv.workers.dev',
   DEFAULT_BRAND_NAME: 'Pregame Academy',
-  DEFAULT_LOGO: 'assets/pregame-icon-192.png',
+  DEFAULT_LOGO: 'assets/academy-icon-192.png',
   DEFAULT_TAGLINE: 'Assign, track, and certify your team\'s training — in one place.',
   DEFAULT_C1: '#1565ff',
   DEFAULT_C2: '#1b1a5c',

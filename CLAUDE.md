@@ -296,7 +296,7 @@ Visual design pass on the **web app** (vanilla JS SPA — the RN/NativeWind targ
 Renamed from TrainFlow and re-skinned to match the Pregame site (pregame.vickerydigital.com):
 - Tokens: brand black + electric blue `#1565ff`, indigo `#1b1a5c`, amber `#d99100`; light surfaces `#f3f5fa`/`#fff`, dark `#05060a`/`#0e1118`. Text-safe `--accent`/`--accent-strong`/`--why-bg` for links and active states.
 - Look: black topbar, aurora page-head hero (`--hero`), uppercase tracked labels, 6px buttons, 16px cards, system font stack. Theme follows the OS until the user toggles it.
-- Logo: `assets/pregame-icon-{192,512}.png` (copied from the Pregame site) is the default logo/favicon on every surface; an admin-uploaded logo overrides it.
+- Logo: `assets/academy-icon-{192,512}.png` (graduation cap over the three-bar Pregame motif; source `assets/academy-icon.svg`) is the default logo/favicon on every surface; an admin-uploaded logo overrides it.
 - Legacy defaults (`TrainFlow`, old blues/purples, `Inter`) saved in the `brand` row are migrated to the new defaults at runtime by `normBrand()`; customised values are kept.
 - Deliberately **not** renamed (internal identifiers): the Worker/DB names (`trainflow-worker`, `trainflow-theronv`), repo/Pages path (`/trainingflow/`), and `trainflow_*` localStorage/sessionStorage keys — changing them would break the deployed URL and sign users out.
 

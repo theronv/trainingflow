@@ -1790,7 +1790,7 @@ body { font-family: var(--font-body); }
 /* ── Topbar: brand black, tracked wordmark, outlined actions ── */
 .topbar { background: #000; border-bottom: 1px solid #1f2531; height: 60px; }
 .brand { color: #fff; font-size: 17px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
-.brand::before { content: ''; width: 28px; height: 28px; border-radius: 8px; transform: none; background: url('../assets/pregame-icon-192.png') center / cover; }
+.brand::before { content: ''; width: 28px; height: 28px; border-radius: 8px; transform: none; background: url('../assets/academy-icon-192.png') center / cover; }
 .brand-logo { height: 28px; width: auto; border-radius: 8px; }
 .topbar .user-pill { color: rgba(255,255,255,.85); }
 .topbar .btn-ghost {
