@@ -100,7 +100,9 @@ const AppProxy = {
     if (!sheet) { Toast.err('Certificate sheet not found.'); return; }
 
     Toast.info('Generating PDF...');
-    html2canvas(sheet, { scale: 2, useCORS: true, logging: false }).then(canvas => {
+    // The phone preview is scaled to fit (CSS zoom); capture at full size so the PDF isn't shrunk.
+    const prevZoom = sheet.style.zoom; sheet.style.zoom = '';
+    html2canvas(sheet, { scale: 2, useCORS: true, logging: false }).finally(() => { sheet.style.zoom = prevZoom; }).then(canvas => {
       const img = canvas.toDataURL('image/png');
       doc.addImage(img, 'PNG', 0, 0, 297, 210);
 

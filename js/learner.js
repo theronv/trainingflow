@@ -632,3 +632,16 @@ const Learner = {
   });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
 })();
+
+
+// Phone: scale the fixed-width certificate preview to the screen instead of panning (PDF export resets the zoom).
+(function () {
+  const ov = document.getElementById('cert-overlay'), sheet = document.getElementById('cert-sheet');
+  if (!ov || !sheet) return;
+  const fit = () => {
+    const avail = ov.clientWidth - 32;
+    sheet.style.zoom = innerWidth <= 860 && avail < 760 && avail > 0 ? String(avail / 760) : '';
+  };
+  new MutationObserver(fit).observe(ov, { attributes: true, attributeFilter: ['class'] });
+  addEventListener('resize', fit);
+})();
