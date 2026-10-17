@@ -100,27 +100,13 @@ cd worker && npx wrangler deploy         # Worker
 
 **Auto-deploy in Claude sessions:** the owner has authorised Claude to ship its own changes (rules in the gitignored `.claude/settings.local.json`). After tests pass: commit, `git push origin main` (Pages auto-deploys the frontend), and `cd worker && npx wrangler deploy` only when `worker/` changed. Then check `gh run list --limit 1`. Never run DB migrations, `wrangler secret`, or destructive `turso` commands without asking.
 
-## Demo Data Seeding
+## Demo Data Seeding (local dev only)
+
+The public **Demo** is a client-side sandbox (see "Demo" below) and needs nothing in Turso. The seeded users were removed from production on 2026-10-16. `worker/seed-demo.mjs` remains for populating a **local/dev** database — do **not** run it with `--prod`: `--reset` also deletes `brand`, `admin`, and every real user and team.
 
 ```bash
-cd worker
-
-# Seed production (preserves existing courses)
-export TURSO_URL=libsql://your-db.turso.io
-export TURSO_TOKEN=$(turso db tokens create <db-name>)
-node seed-demo.mjs --prod --reset
-
-# Seed using your own courses (skip the 4 built-in demo courses)
-node seed-demo.mjs --prod --reset --skip-courses
-
-# Full wipe including courses (destructive)
-node seed-demo.mjs --prod --reset-courses
+cd worker && node seed-demo.mjs          # local dev DB; demo password is demo1234
 ```
-
-Demo credentials (password: `demo1234`):
-- **Admin:** password only
-- **Managers:** `sarah.chen`, `marcus.johnson`
-- **Learners:** `alex.rivera`, `jordan.kim`, `taylor.brooks`, `sam.patel`, `casey.morgan`, `blake.thompson`, `drew.martinez`, `quinn.foster`, `avery.wilson`, `riley.hayes`
 
 ---
 
@@ -306,7 +292,7 @@ Renamed from TrainFlow and re-skinned to match the Pregame site (pregame.vickery
 "Demo" on the landing page opens a picker: **as a manager** (sample Patient Services team of five, progress, overdue, completions, assign flow) or **as a learner** (full Customer Service Excellence course: lessons, quizzes, certificate PDF). It is entirely client-side:
 - `makeApi()` in `core.js` short-circuits to `Demo.handle()` while `isDemo` is true — no Worker calls, nothing stored; state is rebuilt on every launch. The real manager/learner screens run unchanged.
 - Fixtures live in `js/demo.js` (the course is a copy of the seed script's Customer Service Excellence). Demo learner is Jamie Lee; finishing the course adds a completion that the manager view then shows (switch roles via the bar at the bottom).
-- Demo users no longer need to exist in Turso; `seed-demo.mjs` is only for local dev.
+- Demo users do not exist in Turso; `seed-demo.mjs` is only for local dev.
 
 ## UI Polish — 2026-10-14
 
