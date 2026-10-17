@@ -1153,8 +1153,8 @@ app.post('/api/completions', requireLearner, async (c) => {
   }]
   for (const a of answers) {
     stmts.push({
-      sql: 'INSERT INTO question_responses (completion_id, question_id, is_correct, created_at) VALUES (?, ?, ?, ?)',
-      args: [rid, a.question_id, Number(a.is_correct), now]
+      sql: 'INSERT INTO question_responses (completion_id, question_id, is_correct) VALUES (?, ?, ?)',
+      args: [rid, a.question_id, Number(a.is_correct)]
     })
   }
   // Consume the answers so a certificate can't be re-minted without taking the quiz again.
