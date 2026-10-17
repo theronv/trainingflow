@@ -98,6 +98,7 @@ async function ensureSetup(db) {
   await setupSections(db)
   await setupTags(db)
   await setupClerk(db)
+  await setupRoles(db)
   _setupComplete = true
 }
 
@@ -130,52 +131,66 @@ app.onError((err, c) => {
 
 // ── Auth Middlewares ──
 
-async function requireAdmin(c, next) {
+/**
+ * Capabilities carried by a token. New tokens list them in `roles`; legacy tokens only have `role`.
+ * Any token with an account id can learn. The shared-password admin has no id, so it cannot.
+ */
+function rolesOf(p) {
+  const r = new Set(Array.isArray(p.roles) ? p.roles : [])
+  if (p.role) r.add(p.role)
+  if (p.id) r.add('learner')
+  return r
+}
+
+/** Build the app JWT + public user object for a users row (optionally with team_name). */
+async function issueSession(env, user) {
+  const roles = ['learner']
+  if (user.role === 'manager') roles.push('manager')
+  if (Number(user.is_admin) === 1) roles.push('admin')
+  const primary = roles.includes('admin') ? 'admin' : roles.includes('manager') ? 'manager' : 'learner'
+  const now = Math.floor(Date.now() / 1000)
+  const exp = now + (primary === 'learner' ? CONSTANTS.LEARNER_JWT_EXP_SEC : CONSTANTS.ADMIN_JWT_EXP_SEC)
+  const token = await sign({ id: user.id, name: user.name, role: primary, roles, team_id: user.team_id ?? null, iat: now, exp }, env.JWT_SECRET, 'HS256')
+  return { token, user: { id: user.id, name: user.name, role: primary, roles, team_id: user.team_id ?? null, team_name: user.team_name || '' } }
+}
+
+async function bearer(c) {
   const auth = c.req.header('Authorization')
-  if (!auth?.startsWith('Bearer ')) return c.json({ error: 'Unauthorized' }, 401)
-  try {
-    const payload = await verify(auth.slice(7), c.env.JWT_SECRET, 'HS256')
-    if (payload.role !== 'admin') throw new Error('Forbidden')
-    c.set('user', { ...payload, isAdmin: true, scopedToTeam: null })
-    await next()
-  } catch { return c.json({ error: 'Unauthorized' }, 401) }
+  if (!auth?.startsWith('Bearer ')) return null
+  try { return await verify(auth.slice(7), c.env.JWT_SECRET, 'HS256') } catch { return null }
+}
+
+async function requireAdmin(c, next) {
+  const payload = await bearer(c)
+  if (!payload || !rolesOf(payload).has('admin')) return c.json({ error: 'Unauthorized' }, 401)
+  c.set('user', { ...payload, isAdmin: true, scopedToTeam: null })
+  await next()
 }
 
 async function requireManager(c, next) {
-  const auth = c.req.header('Authorization')
-  if (!auth?.startsWith('Bearer ')) return c.json({ error: 'Unauthorized' }, 401)
-  try {
-    const payload = await verify(auth.slice(7), c.env.JWT_SECRET, 'HS256')
-    if (payload.role === 'admin') {
-      c.set('user', { ...payload, isAdmin: true, scopedToTeam: null })
-    } else if (payload.role === 'manager') {
-      c.set('user', { ...payload, isAdmin: false, scopedToTeam: payload.team_id })
-    } else {
-      throw new Error('Forbidden')
-    }
-    await next()
-  } catch { return c.json({ error: 'Unauthorized' }, 401) }
+  const payload = await bearer(c)
+  if (!payload) return c.json({ error: 'Unauthorized' }, 401)
+  const roles = rolesOf(payload)
+  // Admin wins over manager: someone who is both is unscoped.
+  if (roles.has('admin')) c.set('user', { ...payload, isAdmin: true, scopedToTeam: null })
+  else if (roles.has('manager')) c.set('user', { ...payload, isAdmin: false, scopedToTeam: payload.team_id })
+  else return c.json({ error: 'Unauthorized' }, 401)
+  await next()
 }
 
+// Any signed-in account (learner, manager or admin) can take courses; the id-less shared-password admin cannot.
 async function requireLearner(c, next) {
-  const auth = c.req.header('Authorization')
-  if (!auth?.startsWith('Bearer ')) return c.json({ error: 'Unauthorized' }, 401)
-  try {
-    const payload = await verify(auth.slice(7), c.env.JWT_SECRET, 'HS256')
-    if (payload.role !== 'learner') throw new Error('Forbidden')
-    c.set('user', payload)
-    await next()
-  } catch { return c.json({ error: 'Unauthorized' }, 401) }
+  const payload = await bearer(c)
+  if (!payload || !payload.id || !rolesOf(payload).has('learner')) return c.json({ error: 'Unauthorized' }, 401)
+  c.set('user', payload)
+  await next()
 }
 
 async function requireAnyAuth(c, next) {
-  const auth = c.req.header('Authorization')
-  if (!auth?.startsWith('Bearer ')) return c.json({ error: 'Unauthorized' }, 401)
-  try {
-    const payload = await verify(auth.slice(7), c.env.JWT_SECRET, 'HS256')
-    c.set('user', payload)
-    await next()
-  } catch { return c.json({ error: 'Unauthorized' }, 401) }
+  const payload = await bearer(c)
+  if (!payload) return c.json({ error: 'Unauthorized' }, 401)
+  c.set('user', payload)
+  await next()
 }
 
 // ── Routes: Core ──────────────────────────────────────────────────────────────
@@ -198,6 +213,12 @@ async function setupClerk(db) {
   try { await db.execute('ALTER TABLE users ADD COLUMN clerk_id TEXT') } catch {}
   try { await db.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_clerk_id ON users(clerk_id)') } catch {}
   try { await db.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(lower(email))') } catch {}
+}
+
+// Multi-role accounts: every user can learn; users.role='manager' adds team management;
+// users.is_admin adds full administration.
+async function setupRoles(db) {
+  try { await db.execute('ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0') } catch {}
 }
 
 async function setupTags(db) {
@@ -578,8 +599,8 @@ app.post('/api/learners', requireManager, async (c) => {
   await ensureSetup(db)
   try {
     await db.execute({
-      sql: 'INSERT INTO users (id, name, password_hash, role, team_id, email) VALUES (?, ?, ?, ?, ?, ?)',
-      args: [id, name, hash, role, teamId, email || null]
+      sql: 'INSERT INTO users (id, name, password_hash, role, team_id, email, is_admin) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      args: [id, name, hash, role, teamId, email || null, user.isAdmin && body.is_admin ? 1 : 0]
     })
   } catch (e) {
     if (e.message && e.message.includes('UNIQUE')) return c.json({ error: 'A user with that name or email already exists.' }, 409)
@@ -630,6 +651,11 @@ app.patch('/api/learners/:id', requireAdmin, async (c) => {
   const db = getDb(c.env)
   const fields = []
   const args = []
+  if (body.is_admin !== undefined) {
+    if (!body.is_admin && c.get('user').id === c.req.param('id')) return c.json({ error: 'You cannot remove your own admin access.' }, 400)
+    await ensureSetup(db)
+    fields.push('is_admin = ?'); args.push(body.is_admin ? 1 : 0)
+  }
   if (body.name !== undefined)    { fields.push('name = ?');    args.push(body.name.trim()) }
   if (body.team_id !== undefined) { fields.push('team_id = ?'); args.push(body.team_id || null) }
   if (body.role !== undefined)    { fields.push('role = ?');    args.push(body.role === 'manager' ? 'manager' : 'learner') }
@@ -826,13 +852,10 @@ app.post('/api/auth/clerk/login', async (c) => {
   const why = {}
   const clerk = await verifyClerkToken(c.env, body.token, why)
   if (!clerk) return c.json({ error: `Email sign-in could not be verified (${why.reason || 'unknown'}).` }, 401)
-  // Owner/admin emails (comma-separated secret ADMIN_EMAILS) sign in as admin. Admin has no users row.
+  // Owner/admin emails (comma-separated secret ADMIN_EMAILS) are admins. They get a normal users row
+  // (so they can also take courses) with is_admin recorded, so it shows up in Users.
   const adminEmails = String(c.env.ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean)
-  if (clerk.email && adminEmails.includes(clerk.email)) {
-    const t = Math.floor(Date.now() / 1000)
-    const token = await sign({ role: 'admin', iat: t, exp: t + CONSTANTS.ADMIN_JWT_EXP_SEC }, c.env.JWT_SECRET, 'HS256')
-    return c.json({ token, user: { role: 'admin', name: 'Admin' } })
-  }
+  const isOwner = !!clerk.email && adminEmails.includes(clerk.email)
   const db = getDb(c.env)
   await ensureSetup(db)
   const find = (sql, args) => db.execute({ sql: `SELECT u.*, t.name AS team_name FROM users u LEFT JOIN teams t ON u.team_id = t.id WHERE ${sql}`, args }).then(toObj)
@@ -843,14 +866,24 @@ app.post('/api/auth/clerk/login', async (c) => {
     if (user) await db.execute({ sql: 'UPDATE users SET clerk_id = ? WHERE id = ?', args: [clerk.sub, user.id] })
   }
   if (!user && !clerk.email) return c.json({ error: 'Signed in, but your sign-in token has no email. In Clerk (Sessions → Customize session token) add { "email": "{{user.primary_email_address}}" } and click Save.', code: 'no_email_claim' }, 401)
+  if (!user && isOwner) {
+    const hash = await pbkdf2Hash(_b64(crypto.getRandomValues(new Uint8Array(32)))) // never disclosed: email sign-in only
+    const local = clerk.email.split('@')[0]
+    for (const name of [local, clerk.email, `${local}-${uid().slice(0, 4)}`]) {
+      const id = uid()
+      try {
+        await db.execute({ sql: "INSERT INTO users (id, name, password_hash, role, team_id, email, clerk_id, is_admin) VALUES (?, ?, ?, 'learner', NULL, ?, ?, 1)", args: [id, name, hash, clerk.email, clerk.sub] })
+        user = await find('u.id = ?', [id]); break
+      } catch (e) { if (!String(e.message).includes('UNIQUE')) throw e }
+    }
+  }
   if (!user) return c.json({ error: `No account found for ${clerk.email}. Ask for an invite or use Request access.`, code: 'no_account' }, 404)
-  const now = Math.floor(Date.now() / 1000)
-  await db.execute({ sql: 'UPDATE users SET last_login_at = ? WHERE id = ?', args: [now, user.id] })
-  const manager = user.role === 'manager'
-  const token = await sign(manager
-    ? { id: user.id, name: user.name, role: 'manager', team_id: user.team_id, iat: now, exp: now + CONSTANTS.ADMIN_JWT_EXP_SEC }
-    : { id: user.id, name: user.name, role: 'learner', iat: now, exp: now + CONSTANTS.LEARNER_JWT_EXP_SEC }, c.env.JWT_SECRET, 'HS256')
-  return c.json({ token, user: { id: user.id, name: user.name, role: user.role, team_id: user.team_id, team_name: user.team_name || '' } })
+  if (isOwner && Number(user.is_admin) !== 1) {
+    await db.execute({ sql: 'UPDATE users SET is_admin = 1 WHERE id = ?', args: [user.id] })
+    user.is_admin = 1
+  }
+  await db.execute({ sql: 'UPDATE users SET last_login_at = ? WHERE id = ?', args: [Math.floor(Date.now() / 1000), user.id] })
+  return c.json(await issueSession(c.env, user))
 })
 
 async function registerWithInvite(c, requiredRole) {
@@ -912,12 +945,7 @@ async function registerWithInvite(c, requiredRole) {
   }
 
   const teamName = inv.team_id ? (toObj(await db.execute({ sql: 'SELECT name FROM teams WHERE id = ?', args: [inv.team_id] }))?.name || '') : ''
-  const now = Math.floor(Date.now() / 1000)
-  const claims = role === 'manager'
-    ? { id, name, role, team_id: inv.team_id, iat: now, exp: now + CONSTANTS.ADMIN_JWT_EXP_SEC }
-    : { id, name, role, iat: now, exp: now + CONSTANTS.LEARNER_JWT_EXP_SEC }
-  const token = await sign(claims, c.env.JWT_SECRET, 'HS256')
-  return c.json({ token, user: { id, name, role, team_id: inv.team_id, team_name: teamName } })
+  return c.json(await issueSession(c.env, { id, name, role, team_id: inv.team_id, team_name: teamName }))
 }
 
 app.post('/api/auth/register', (c) => registerWithInvite(c, null))
@@ -991,7 +1019,7 @@ app.get('/api/learners', requireManager, async (c) => {
         AND NOT EXISTS (SELECT 1 FROM completions c WHERE c.learner_id = u.id AND c.course_id = a.course_id AND c.passed = 1)
     ) AS overdue_count`
 
-  const safeColumns = 'u.id, u.name, u.email, u.role, u.team_id, u.last_login_at, u.created_at'
+  const safeColumns = 'u.id, u.name, u.email, u.role, u.is_admin, u.team_id, u.last_login_at, u.created_at'
 
   if (page > 0) {
     const [countRes, rowsRes] = await Promise.all([
@@ -1617,7 +1645,9 @@ app.post('/api/assignments/bulk', requireManager, async (c) => {
   const scope = caller.scopedToTeam ? ' AND team_id = ?' : ''
   const scopeArg = caller.scopedToTeam ? [caller.scopedToTeam] : []
   for (const lid of learnerIds) {
-    const r = await db.execute({ sql: `SELECT id FROM users WHERE id = ? AND role = 'learner'${scope}`, args: [lid, ...scopeArg] })
+    // Admins may also pick managers individually; team managers only ever assign learners on their team.
+    const roleOk = caller.scopedToTeam ? "role = 'learner'" : "role IN ('learner', 'manager')"
+    const r = await db.execute({ sql: `SELECT id FROM users WHERE id = ? AND ${roleOk}${scope}`, args: [lid, ...scopeArg] })
     if (r.rows.length) ids.add(r.rows[0].id)
   }
   for (const tid of teamIds) {
@@ -1656,30 +1686,28 @@ app.post('/api/auth/manager/login', async (c) => {
   const ip = c.req.header('CF-Connecting-IP') || 'unknown'
   if (_rateCheck(`manager:${ip}`)) return c.json({ error: 'Too many attempts. Try again in a minute.' }, 429)
   const db = getDb(c.env)
+  await ensureSetup(db)
   const res = await db.execute({
-    sql: "SELECT u.*, t.name AS team_name FROM users u LEFT JOIN teams t ON u.team_id = t.id WHERE u.name = ? AND u.role = 'manager'",
+    sql: "SELECT u.*, t.name AS team_name FROM users u LEFT JOIN teams t ON u.team_id = t.id WHERE u.name = ? AND (u.role = 'manager' OR u.is_admin = 1)",
     args: [body.name]
   })
   const user = toObj(res)
   if (!user || !(await pbkdf2Verify(body.password, user.password_hash))) return c.json({ error: 'Unauthorized' }, 401)
   await db.execute({ sql: 'UPDATE users SET last_login_at = ? WHERE id = ?', args: [Math.floor(Date.now() / 1000), user.id] })
-  const now = Math.floor(Date.now() / 1000)
-  const token = await sign({ id: user.id, name: user.name, role: 'manager', team_id: user.team_id, iat: now, exp: now + CONSTANTS.ADMIN_JWT_EXP_SEC }, c.env.JWT_SECRET, 'HS256')
-  return c.json({ token, user: { id: user.id, name: user.name, team_id: user.team_id, team_name: user.team_name || '' } })
+  return c.json(await issueSession(c.env, user))
 })
 
+// Any account can sign in here; managers and admins land in their own portal and can switch to learning.
 app.post('/api/learners/login', async (c) => {
   const body = await c.req.json()
   const ip = c.req.header('CF-Connecting-IP') || 'unknown'
   if (_rateCheck(`learner:${ip}`)) return c.json({ error: 'Too many attempts. Try again in a minute.' }, 429)
   const db = getDb(c.env)
-  const res = await db.execute({ sql: "SELECT * FROM users WHERE name = ? AND role = 'learner'", args: [body.name] })
+  await ensureSetup(db)
+  const res = await db.execute({ sql: 'SELECT u.*, t.name AS team_name FROM users u LEFT JOIN teams t ON u.team_id = t.id WHERE u.name = ?', args: [body.name] })
   const user = toObj(res)
   if (!user || !(await pbkdf2Verify(body.password, user.password_hash))) return c.json({ error: 'Unauthorized' }, 401)
-  
-  const now = Math.floor(Date.now() / 1000)
-  const token = await sign({ id: user.id, name: user.name, role: 'learner', iat: now, exp: now + CONSTANTS.LEARNER_JWT_EXP_SEC }, c.env.JWT_SECRET, 'HS256')
-  return c.json({ token, user: { id: user.id, name: user.name } })
+  return c.json(await issueSession(c.env, user))
 })
 
 app.patch('/api/managers/me', requireManager, async (c) => {

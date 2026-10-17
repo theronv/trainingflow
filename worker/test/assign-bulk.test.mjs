@@ -27,14 +27,29 @@ describe('POST /api/assignments/bulk', () => {
     expect(await count()).toBe(3)
   })
 
-  it('never assigns to managers, even if their id or team is targeted', async () => {
-    const res = await h.request('/api/assignments/bulk', {
+  it('a team selection assigns learners only; an admin can pick a manager individually', async () => {
+    const team = await h.request('/api/assignments/bulk', {
       method: 'POST', token: h.adminToken(),
-      body: { course_id: course.id, team_ids: [teamA], learner_ids: [mgrA.id] },
+      body: { course_id: course.id, team_ids: [teamA] },
     })
-    expect(res.json.added).toBe(2)
-    const rows = (await h.db.execute('SELECT learner_id FROM assignments')).rows.map(r => r.learner_id)
+    expect(team.json.added).toBe(2)
+    let rows = (await h.db.execute('SELECT learner_id FROM assignments')).rows.map(r => r.learner_id)
     expect(rows).not.toContain(mgrA.id)
+    const pick = await h.request('/api/assignments/bulk', {
+      method: 'POST', token: h.adminToken(),
+      body: { course_id: course.id, learner_ids: [mgrA.id] },
+    })
+    expect(pick.json.added).toBe(1)
+    rows = (await h.db.execute('SELECT learner_id FROM assignments')).rows.map(r => r.learner_id)
+    expect(rows).toContain(mgrA.id)
+  })
+
+  it('a team manager cannot assign to a manager, themselves included', async () => {
+    const res = await h.request('/api/assignments/bulk', {
+      method: 'POST', token: h.managerToken(mgrA),
+      body: { course_id: course.id, learner_ids: [mgrA.id] },
+    })
+    expect(res.status).toBe(404)
   })
 
   it('a manager cannot reach learners or teams outside their own team', async () => {

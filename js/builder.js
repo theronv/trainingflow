@@ -142,17 +142,20 @@ const Builder = {
     $$('assign-due').value = '';
     $$('assign-overlay').classList.remove('hidden');
     $$('assign-list').innerHTML = 'Loading...';
-    Builder._assign = { teams: new Set(), learners: new Set(), assigned: new Set(), people: [], teams_: [] };
+    Builder._assign = { teams: new Set(), learners: new Set(), assigned: new Set(), people: [], managers: [], teams_: [] };
     Builder._assignUpdateBtn();
     try {
       const call = Builder._assignApi();
-      const [people, teams, assigns] = await Promise.all([
+      const [people, managers, teams, assigns] = await Promise.all([
         call('/api/learners?role=learner'),
+        // Admins can also assign training to managers (individually, never via a team selection).
+        curManager ? Promise.resolve([]) : call('/api/learners?role=manager').catch(() => []),
         call('/api/admin/teams').catch(() => []),
         call('/api/assignments')
       ]);
       const st = Builder._assign;
       st.people = (people || []).filter(l => !l.role || l.role === 'learner');
+      st.managers = (managers || []).filter(l => l.role === 'manager');
       st.teams_ = (teams || []).filter(t => st.people.some(l => l.team_id === t.id));
       assigns.filter(a => a.course_id === cid).forEach(a => st.assigned.add(a.learner_id));
       Builder._assignRender();
@@ -188,6 +191,16 @@ const Builder = {
              : chip(team ? esc(team.name) : 'No team'),
         done || st.learners.has(l.id) || st.teams.has(l.team_id), done, l.name);
     }).join('') || '<p style="color:var(--ink-3);">No learners yet.</p>';
+    if (st.managers.length) {
+      html += '<div class="modal-sub" style="margin:12px 0 4px;font-weight:600;">Managers</div>';
+      html += st.managers.map(l => {
+        const done = st.assigned.has(l.id);
+        const team = st.teams_.find(t => t.id === l.team_id);
+        return row(`Builder._assignToggleLearner('${l.id}', this.checked)`, esc(l.name),
+          done ? `<span class="chip chip-green">Assigned</span>` : chip(team ? esc(team.name) : 'Manager'),
+          done || st.learners.has(l.id), done, l.name);
+      }).join('');
+    }
     $$('assign-list').innerHTML = html;
     App.filterAssignList($$('assign-search').value);
   },

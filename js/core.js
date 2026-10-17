@@ -148,6 +148,15 @@ function getLearnerToken()   { return StorageUtils.get('tf_learner_token'); }
 function setLearnerToken(t)  { StorageUtils.set('tf_learner_token', t); }
 function clearLearnerToken() { StorageUtils.remove('tf_learner_token'); }
 
+// One sign-in can carry several capabilities (learner, manager, admin). The same app JWT is kept in
+// every slot the person is entitled to, and `tf_user` / `tf_view` remember who they are and which
+// portal they are looking at. The id-less shared-password admin has no tf_user.
+function getSessionUser()    { try { return JSON.parse(StorageUtils.get('tf_user')); } catch(e){ return null; } }
+function clearAllSessions()  {
+  clearToken(); clearManagerToken(); clearManagerUser(); clearLearnerToken();
+  StorageUtils.remove('tf_user'); StorageUtils.remove('tf_view');
+}
+
 function makeApi(getTokenFn, on401) {
   return async function(path, opts = {}) {
     if (isDemo) return Demo.handle(path, opts); // sandbox: no network, nothing stored
@@ -165,15 +174,15 @@ function makeApi(getTokenFn, on401) {
 }
 
 const adminApi = makeApi(getToken, () => {
-  clearToken(); curCourse = null; curModIdx = 0; quizSt = {};
+  clearAllSessions(); curCourse = null; curModIdx = 0; quizSt = {};
   Toast.err('Session expired. Please sign in again.'); App.show('screen-landing');
 });
 const managerApi = makeApi(getManagerToken, () => {
-  clearManagerToken(); clearManagerUser(); curManager = null; curCourse = null; curModIdx = 0; quizSt = {};
+  clearAllSessions(); curManager = null; curCourse = null; curModIdx = 0; quizSt = {};
   Toast.err('Session expired. Please sign in again.'); App.show('screen-landing');
 });
 const learnerApi = makeApi(getLearnerToken, () => {
-  clearLearnerToken(); curLearner = null; curCourse = null; curModIdx = 0; quizSt = {};
+  clearAllSessions(); curLearner = null; curCourse = null; curModIdx = 0; quizSt = {};
   Toast.err('Session expired. Please sign in again.'); App.show('screen-landing');
 });
 // Backward-compat alias — prefer adminApi for admin-scoped calls

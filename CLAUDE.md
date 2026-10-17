@@ -15,7 +15,7 @@ Pregame Academy is a full-stack LMS for professional teams. AI-assisted course c
 | Frontend | Vanilla JS (ES6), HTML5, CSS3 — SPA served from GitHub Pages |
 | Edge Worker | Hono 4.7.0 on **Cloudflare Workers** (not Vercel Edge) |
 | Database | Turso (libSQL/SQLite) via `@libsql/client` v0.14.0 — raw SQL, no Drizzle |
-| Auth | Custom JWT + PBKDF2-SHA256 (100k iterations) — no Clerk |
+| Auth | Custom JWT + PBKDF2-SHA256 (100k iterations); Clerk email sign-in exchanges for the same app JWT |
 | AI | Anthropic Claude (`claude-sonnet-4-6`) + Google Gemini 1.5 Flash — direct browser calls, keys in localStorage |
 | PDF | jsPDF + html2canvas — client-side |
 | Build | None — static HTML + Wrangler v4.75.0 deploy |
@@ -116,7 +116,7 @@ All tables defined in `schema.sql`. The `course_progress` table is also created 
 
 | Table | Key Columns | Notes |
 |---|---|---|
-| `users` | `id TEXT PK`, `name TEXT UNIQUE`, `password_hash TEXT`, `role TEXT` ('manager'\|'learner'), `team_id INTEGER → teams` | Admin has no row here — hardcoded via `ADMIN_PASSWORD_HASH` |
+| `users` | `id TEXT PK`, `name TEXT UNIQUE`, `password_hash TEXT`, `role TEXT` ('manager'\|'learner'), `is_admin INTEGER`, `team_id INTEGER → teams`, `email`, `clerk_id` | Capabilities, not exclusive roles: everyone can learn, `role='manager'` adds team management, `is_admin=1` adds administration. The legacy shared-password admin (`ADMIN_PASSWORD_HASH`) has no row |
 | `teams` | `id INTEGER PK AUTOINCREMENT`, `name TEXT UNIQUE` | Organizational units |
 | `invite_codes` | `id INTEGER PK`, `code TEXT UNIQUE`, `team_id → teams`, `used INTEGER`, `expires_at TEXT` | Single-use, scoped to a team |
 | `courses` | `id TEXT PK`, `icon TEXT`, `title TEXT`, `description TEXT` | `updated_at` auto-updated via trigger |
@@ -161,10 +161,10 @@ All routes in `worker/index.js`. Auth middleware: `requireAdmin`, `requireManage
 | `GET` | `/api/learners` | Admin/Manager | List learners (team-scoped for managers) |
 | `POST` | `/api/learners` | Admin/Manager | Create a learner (team_id locked to manager's team) |
 | `POST` | `/api/learners/bulk` | Admin/Manager | Bulk create from CSV |
-| `GET` | `/api/learners/me` | Learner | Get own profile |
-| `PATCH` | `/api/learners/me` | Learner | Update own name/password |
+| `GET` | `/api/learners/me` | Any account | Get own profile |
+| `PATCH` | `/api/learners/me` | Any account | Update own name/password |
 | `GET` | `/api/learners/:id` | Admin/Manager | Get learner (managers: team-scoped) |
-| `PATCH` | `/api/learners/:id` | Admin | Edit learner |
+| `PATCH` | `/api/learners/:id` | Admin | Edit user (name, team, role, email, `is_admin`) |
 | `DELETE` | `/api/learners/:id` | Admin | Delete learner |
 | `PUT` | `/api/learners/:id/password` | Admin/Manager | Reset learner password (min 8 chars enforced) |
 | `PATCH` | `/api/managers/me` | Manager | Update own name/password |
@@ -201,6 +201,15 @@ All routes in `worker/index.js`. Auth middleware: `requireAdmin`, `requireManage
 | `GET` | `/api/scrape` | Admin | Proxy Jina Reader fetch for KB Scraper integration (planned) |
 
 ---
+
+## Roles & sessions (multi-role accounts)
+
+One account can learn, manage and administer.
+- **Token:** `issueSession()` (worker) builds the JWT: `{ id, name, role (highest), roles: ['learner','manager','admin'], team_id }`. Legacy tokens with only `role` still work; `rolesOf()` normalises both.
+- **Middleware:** `requireLearner` = any token with an `id` (so managers/admins can take courses; the id-less shared-password admin cannot). `requireManager` = manager (team-scoped) or admin (unscoped; admin wins if both). `requireAdmin` = `roles` contains admin.
+- **Admin sources:** `users.is_admin` (set in Admin → Users → Edit, or `PATCH /api/learners/:id {is_admin}`; you can't remove your own) and the `ADMIN_EMAILS` secret, which on Clerk sign-in finds/creates the user's row and records `is_admin=1`. The `is_admin` column is added by `setupRoles()` on first request.
+- **Assignments:** admins can assign to managers by picking them individually; team selections and team managers only ever reach learners.
+- **Frontend:** `Auth._enter()` stores the one token in every slot the person is entitled to plus `tf_user`/`tf_view` (sessionStorage); `Auth.openView('admin'|'manager'|'learner')` switches portals (topbar "My learning" / "← Admin|Manager"). `curManager` is only set while in the manager view (the assign modal picks its API from it).
 
 ## Architecture Notes
 

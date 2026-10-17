@@ -146,17 +146,53 @@ const Auth = {
       return false;
     } finally { ClerkPending.clear(); }
   },
-  _enter(data) {
-    scheduleExpiryWarning(data.token);
-    if (data.user.role === 'admin') {
-      setToken(data.token); applyBrand(); App.show('screen-admin'); Admin.init();
-    } else if (data.user.role === 'manager') {
-      setManagerToken(data.token); setManagerUser(data.user); curManager = data.user;
-      Manager.init();
-    } else {
-      setLearnerToken(data.token); curLearner = { id: data.user.id, name: data.user.name };
-      Learner.init();
+  // ─── Sessions: one account can learn, manage and administer ───
+  user() { return getSessionUser(); },
+  // Portals this account can open: its highest management portal (if any) plus its own learning.
+  views(u = Auth.user()) {
+    if (!u || !u.id) return [];
+    const r = u.roles || [u.role];
+    return [r.includes('admin') ? 'admin' : r.includes('manager') ? 'manager' : null, 'learner'].filter(Boolean);
+  },
+  openView(view) {
+    const u = Auth.user(); if (!u) return;
+    const ok = Auth.views(u);
+    if (!ok.includes(view)) view = ok[0];
+    curCourse = null; curModIdx = 0; quizSt = {}; curManager = null; curLearner = null;
+    window._adminPreview = false; Learner._preview = null;
+    StorageUtils.set('tf_view', view);
+    if (view === 'admin') { applyBrand(); App.show('screen-admin'); Admin.init(); }
+    else if (view === 'manager') { curManager = u; Manager.init(); }
+    else { curLearner = { id: u.id, name: u.name }; Learner.init(); }
+    Auth.syncSwitch();
+  },
+  // Label the view-switch buttons for whoever is signed in.
+  syncSwitch() {
+    const u = Auth.user();
+    const primary = Auth.views(u).find(v => v !== 'learner');
+    const back = $$('l-switch-btn');
+    if (back) {
+      back.classList.toggle('hidden', !primary);
+      if (primary) { back.textContent = '← ' + (primary === 'admin' ? 'Admin' : 'Manager'); back.onclick = () => Auth.openView(primary); }
     }
+    document.querySelectorAll('.switch-learn-btn').forEach(b => { b.textContent = u && u.id ? 'My learning' : 'Learner view'; });
+  },
+  // `preferred` is the portal the sign-in form was for; it is used when the account may open it.
+  _enter(data, preferred) {
+    scheduleExpiryWarning(data.token);
+    const u = data.user, roles = u.roles || [u.role];
+    clearAllSessions();
+    StorageUtils.set('tf_user', JSON.stringify({ id: u.id, name: u.name, roles, team_id: u.team_id ?? null, team_name: u.team_name || '' }));
+    if (roles.includes('admin')) setToken(data.token);
+    if (roles.includes('manager')) { setManagerToken(data.token); setManagerUser(u); }
+    setLearnerToken(data.token);
+    const views = Auth.views();
+    Auth.openView(views.includes(preferred) ? preferred : views[0]);
+  },
+  _signOut() {
+    ClerkAuth.signOut(); clearAllSessions();
+    curLearner = null; curManager = null; curCourse = null; curModIdx = 0; quizSt = {};
+    App.show('screen-landing');
   },
   // Invite sign-up with email instead of a password
   async joinWithEmail() {
@@ -182,7 +218,7 @@ const Auth = {
     const password = $$('pw-input').value;
     try {
       const { token } = await api('/api/auth/login', { method: 'POST', body: JSON.stringify({ password }) });
-      setToken(token);
+      clearAllSessions(); setToken(token);
       scheduleExpiryWarning(token);
       $$('pw-input').value = '';
       applyBrand();
@@ -193,7 +229,7 @@ const Auth = {
       else Toast.err(e.message);
     }
   },
-  adminLogout() { ClerkAuth.signOut(); clearToken(); curCourse = null; curModIdx = 0; quizSt = {}; App.show('screen-landing'); },
+  adminLogout() { Auth._signOut(); },
 
   // ─── MANAGER ───
   toggleManagerReg(show) {
@@ -205,8 +241,7 @@ const Auth = {
     if(!name || !password) return Toast.err('Enter name and password.');
     try {
       const data = await api('/api/auth/manager/login', { method: 'POST', body: JSON.stringify({ name, password }) });
-      setManagerToken(data.token); scheduleExpiryWarning(data.token); setManagerUser(data.user); curManager = data.user;
-      Manager.init();
+      Auth._enter(data, 'manager');
     } catch(e) { Toast.err(e.message); }
   },
   // ─── INVITES (managers + learners) ───
@@ -235,29 +270,20 @@ const Auth = {
     try {
       const data = await api('/api/auth/register', { method: 'POST', body: JSON.stringify({ name, password: pw1, code }) });
       ['join-code','join-name','join-pw1','join-pw2'].forEach(id => { $$(id).value = ''; });
-      scheduleExpiryWarning(data.token);
-      if (data.user.role === 'learner') {
-        setLearnerToken(data.token); curLearner = { id: data.user.id, name: data.user.name };
-        Toast.ok(`Welcome, ${data.user.name}!`);
-        Learner.init();
-      } else {
-        setManagerToken(data.token); setManagerUser(data.user); curManager = data.user;
-        Toast.ok(`Welcome, ${data.user.name}!`);
-        Manager.init();
-      }
+      Toast.ok(`Welcome, ${data.user.name}!`);
+      Auth._enter(data);
     } catch (e) { Toast.err(e.message); }
     finally { btn.disabled = false; btn.textContent = 'Create account'; }
   },
-  managerLogout() { if (isDemo) return Demo.exit(); ClerkAuth.signOut(); clearManagerToken(); clearManagerUser(); curManager = null; curCourse = null; curModIdx = 0; quizSt = {}; App.show('screen-landing'); },
+  managerLogout() { if (isDemo) return Demo.exit(); Auth._signOut(); },
 
   // ─── LEARNER ───
   async doLearnerLogin() {
     const name = $$('learner-name-input').value.trim(), password = $$('learner-pw-input').value;
     try {
       const data = await api('/api/learners/login', { method: 'POST', body: JSON.stringify({ name, password }) });
-      setLearnerToken(data.token); curLearner = { id: data.user.id, name: data.user.name };
-      Learner.init();
+      Auth._enter(data, 'learner');
     } catch(e) { $$('l-login-error').textContent = e.message; $$('l-login-error').style.display='block'; }
   },
-  learnerLogout() { if (isDemo) return Demo.exit(); if (Learner._preview) return Learner.exitPreview(); ClerkAuth.signOut(); clearLearnerToken(); curLearner = null; curCourse = null; curModIdx = 0; quizSt = {}; App.show('screen-landing'); }
+  learnerLogout() { if (isDemo) return Demo.exit(); if (Learner._preview) return Learner.exitPreview(); Auth._signOut(); }
 };

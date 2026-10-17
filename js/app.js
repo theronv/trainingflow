@@ -253,6 +253,7 @@ const AppProxy = {
   },
   showLearner: () => {
     if (isDemo) return Demo.start('learner');
+    if (Auth.user()?.id) return Auth.openView('learner');
     if (curLearner) { App.show('screen-learner'); Learner.nav('courses'); }
     else if (getToken() || getManagerToken()) Learner.enterPreview();
     else Toast.info('No active learner session.');
@@ -518,7 +519,12 @@ const AppProxy = {
     }
     // Returning from Google/email sign-in (full-page redirect): finish signing in.
     if (await Auth.resumeClerk()) return;
-    if (getToken()) Admin.init();
+    const me = Auth.user();
+    if (me?.id && Auth.views(me).length) {
+      const saved = StorageUtils.get('tf_view');
+      Auth.openView(Auth.views(me).includes(saved) ? saved : Auth.views(me)[0]);
+    }
+    else if (getToken()) Admin.init();
     else if (getManagerToken()) Manager.init();
     else if (getLearnerToken()) Learner.init();
   }

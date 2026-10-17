@@ -614,9 +614,9 @@ const Admin = {
       const team = (teamsCache||[]).find(t => String(t.id) === String(l.team_id));
       const teamHtml = team ? esc(team.name) : '<span class="chip chip-amber">Unassigned</span>';
       const isManager = l.role === 'manager';
-      const roleChip = isManager
+      const roleChip = (isManager
         ? '<span class="chip chip-blue">Manager</span>'
-        : '<span class="chip chip-green">User</span>';
+        : '<span class="chip chip-green">User</span>') + (Number(l.is_admin) === 1 ? ' <span class="chip chip-amber">Admin</span>' : '');
       const isChecked = Admin._selectedUsers.has(l.id);
       return `<tr>
         <td style="width:36px;"><input type="checkbox" data-id="${l.id}" ${isChecked ? 'checked' : ''} onchange="Admin.toggleUserSelect('${l.id}', this.checked)"></td>
@@ -646,6 +646,7 @@ const Admin = {
     $$('al-modal-sub').textContent = 'Set credentials for login.';
     $$('al-name').value = ''; $$('al-pw1').value = ''; $$('al-pw2').value = '';
     $$('al-role').value = 'learner';
+    $$('al-admin').checked = false;
     const sel = $$('al-team');
     if(sel) sel.innerHTML = '<option value="">Unassigned</option>' + (teamsCache||[]).map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join('');
     $$('al-pw-section').classList.remove('hidden');
@@ -668,7 +669,7 @@ const Admin = {
     const orig = btn ? btn.textContent : '';
     if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
     try {
-      await api('/api/learners', { method:'POST', body:JSON.stringify({ name, password: pw1, role, team_id: teamId, email: $$('al-email').value.trim() }) });
+      await api('/api/learners', { method:'POST', body:JSON.stringify({ name, password: pw1, role, is_admin: $$('al-admin').checked, team_id: teamId, email: $$('al-email').value.trim() }) });
       Admin.closeAddUser();
       Toast.ok('Account created.');
       Admin.renderLearners();
@@ -682,6 +683,7 @@ const Admin = {
     $$('al-name').value = name;
     $$('al-email').value = (_allLearners.find(l => l.id === id) || {}).email || '';
     $$('al-role').value = role || 'learner';
+    $$('al-admin').checked = Number((_allLearners.find(l => l.id === id) || {}).is_admin) === 1;
     const sel = $$('al-team');
     if(sel) {
       sel.innerHTML = '<option value="">Unassigned</option>' + (teamsCache||[]).map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join('');
@@ -699,7 +701,7 @@ const Admin = {
     const teamId = $$('al-team').value || null;
     if (!name) return Toast.err('Name is required.');
     try {
-      await api(`/api/learners/${App._editLearnerId}`, { method:'PATCH', body:JSON.stringify({ name, role, team_id: teamId, email: $$('al-email').value.trim() }) });
+      await api(`/api/learners/${App._editLearnerId}`, { method:'PATCH', body:JSON.stringify({ name, role, is_admin: $$('al-admin').checked, team_id: teamId, email: $$('al-email').value.trim() }) });
       Admin.closeAddUser();
       Toast.ok('User updated.');
       Admin.renderLearners();

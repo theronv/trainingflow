@@ -18,14 +18,16 @@ CREATE TABLE IF NOT EXISTS teams (
 
 
 -- ─── USERS ────────────────────────────────────────────────
--- All database-backed accounts (Managers and Learners).
--- Hardcoded Admin does not have a row here.
+-- All database-backed accounts. Every account can take courses (learner); `role = 'manager'` adds
+-- team management and `is_admin = 1` adds full administration, so one person can hold all three.
+-- The legacy shared-password admin has no row here.
 
 CREATE TABLE IF NOT EXISTS users (
   id            TEXT    PRIMARY KEY,              -- uid() string
   name          TEXT    NOT NULL UNIQUE,
   password_hash TEXT    NOT NULL,
   role          TEXT    NOT NULL DEFAULT 'learner', -- 'manager' | 'learner'
+  is_admin      INTEGER NOT NULL DEFAULT 0,         -- 1 = administrator (also keeps their learner/manager role)
   team_id       INTEGER REFERENCES teams(id),
   last_login_at INTEGER,
   created_at    INTEGER NOT NULL DEFAULT (unixepoch()),

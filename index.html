@@ -240,7 +240,7 @@ if (typeof marked !== 'undefined') {
       <span class="chip chip-blue" id="m-team-badge">Team</span>
     </div>
     <div class="topbar-right">
-      <button class="btn btn-ghost btn-sm" onclick="App.showLearner()" title="View as Learner">Learner view</button>
+      <button class="btn btn-ghost btn-sm switch-learn-btn" onclick="App.showLearner()" title="Open your own learning view">Learner view</button>
       <button class="btn btn-ghost btn-sm" onclick="App.managerLogout()">Sign Out</button>
     </div>
   </div>
@@ -350,6 +350,7 @@ if (typeof marked !== 'undefined') {
         <div class="user-avatar" id="l-avatar">?</div>
         <span id="l-name-display"></span>
       </div>
+      <button class="btn btn-ghost btn-sm hidden" id="l-switch-btn" type="button"></button>
       <button class="btn btn-ghost btn-sm" id="l-signout-btn" onclick="App.learnerLogout()">Sign Out</button>
     </div>
   </div>
@@ -484,7 +485,7 @@ if (typeof marked !== 'undefined') {
       <span class="chip chip-amber">Admin</span>
     </div>
     <div class="topbar-right">
-      <button class="btn btn-ghost btn-sm" onclick="App.showLearner()" title="View as Learner">Learner view</button>
+      <button class="btn btn-ghost btn-sm switch-learn-btn" onclick="App.showLearner()" title="Open your own learning view">Learner view</button>
       <button class="btn btn-ghost btn-sm" onclick="App.adminLogout()">Sign Out</button>
     </div>
   </div>
@@ -1041,6 +1042,10 @@ if (typeof marked !== 'undefined') {
           <option value="learner">Learner</option>
           <option value="manager">Manager</option>
         </select>
+      </div>
+      <div class="field">
+        <label style="display:flex;align-items:center;gap:var(--space-2);font-weight:500;cursor:pointer;"><input type="checkbox" id="al-admin"> Administrator</label>
+        <div class="modal-sub" style="margin-top:4px;">Full access to settings, users and courses. They keep their learner or manager role and can switch between views.</div>
       </div>
       <div class="field"><label>Name</label><input type="text" id="al-name" placeholder="Full name…" autocomplete="off"></div>
       <div class="field"><label>Email <span style="font-weight:400;color:var(--ink-4);">(optional — enables email sign-in)</span></label><input type="email" id="al-email" placeholder="name@company.com" autocomplete="off"></div>
