@@ -248,7 +248,7 @@ const Auth = {
     } catch (e) { Toast.err(e.message); }
     finally { btn.disabled = false; btn.textContent = 'Create account'; }
   },
-  managerLogout() { ClerkAuth.signOut(); clearManagerToken(); clearManagerUser(); curManager = null; curCourse = null; curModIdx = 0; quizSt = {}; App.show('screen-landing'); },
+  managerLogout() { if (isDemo) return Demo.exit(); ClerkAuth.signOut(); clearManagerToken(); clearManagerUser(); curManager = null; curCourse = null; curModIdx = 0; quizSt = {}; App.show('screen-landing'); },
 
   // ─── LEARNER ───
   async doLearnerLogin() {
@@ -259,5 +259,5 @@ const Auth = {
       Learner.init();
     } catch(e) { $$('l-login-error').textContent = e.message; $$('l-login-error').style.display='block'; }
   },
-  learnerLogout() { if (Learner._preview) return Learner.exitPreview(); ClerkAuth.signOut(); clearLearnerToken(); curLearner = null; curCourse = null; curModIdx = 0; quizSt = {}; App.show('screen-landing'); }
+  learnerLogout() { if (isDemo) return Demo.exit(); if (Learner._preview) return Learner.exitPreview(); ClerkAuth.signOut(); clearLearnerToken(); curLearner = null; curCourse = null; curModIdx = 0; quizSt = {}; App.show('screen-landing'); }
 };

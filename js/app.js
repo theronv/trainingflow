@@ -252,6 +252,7 @@ const AppProxy = {
     else { App.show('screen-learner'); if(curLearner) Learner.nav('courses'); }
   },
   showLearner: () => {
+    if (isDemo) return Demo.start('learner');
     if (curLearner) { App.show('screen-learner'); Learner.nav('courses'); }
     else if (getToken() || getManagerToken()) Learner.enterPreview();
     else Toast.info('No active learner session.');

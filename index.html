@@ -82,6 +82,29 @@ if (typeof marked !== 'undefined') {
   </footer>
 </div>
 
+<!-- ══════════ OVERLAY: DEMO ══════════ -->
+<div class="overlay hidden" id="demo-overlay" onclick="if(event.target===this)Demo.closePicker()">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-head">
+      <div class="modal-title">Explore the demo</div>
+      <div class="modal-sub">Sample team and sample training. Nothing is saved, and every launch starts fresh.</div>
+    </div>
+    <div class="modal-body demo-picks">
+      <button type="button" class="role-tile" onclick="Demo.start('manager')">
+        <span class="role-tile-title">As a manager</span>
+        <span class="role-tile-desc">See a team of five: who has finished what, who is overdue, and where people are struggling. Assign a course.</span>
+      </button>
+      <button type="button" class="role-tile" onclick="Demo.start('learner')">
+        <span class="role-tile-title">As a learner</span>
+        <span class="role-tile-desc">Take Customer Service Excellence from start to finish: lessons, quizzes, and a certificate you can download.</span>
+      </button>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="Demo.closePicker()">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════ OVERLAY: REQUEST ACCESS ══════════ -->
 <div class="overlay hidden" id="request-access-overlay">
   <div class="modal">
@@ -1347,6 +1370,7 @@ if (typeof marked !== 'undefined') {
 <script src="js/importer.js"></script>
 <script src="js/manager.js"></script>
 <script src="js/learner.js"></script>
+<script src="js/demo.js"></script>
 <script src="js/builder.js"></script>
 <script src="js/app.js"></script>
 

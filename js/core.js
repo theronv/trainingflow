@@ -93,16 +93,6 @@ const ICON = {
   alert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>',
 };
 
-// Built-in sample catalogue for "Explore with demo data" — no server data is exposed pre-login.
-const DEMO_COURSES = [
-  { id: 'demo-1', icon: '🚀', title: 'Getting Started', description: 'A short tour of how training works: assignments, modules, quizzes, and certificates.',
-    modules: [{ id: 'dm1', title: 'Welcome', content: '## Welcome\n\nThis is a sample module.', questions: [] }] },
-  { id: 'demo-2', icon: '🛡️', title: 'Workplace Safety Essentials', description: 'Core safety practices every team member should know.',
-    modules: [{ id: 'dm2', title: 'Basics', content: '## Safety basics\n\nSample content.', questions: [] }, { id: 'dm3', title: 'Reporting', content: '## Reporting\n\nSample content.', questions: [] }] },
-  { id: 'demo-3', icon: '🔐', title: 'Data Privacy Fundamentals', description: 'How to handle customer and company data responsibly.',
-    modules: [{ id: 'dm4', title: 'Principles', content: '## Principles\n\nSample content.', questions: [] }] },
-];
-
 const CONFIG = {
   WORKER_URL: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? 'http://localhost:8787'
@@ -160,6 +150,7 @@ function clearLearnerToken() { StorageUtils.remove('tf_learner_token'); }
 
 function makeApi(getTokenFn, on401) {
   return async function(path, opts = {}) {
+    if (isDemo) return Demo.handle(path, opts); // sandbox: no network, nothing stored
     const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
     const token = getTokenFn();
     if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -451,7 +442,7 @@ const App = {
       Toast.err('Unauthorized: Admin access required.');
       return App.show('screen-login');
     }
-    if (id === 'screen-manager' && !getManagerToken()) {
+    if (id === 'screen-manager' && !getManagerToken() && !isDemo) {
       Toast.err('Unauthorized: Manager access required.');
       return App.show('screen-manager-login');
     }
@@ -464,14 +455,7 @@ const App = {
     const el = $$(id); if(el) el.classList.add('active');
   },
 
-  startDemo() {
-    isDemo = true;
-    curLearner = { id: 'demo-id', name: 'Demo Learner' };
-    brandCache = { name: CONFIG.DEFAULT_BRAND_NAME + ' Demo', tagline: 'Explore the platform with sample training', logo: '', c1: CONFIG.DEFAULT_C1, c2: CONFIG.DEFAULT_C2, c3: CONFIG.DEFAULT_C3, pass: CONFIG.DEFAULT_PASS, font: CONFIG.DEFAULT_FONT, fontUrl: '' };
-    applyBrand();
-    Toast.ok('Demo mode activated');
-    Learner.init();
-  },
+  startDemo() { Demo.openPicker(); },
 
   goLearner() { App.show('screen-learner'); applyBrand(); if(curLearner) Learner.init(); else showPage('lp-name'); },
   goManager() { App.show('screen-manager-login'); Auth.toggleManagerReg(false); setTimeout(()=>$$('m-login-name').focus(),CONFIG.FOCUS_DELAY); },

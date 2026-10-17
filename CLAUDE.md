@@ -36,6 +36,7 @@ js/
 ├── manager.js        # Manager portal (460 lines)
 ├── learner.js        # Learner portal (530 lines)
 ├── builder.js        # Course builder — module/question editor (148 lines)
+├── demo.js           # Interactive demo sandbox — fixture team + playable course, in-memory fake API (see Demo below)
 └── app.js            # AppProxy — wires onclick attrs to JS modules (477 lines)
 worker/
 ├── index.js          # All Hono routes + DB logic (1,214 lines — oversized)
@@ -299,6 +300,13 @@ Renamed from TrainFlow and re-skinned to match the Pregame site (pregame.vickery
 - Logo: `assets/academy-icon-{192,512}.png` (graduation cap over the three-bar Pregame motif; source `assets/academy-icon.svg`) is the default logo/favicon on every surface; an admin-uploaded logo overrides it.
 - Legacy defaults (`TrainFlow`, old blues/purples, `Inter`) saved in the `brand` row are migrated to the new defaults at runtime by `normBrand()`; customised values are kept.
 - Deliberately **not** renamed (internal identifiers): the Worker/DB names (`trainflow-worker`, `trainflow-theronv`), repo/Pages path (`/trainingflow/`), and `trainflow_*` localStorage/sessionStorage keys — changing them would break the deployed URL and sign users out.
+
+## Demo — 2026-10-16
+
+"Demo" on the landing page opens a picker: **as a manager** (sample Patient Services team of five, progress, overdue, completions, assign flow) or **as a learner** (full Customer Service Excellence course: lessons, quizzes, certificate PDF). It is entirely client-side:
+- `makeApi()` in `core.js` short-circuits to `Demo.handle()` while `isDemo` is true — no Worker calls, nothing stored; state is rebuilt on every launch. The real manager/learner screens run unchanged.
+- Fixtures live in `js/demo.js` (the course is a copy of the seed script's Customer Service Excellence). Demo learner is Jamie Lee; finishing the course adds a completion that the manager view then shows (switch roles via the bar at the bottom).
+- Demo users no longer need to exist in Turso; `seed-demo.mjs` is only for local dev.
 
 ## UI Polish — 2026-10-14
 

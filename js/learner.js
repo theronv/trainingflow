@@ -65,11 +65,11 @@ const Learner = {
       const [apiCourses, apiRecs, apiAssigns, apiProgress, apiSections] = pv
         ? await Promise.all([pv.api('/api/courses'), [], [], [], pv.api('/api/sections').catch(() => [])])
         : await Promise.all([
-            isDemo ? Promise.resolve(DEMO_COURSES) : learnerApi('/api/courses'),
+            learnerApi('/api/courses'),
             learnerApi('/api/completions/me').catch(() => []),
             learnerApi('/api/assignments/me').catch(() => []),
             learnerApi('/api/progress/me').catch(() => []),
-            isDemo ? Promise.resolve([]) : learnerApi('/api/sections').catch(() => [])
+            learnerApi('/api/sections').catch(() => [])
           ]);
       if (Learner._navSeq !== seq) return;
       const recs = apiRecs.map(normRecord);
@@ -167,7 +167,7 @@ const Learner = {
   async renderProgress() {
     const seq = Learner._navSeq;
     const el = $$('l-progress-content'); if(!el) return;
-    if (Learner._preview || isDemo) {
+    if (Learner._preview) {
       el.innerHTML = '<div class="empty"><div class="empty-icon">' + ICON.clip + '</div><div class="empty-title">Nothing to show in preview</div><div class="empty-hint">Assignments and progress are tracked per learner. Sign in as a learner to see them.</div></div>';
       return;
     }
@@ -227,7 +227,7 @@ const Learner = {
   _certsCache: [],
   async renderCerts() {
     const seq = Learner._navSeq;
-    if (Learner._preview || isDemo) {
+    if (Learner._preview) {
       $$('l-certs-content').innerHTML = '<div class="empty"><div class="empty-icon">' + ICON.award + '</div><div class="empty-title">Nothing to show in preview</div><div class="empty-hint">Certificates are issued to learners who pass a course.</div></div>';
       return;
     }
@@ -254,8 +254,6 @@ const Learner = {
       if (pv) window._adminPreview = true; // local grading, nothing saved, exit returns to the preview list
       const [res, progList] = pv
         ? [await pv.api(`/api/courses/${cid}`), []]
-        : isDemo
-        ? [DEMO_COURSES.find(c => c.id === cid), []]
         : await Promise.all([
             learnerApi(`/api/courses/${cid}`),
             learnerApi('/api/progress/me').catch(() => [])
@@ -383,10 +381,10 @@ const Learner = {
     const buttons = $$('mod-main').querySelectorAll('.quiz-opt');
     buttons.forEach(btn => { btn.disabled = true; });
 
-    // Grading is server-side — the answer key is never sent to learners. Admin preview and
-    // demo have no learner session and already hold the key locally.
+    // Grading is server-side — the answer key is never sent to learners. Admin preview has no
+    // learner session and already holds the key locally. (Demo grades through its in-memory API.)
     let ok, correctIndex, explanation;
-    if (window._adminPreview || isDemo) {
+    if (window._adminPreview) {
       if (typeof q.correct_index !== 'number') {
         buttons.forEach(btn => { btn.disabled = false; });
         return Toast.info('Quizzes can only be graded in an admin preview or a learner account.');
@@ -527,7 +525,6 @@ const Learner = {
 
   async completeCourse() {
     if (window._adminPreview) { App.exitCourse(); return; }
-    if (isDemo) { Toast.info('Demo mode — sign in as a learner to earn certificates.'); App.lNav('courses'); return; }
     // The score and pass/fail are computed server-side from the answers submitted during the quizzes.
     let res;
     try {
