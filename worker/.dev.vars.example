@@ -1,0 +1,32 @@
+# Local dev secrets for `npm run dev`. Copy to `.dev.vars` (gitignored) and fill in.
+# Use your OWN dev database and secrets, never production values.
+# Values in .dev.vars override [vars] in wrangler.toml, so TURSO_URL below
+# replaces the production URL set there.
+
+# --- Required ---
+# Your dev Turso DB: `turso db show <db-name> --url` / `turso db tokens create <db-name>`
+# Apply schema first: `turso db shell <db-name> < ../schema.sql`
+TURSO_URL=libsql://your-dev-db.turso.io
+TURSO_TOKEN=
+# Signs all JWTs, 32+ chars: `openssl rand -hex 32`
+JWT_SECRET=
+# Shared-password admin login: `node ../scripts/hash-password.mjs <password>`
+ADMIN_PASSWORD_HASH=pbkdf2v1:salt:hash
+
+# --- Optional ---
+# AI Importer fallback (Google AI Studio key)
+GEMINI_API_KEY=
+# Enables /api/ai/generate; the browser normally uses keys entered in Admin -> AI Importer
+CLAUDE_API_KEY=
+# Optional key for the Jina Reader web-page importer
+JINA_API_KEY=
+# CORS allow-list, comma-separated. Defaults to the production domains if unset
+ALLOWED_ORIGIN=http://localhost:3000
+# Clerk email sign-in (leave unset to use name + password login)
+CLERK_ISSUER=
+CLERK_SECRET_KEY=
+CLERK_JWKS=
+# Emails granted admin on Clerk sign-in, comma-separated
+ADMIN_EMAILS=
+# Redirect target in invite emails
+APP_URL=http://localhost:3000
