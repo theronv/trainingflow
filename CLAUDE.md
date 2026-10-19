@@ -1,5 +1,7 @@
 # Pregame Academy — Project Guide
 
+Team workflow (branches, PRs, checks, deploy rules): @CONTRIBUTING.md
+
 ## What This Is
 
 Pregame Academy is a full-stack LMS for professional teams. AI-assisted course creation, role-based access (Admin / Manager / Learner), targeted assignments, progress tracking, and verifiable PDF certificates.
@@ -98,7 +100,7 @@ cd worker && npx wrangler deploy         # Worker
 # Push to GitHub → Pages auto-deploys frontend
 ```
 
-**Auto-deploy in Claude sessions:** the owner has authorised Claude to ship its own changes (rules in the gitignored `.claude/settings.local.json`). After tests pass: commit, `git push origin main` (Pages auto-deploys the frontend), and `cd worker && npx wrangler deploy` only when `worker/` changed. Then check `gh run list --limit 1`. Never run DB migrations, `wrangler secret`, or destructive `turso` commands without asking.
+**Shipping:** work on a branch and open a PR into `main` (see `CONTRIBUTING.md`). A push to `main` publishes the frontend, and one touching `worker/**` deploys the worker to production. Never run DB migrations, `wrangler secret`, or destructive `turso` commands without asking.
 
 ## Demo Data Seeding (local dev only)
 

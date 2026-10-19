@@ -16,3 +16,6 @@ worker/public.pem
 
 # Claude Code personal settings
 .claude/settings.local.json
+
+# Claude Code personal instructions
+CLAUDE.local.md
