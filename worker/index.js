@@ -1050,7 +1050,6 @@ app.get('/api/admin/stats', requireManager, async (c) => {
   const wa = st ? [st] : []
 
   try {
-    const now = Math.floor(Date.now() / 1000)
     const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0)
     const monthStart = Math.floor(d.getTime() / 1000)
     const teamFilter = st ? ' AND c.learner_id IN (SELECT id FROM users WHERE team_id = ?)' : ''
@@ -1099,7 +1098,7 @@ app.get('/api/courses/:id', requireAnyAuth, async (c) => {
     // via POST /api/quiz/answer, and scores are computed in POST /api/completions.
     if (c.get('user')?.role !== 'admin') {
       for (const mod of modules) {
-        mod.questions = mod.questions.map(({ correct_index, explanation, ...safe }) => safe)
+        mod.questions = mod.questions.map(({ correct_index: _key, explanation: _why, ...safe }) => safe)
       }
     }
     return c.json({ ...course, modules })

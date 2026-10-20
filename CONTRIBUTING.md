@@ -21,6 +21,7 @@ Worker secrets for local dev go in `worker/.dev.vars` (see `CLAUDE.md`). Never c
 
 ## Before you open a PR
 
+- `npm run lint` passes (ESLint for `js/` and `worker/`, HTML accessibility rules for `index.html`, and the token-literal check that stops new raw colours). Run `npm install` once at the repo root first.
 - `cd worker && npm test` passes. New or changed worker logic needs tests in `worker/test/`. A bug fix starts with a failing test.
 - For UI changes, check the screen at 390px (mobile) and desktop widths, in light and dark mode, and attach screenshots to the PR.
 - Use the existing design tokens in `css/style.css`. Don't add one-off colors, spacing or fonts.
@@ -30,7 +31,7 @@ Worker secrets for local dev go in `worker/.dev.vars` (see `CLAUDE.md`). Never c
 ## Deploys: read this
 
 - **Frontend:** every push to `main` publishes to GitHub Pages.
-- **Worker:** a push to `main` that touches `worker/**` deploys to **production** Cloudflare (`.github/workflows/deploy-worker.yml`). That workflow does not run the tests, so run them yourself before merging.
+- **Worker:** a push to `main` that touches `worker/**` deploys to **production** Cloudflare (`.github/workflows/deploy-worker.yml`). That workflow now runs the worker tests first and only deploys if they pass; a separate CI workflow (`ci.yml`) runs them on every pull request.
 - Don't run `wrangler deploy`, `wrangler secret`, database migrations or destructive `turso` commands without the owner's sign-off.
 
 ## Ask first

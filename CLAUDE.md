@@ -2,6 +2,8 @@
 
 Team workflow (branches, PRs, checks, deploy rules): @CONTRIBUTING.md
 
+Improvement process: `~/.claude/APP_POLISH_MASTER.md`; state in `.polish/`.
+
 ## What This Is
 
 Pregame Academy is a full-stack LMS for professional teams. AI-assisted course creation, role-based access (Admin / Manager / Learner), targeted assignments, progress tracking, and verifiable PDF certificates.
@@ -75,6 +77,8 @@ cd worker && npm test            # one-shot
 cd worker && npm run test:watch  # watch mode
 ```
 
+Lint: `npm install && npm run lint` at the repo root (ESLint + `@html-eslint` for `index.html` + `scripts/check-tokens.mjs`, a ratchet on raw colour literals — lower `scripts/token-baseline.json` as they migrate to tokens). `worker/test/contrast.test.mjs` checks WCAG AA contrast of the CSS text/background tokens in both themes. A project Stop hook (`scripts/stop-check.sh`, wired in `.claude/settings.json`) runs lint + worker tests when code files changed. CI (`.github/workflows/ci.yml`) runs lint and tests on every PR.
+
 Coverage: `worker/test/` — `auth` (login + rate limiting), `rbac` (role gates + manager team scoping), `scoring` (answer-key stripping, server-side grading and score computation), `scrape` (URL import validation). `importer` (the frontend `js/importer.js` loaded with browser globals stubbed: reply parsing, question validation, answer shuffling, prompt building, reply merging, save validation). `learner` (the source-link visibility helper), `assign-bulk` (multi-course bulk assignment) and `assign-ui` (`js/builder.js` course selection + assign counts), `sections-ui` (`js/sections.js`: section move/collapse logic) and `sections` (incl. the order endpoint). The rest of `js/` has no tests yet.
 
 ## Environment Variables
@@ -90,7 +94,7 @@ GEMINI_API_KEY=AIza...                      # Used as AI Importer fallback in wo
 ALLOWED_ORIGIN=https://theronv.github.io    # CORS — falls back to production domain if unset
 ```
 
-> Claude and Gemini API keys for the AI Importer are entered per-session in Admin → AI Importer and stored in `localStorage`. They are never sent to the Worker.
+> Keys entered per-session in Admin → AI Importer ("Use an API key instead") are stored in `localStorage` and used for direct browser calls; they are not sent to the Worker. The default Importer route goes through the admin-only `/api/ai/generate` proxy, which uses the Worker's own secrets.
 
 ## Deploying
 
@@ -233,7 +237,7 @@ assignCache, isDemo, brandCache
 
 **`worker/index.js` is 1,277 lines** — all 45+ routes in one file. Schema migration calls (`setupBrand()`, `setupSections()`, `setupTags()`) are now guarded by `ensureSetup()` + a module-level `_setupComplete` flag, so the `ALTER TABLE`/`CREATE TABLE IF NOT EXISTS` statements run **once per Worker isolate**, not per request. (Previously per-request — fixed.)
 
-**AI keys risk:** Claude/Gemini API keys stored in `localStorage`, called directly from the browser. The server-side proxy endpoint (`/api/ai/generate`) exists but is unused. Any XSS exposes all keys.
+**AI keys risk:** Claude/Gemini API keys stored in `localStorage`, called directly from the browser. The server-side proxy endpoint (`/api/ai/generate`, admin-only) is used by the Importer (`js/importer.js`); the localStorage key route remains as an option. Any XSS exposes stored keys.
 
 **`sectionsCache`** is assigned in `admin.js:renderCourses()` without being declared in `core.js` — creates an implicit `window.sectionsCache` global. Fix: declare in `core.js`.
 
@@ -451,7 +455,7 @@ Replace `box-shadow: 0 0 0 3px rgba(brand, 0.2)` (unsupported spread in RN) with
 
 | # | Issue | Detail |
 |---|---|---|
-| S1 | AI keys in localStorage | Server proxy `/api/ai/generate` exists (`requireAdmin`, reads `CLAUDE_API_KEY`/`GEMINI_API_KEY` env secrets); frontend still defaults to localStorage keys — finish routing the browser through the proxy |
+| S1 | AI keys in localStorage | Server proxy `/api/ai/generate` exists (`requireAdmin`, reads `CLAUDE_API_KEY`/`GEMINI_API_KEY` env secrets); Importer calls the proxy; remove the localStorage key route so no keys live in the browser |
 | S2 | `admin.js` at 1,017 lines | AI Importer already split to `importer.js`; split remaining concerns before RN module-per-screen architecture |
 | S3 | No Drizzle ORM | 45+ routes use raw SQL; Drizzle migration needed before RN API layer |
 | S4 | No RevenueCat project | B2B per-seat pricing needs to be architected |

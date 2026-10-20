@@ -40,7 +40,7 @@ function initSortableTables() {
     th.setAttribute('aria-sort', dir);
     const val = (tr) => (tr.cells[idx] ? tr.cells[idx].textContent.trim() : '');
     const num = (s) => { const n = parseFloat(s.replace(/[%,]/g, '')); return isNaN(n) || !/^[\d.,%\s-]+$/.test(s) ? null : n; };
-    const dt = (s) => { const t = Date.parse(s); return isNaN(t) || !/\d{1,4}[\/-]\d{1,2}/.test(s) ? null : t; };
+    const dt = (s) => { const t = Date.parse(s); return isNaN(t) || !/\d{1,4}[/-]\d{1,2}/.test(s) ? null : t; };
     const rows = [...body.rows];
     rows.sort((a, b) => {
       const A = val(a), B = val(b);
