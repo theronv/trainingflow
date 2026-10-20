@@ -233,7 +233,7 @@ assignCache, isDemo, brandCache
 
 **`worker/index.js` is 1,277 lines** — all 45+ routes in one file. Schema migration calls (`setupBrand()`, `setupSections()`, `setupTags()`) are now guarded by `ensureSetup()` + a module-level `_setupComplete` flag, so the `ALTER TABLE`/`CREATE TABLE IF NOT EXISTS` statements run **once per Worker isolate**, not per request. (Previously per-request — fixed.)
 
-**AI keys risk:** Claude/Gemini API keys stored in `localStorage`, called directly from the browser. The server-side proxy endpoint (`/api/ai/generate`) exists but is unused. Any XSS exposes all keys.
+**AI keys risk:** Claude/Gemini API keys stored in `localStorage`, called directly from the browser. The server-side proxy endpoint (`/api/ai/generate`, admin-only) is used by the Importer (`js/importer.js`); the localStorage key route remains as an option. Any XSS exposes stored keys.
 
 **`sectionsCache`** is assigned in `admin.js:renderCourses()` without being declared in `core.js` — creates an implicit `window.sectionsCache` global. Fix: declare in `core.js`.
 
@@ -451,7 +451,7 @@ Replace `box-shadow: 0 0 0 3px rgba(brand, 0.2)` (unsupported spread in RN) with
 
 | # | Issue | Detail |
 |---|---|---|
-| S1 | AI keys in localStorage | Server proxy `/api/ai/generate` exists (`requireAdmin`, reads `CLAUDE_API_KEY`/`GEMINI_API_KEY` env secrets); frontend still defaults to localStorage keys — finish routing the browser through the proxy |
+| S1 | AI keys in localStorage | Server proxy `/api/ai/generate` exists (`requireAdmin`, reads `CLAUDE_API_KEY`/`GEMINI_API_KEY` env secrets); Importer calls the proxy; remove the localStorage key route so no keys live in the browser |
 | S2 | `admin.js` at 1,017 lines | AI Importer already split to `importer.js`; split remaining concerns before RN module-per-screen architecture |
 | S3 | No Drizzle ORM | 45+ routes use raw SQL; Drizzle migration needed before RN API layer |
 | S4 | No RevenueCat project | B2B per-seat pricing needs to be architected |
