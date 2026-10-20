@@ -19,3 +19,7 @@ worker/public.pem
 
 # Claude Code personal instructions
 CLAUDE.local.md
+worker/.dev.vars
+worker/.wrangler/
+worker/wrangler.log
+.DS_Store
