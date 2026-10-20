@@ -1,9 +1,9 @@
 // Token-literal lint: raw colour literals (hex, rgb/rgba, hsl) outside token definitions
 // must not grow. Counts are ratcheted against scripts/token-baseline.json; lower them as
 // literals migrate to tokens (run with --update after a reduction).
-import { readFileSync, writeFileSync } from 'node:fs'
+import { readdirSync, readFileSync, writeFileSync } from 'node:fs'
 
-const FILES = ['css/style.css', 'index.html', ...['admin', 'app', 'auth', 'builder', 'core', 'demo', 'importer', 'learner', 'manager', 'sections'].map((n) => `js/${n}.js`)]
+const FILES = ['css/style.css', 'index.html', ...readdirSync('js').filter((f) => f.endsWith('.js')).sort().map((f) => `js/${f}`)]
 const LITERAL = /#[0-9a-fA-F]{3,8}\b|\brgba?\(|\bhsla?\(/g
 const BASELINE = new URL('./token-baseline.json', import.meta.url)
 

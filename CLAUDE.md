@@ -94,7 +94,7 @@ GEMINI_API_KEY=AIza...                      # Used as AI Importer fallback in wo
 ALLOWED_ORIGIN=https://theronv.github.io    # CORS — falls back to production domain if unset
 ```
 
-> Claude and Gemini API keys for the AI Importer are entered per-session in Admin → AI Importer and stored in `localStorage`. They are never sent to the Worker.
+> Keys entered per-session in Admin → AI Importer ("Use an API key instead") are stored in `localStorage` and used for direct browser calls; they are not sent to the Worker. The default Importer route goes through the admin-only `/api/ai/generate` proxy, which uses the Worker's own secrets.
 
 ## Deploying
 

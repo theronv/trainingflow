@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
+// Only top-level :root / [data-theme="light"] rules are read; tokens redefined inside @media blocks are not seen.
 // Resolves the effective colour tokens for each theme from css/style.css and checks
 // WCAG 2.2 AA contrast for the text/background pairs the UI actually uses.
 const css = readFileSync(fileURLToPath(new URL('../../css/style.css', import.meta.url)), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
@@ -70,7 +71,7 @@ function ratio(a, b) {
 const THEMES = collectTokens()
 const SURFACES = ['--bg', '--bg-2', '--surface', '--surface-2']
 // --ink-4 is the disabled/placeholder tier and is exempt from AA by WCAG (inactive components).
-const TEXT = ['--ink-1', '--ink-2', '--ink-3', '--accent']
+const TEXT = ['--ink-1', '--ink-2', '--ink-3', '--accent', '--accent-strong']
 
 describe.each(['dark', 'light'])('%s theme contrast (WCAG AA 4.5:1)', (theme) => {
   const tokens = THEMES[theme]

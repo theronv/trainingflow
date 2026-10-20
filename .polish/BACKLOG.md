@@ -28,6 +28,9 @@ None found. (No data-loss, auth bypass or crash-on-launch evidence.) Closest: CI
 | SCL-02 | 5.1 | Scale | Only `/api/learners` is paginated; other lists (completions, assignments, courses, trouble-spots) are fetched whole and rendered client-side | `index.js:991` is the only PAGE_SIZE; `D-10` note | High | M | Server pagination + search/filter for completions, assignments, courses; virtualize large tables | Open |
 | SCL-03 | 5.1 | Scale | No SSO/SCIM/HRIS and no email notifications, standard enterprise LMS asks | CLAUDE.md "Not started" | Medium | L | Roadmap item; scope after SCL-01 | Open |
 
+| A11-02 | 4.11 | A11y | Contrast test covers ink/accent text only; status text (`--success/--warning/--danger`), chips and button text are unchecked and the test ignores tokens redefined inside `@media` | `worker/test/contrast.test.mjs` | Medium | S | Extend pairs once status/chip tokens are consolidated (VIS-02) | Open |
+| TST-02 | 2.2 | Lint | `no-unused-vars` is off for `js/` (cross-file globals) and Prettier is not enforced; implicit globals like `sectionsCache` are not detected | `eslint.config.mjs` | Low | M | Declare globals explicitly during ARC-01 split, then enable the rule | Open |
+
 ## Suggested order (given your priorities)
 1. CI-01 + TST-01 (safe to change things)  2. VIS-01/VIS-02 + UX-01 (consistency foundation, then 4.x fix passes)  3. SCL-02, then SCL-01 decision  4. SEC-01, OBS-01, PRV-01, SEC-02  5. A11-01, REL-01, ARC-01.
 
