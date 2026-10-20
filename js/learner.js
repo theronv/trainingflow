@@ -2,6 +2,10 @@
 //  PREGAME ACADEMY — Learner Experience & Quiz Engine
 // ══════════════════════════════════════════════════════════
 
+// Source links on these hosts are never offered to learners (the sites are retired).
+// reference_url stays stored; only the "Before You Begin" banner is skipped.
+const HIDDEN_SOURCE_DOMAINS = ['support.synergysports.com'];
+
 const Learner = {
   _prog: null, // { course_id, module_idx, modules: [{mi, passed, score}] }
   _navSeq: 0,
@@ -24,6 +28,14 @@ const Learner = {
     const btn = $$('l-signout-btn'); if (btn) btn.textContent = 'Sign Out';
     const acct = $$('ln-account'); if (acct) acct.classList.remove('hidden');
     App.show(back);
+  },
+
+  // True when the source link is worth showing: it exists and isn't on a hidden domain.
+  isSourceLinkVisible(url) {
+    if (!url) return false;
+    let host;
+    try { host = new URL(url).hostname.toLowerCase(); } catch { return true; }
+    return !HIDDEN_SOURCE_DOMAINS.some(d => host === d || host.endsWith('.' + d));
   },
 
   init() {
@@ -307,7 +319,7 @@ const Learner = {
     const refUrl = mod.refUrl || curCourse.refUrl || '';
 
     // "Read This First" source banner
-    const sourceBanner = refUrl ? `
+    const sourceBanner = Learner.isSourceLinkVisible(refUrl) ? `
       <div class="source-banner">
         <div class="source-banner-icon">${ICON.book}</div>
         <div class="source-banner-body">

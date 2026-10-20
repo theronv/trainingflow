@@ -75,7 +75,7 @@ cd worker && npm test            # one-shot
 cd worker && npm run test:watch  # watch mode
 ```
 
-Coverage: `worker/test/` — `auth` (login + rate limiting), `rbac` (role gates + manager team scoping), `scoring` (answer-key stripping, server-side grading and score computation), `scrape` (URL import validation). `importer` (the frontend `js/importer.js` loaded with browser globals stubbed: reply parsing, question validation, answer shuffling, prompt building, reply merging, save validation). The rest of `js/` has no tests yet.
+Coverage: `worker/test/` — `auth` (login + rate limiting), `rbac` (role gates + manager team scoping), `scoring` (answer-key stripping, server-side grading and score computation), `scrape` (URL import validation). `importer` (the frontend `js/importer.js` loaded with browser globals stubbed: reply parsing, question validation, answer shuffling, prompt building, reply merging, save validation). `learner` (the source-link visibility helper). The rest of `js/` has no tests yet.
 
 ## Environment Variables
 
@@ -306,6 +306,8 @@ Admin → AI Importer (`js/importer.js`). Lessons are imported **verbatim** (Mar
 - **Review is editable:** titles, summaries, objectives, lesson text, questions, correct answers; add/remove questions and modules; "Redo with Claude" per module. Saving is blocked (with a list of problems) until every module has valid questions (`validateCourse()`).
 - **Drafts:** state is saved to `localStorage` (`trainflow_import_draft`) so a refresh or closed tab can resume from the Upload screen.
 - Full-course JSON import (Claude writes everything) still exists on the Upload screen and shares the same question validation.
+
+**Hidden source links:** `HIDDEN_SOURCE_DOMAINS` at the top of `js/learner.js` lists hosts whose `reference_url` never renders the learner "Before You Begin / Open Source Material" banner (currently `support.synergysports.com`, being retired). The URL stays stored; add hosts to the list as needed (subdomains match too).
 
 ## Demo — 2026-10-16
 
