@@ -1,95 +1,819 @@
 {
  "title": "Synergy Softball App",
  "icon": "🥎",
- "description": "",
+ "description": "Learn to install and log in to the Synergy Softball app, filter data and video across the Multigame, Reports and Single Game views, compare clips and send them to the Synergy Editor, save reports, and review team practice sessions.",
  "modules": [
   {
    "title": "Getting Started",
-   "summary": "",
-   "learning_objectives": [],
+   "summary": "How to install the Synergy Softball app on PC or Mac, log in through your web browser, and what the app can do with your data and video.",
+   "learning_objectives": [
+    "Learners will be able to describe what the Synergy Softball app delivers for teams, games, and players.",
+    "Learners will be able to install the app on a PC or a Mac.",
+    "Learners will be able to explain why Mac users drag the app into the Applications folder.",
+    "Learners will be able to log in for the first time and set the app to log in automatically."
+   ],
    "reference_url": "https://support.synergysports.com/support/solutions/articles/77000565400",
    "content": "## Overview\n\nIn this article, we will provide an overview of the Synergy Sports Softball Application.\n\nThe Synergy Softball app delivers rich data filtering and video playback options to generate data with associated video for one or more teams, seasons, games, or players.\n\nAfter you select your data for a player or team, use the app to:\n\n- Visualize data in detailed pitch and spray charts.  These are printable as a PDF with additional filters\n- Review basic statistics\n- View the associated game film with side-by-side videos for Multi-Angle events\n- Generate multiple advanced reports to analyze and share\n- Save reports for further use\n- See the pitch-by-pitch details for specific games, with more filtering options using Single Game view\n\n## How To Install the Softball App\n\nIn this article, we will discuss how to install the Synergy Sports Softball Application.\n\n##### Download Link: <https://www.synergysportstech.com/apps/softball/client/production/windows/>\n\n####\n\n#### Instructions:\n\n##### For PC users:\n\n1. To download the Synergy Softball Application, click [here](https://www.synergysportstech.com/apps/softball/client/production/windows/). Or copy and paste the address into the URL bar: <https://www.synergysportstech.com/apps/softball/client/production/windows/>\n\nThe installation screen will be as follows:\n\n![Screenshot: How To Install the Softball App](https://pregame-academy.vickerydigital.com/assets/synergy/77000565399-01.jpg)\n\n2.    Click **Install**\n\n3.    If asked, Click **Run**\n\n4.    After installing, the program will open and prompt you to log in.\n\n![Screenshot: How To Install the Softball App](https://pregame-academy.vickerydigital.com/assets/synergy/77000565399-02.jpg)\n\n### For Mac users:\n\n1. To download the Synergy Softball Application, click [here](https://www.synergysportstech.com/apps/softball/client/production/). Or copy and paste the address into the URL bar: [https://www.synergysportstech.com/apps/softball/client/production/](https://www.synergysportstech.com/apps/softball/client/production/macos/)\n\n![Screenshot: How To Install the Softball App](https://pregame-academy.vickerydigital.com/assets/synergy/77000565399-03.jpg)\n\n2. Select **Download**\n3. Once downloaded, open the DMG file and drag the Synergy Softball App icon into the Applications folder icon. This step is necessary to receive notifications for future updates\n\n![Screenshot: How To Install the Softball App](https://pregame-academy.vickerydigital.com/assets/synergy/77000565399-04.jpg)\n\n4. From the Applications folder, open the Synergy Softball App\n\n- If prompted, click \"Open\" for any message asking you to confirm that you want to open Synergy Softball App.\n\n## How to Log In\n\nIn this article we will discuss how to log into the Synergy Sports Softball Application.\n\nThe Synergy Softball app Login page provides several security improvements for the storage of user credentials. When logging in to the Synergy Softball App for the first time, follow the instructions below:\n\n- Ensure your preferred language is selected\n- Click the **Remember Me** box in the app to store credentials for future use\n- Select the **Click here to log in** button in the app to launch the web browser\n\n- Enter your username & password in the web browser\n- Select the **Login** button in the web browser to automatically return back to the app\n- For future use, the app will automatically login if Remember me is selected.",
-   "questions": []
+   "questions": [
+    {
+     "question": "A Mac user has downloaded the app and opened the DMG file. What should they do next to make sure they receive notifications about future updates?",
+     "options": [
+      "Run the app directly from the DMG file",
+      "Drag the Synergy Softball App icon into the Applications folder icon",
+      "Click Install on the installation screen",
+      "Wait for the app to prompt for a login"
+     ],
+     "correct_index": 1,
+     "explanation": "Dragging the icon into the Applications folder is necessary to receive notifications for future updates."
+    },
+    {
+     "question": "A new user wants the app to log them in automatically on future launches. Which first-time login steps achieve this?",
+     "options": [
+      "Select the Remember Me box, click the button to launch the web browser, and sign in there",
+      "Type the username and password into the app's login page and close the app",
+      "Choose a language only, since automatic login is always on",
+      "Click Login in the app without opening the web browser"
+     ],
+     "correct_index": 0,
+     "explanation": "Remember Me stores your credentials, and you sign in through the web browser the first time, after which the app logs in automatically."
+    },
+    {
+     "question": "A PC user clicks Install and, when asked, clicks Run. What happens once installation finishes?",
+     "options": [
+      "The app waits for the computer to restart",
+      "A DMG file opens so the app can be dragged into a folder",
+      "The Synergy Editor launches automatically",
+      "The program opens and prompts the user to log in"
+     ],
+     "correct_index": 3,
+     "explanation": "After installing, the program opens and prompts you to log in."
+    }
+   ]
   },
   {
    "title": "Tools, Views and Event Types",
-   "summary": "",
-   "learning_objectives": [],
+   "summary": "The tools available in every view of the Softball app, the Settings menu options, and how to filter by Event Type.",
+   "learning_objectives": [
+    "Learners will be able to identify the tools and views available across the top of the app.",
+    "Learners will be able to find the settings for video quality, video cache, and pitch velocity units.",
+    "Learners will be able to use the Event Types filter to show only the events you need."
+   ],
    "reference_url": "https://support.synergysports.com/support/solutions/articles/77000565402",
    "content": "## Tools and Views\n\nIn this article, we will discuss the tools and views that are available in the Synergy Sports Softball Application.\n\nThe Synergy Softball App has a variety of tools that are available in every view. Across the top of the application, you can access the following items in every view (from left to right):\n\n![Screenshot: Tools and Views](https://pregame-academy.vickerydigital.com/assets/synergy/77000565402-01.jpg)\n\n- Video playback (choose between in-app Player, Synergy Editor, or Compare for split screen)\n- Add Report (only available after creating an initial report)\n- Multigame View\n- Reports View\n- Single Game View\n- Saved Reports\n- Settings Menu (indicated by the three line hamburger icon)\n\n  ![Screenshot: Tools and Views](https://pregame-academy.vickerydigital.com/assets/synergy/77000565402-02.jpg)\n\n- Settings\n  - General - set the location for video cache folder, access application log files, and set pitch velocity measurement units\n![Screenshot: Tools and Views](https://pregame-academy.vickerydigital.com/assets/synergy/77000565402-03.jpg)\n  - Video - set video quality to Low, Medium, or High.\n![Screenshot: Tools and Views](https://pregame-academy.vickerydigital.com/assets/synergy/77000565402-04.jpg)\n\n- About - view details of your current version of the Softball application\n![Screenshot: Tools and Views](https://pregame-academy.vickerydigital.com/assets/synergy/77000565402-05.jpg)\n- Help - contact our support agents with any questions or issues you may have through the Synergy Support page\n- Video Guides - access our How-To-Video Library for helpful instructions and tips\n- Upload Schedule - quick access to the Softball Portal to view your teams upload schedule\n- Admin - (only available for team admins) quick access to the Softball Portal for account management and upload schedule\n- Logout\n- Exit\n\n  The Filters menu, along the left hand side is always visible from any view except Saved Reports, however, available filters may change depending on the active view, previous inputs, or selections from other filters.\n\n## Event Types\n\nThe Event Type filter is now available in the Synergy Softball application, allowing you to filter events based on type, including **Pitch** (Default),**Runner Left Early** (Default), **Pickoff**, **Challenge**, **Interruption of Play**, **Other**, or any combination of event types.\n\n![Screenshot: Event Types](https://pregame-academy.vickerydigital.com/assets/synergy/77000585818-01.png)\n\nTo set your filter, click **Event Types**, next to Data Source at the top of the filters list, and a dropdown will appear, allowing you to select whichever event types you would like to filter for. Once selected only your filtered event types will display.\n\n![Screenshot: Event Types](https://pregame-academy.vickerydigital.com/assets/synergy/77000585818-02.png)\n\nThis filter applies to both the Multigame view, and the Reports view.\n\n![Screenshot: Event Types](https://pregame-academy.vickerydigital.com/assets/synergy/77000585818-03.png)\n\nRunner Left Early events are now filterable using the**Baserunner Movement** filter for Multigame and Reports views, allowing you to further filter for the baserunner's movement. This is displayed in the Out column between Runner Interference and Doubled Off.\n\n![Screenshot: Event Types](https://pregame-academy.vickerydigital.com/assets/synergy/77000585818-04.png)\n\nWhen the Pickoff Event Types filter has been selected, an additional**Pickoff Attempts** filter parameter will display at the bottom of the list, allowing you to further filter your pickoff event results.\n\nAvailable filters include:\n\n**Catcher**:\n\n- Pickoff Attempts\n- Pickoff Outs\n- Pickoff Errors\n\n![Screenshot: Event Types](https://pregame-academy.vickerydigital.com/assets/synergy/77000585818-05.png)",
-   "questions": []
+   "questions": [
+    {
+     "question": "A user wants to change the quality of video playback. Where should they go?",
+     "options": [
+      "Settings, General",
+      "About",
+      "Settings, Video, and choose Low, Medium, or High",
+      "Video Guides"
+     ],
+     "correct_index": 2,
+     "explanation": "The Video settings let you set the video quality to Low, Medium, or High."
+    },
+    {
+     "question": "A team admin needs to manage their team's accounts in the Softball Portal. Which menu item gives quick access?",
+     "options": [
+      "Upload Schedule",
+      "Help",
+      "Video Guides",
+      "Admin"
+     ],
+     "correct_index": 3,
+     "explanation": "Admin, which is only available to team admins, gives quick access to the Softball Portal for account management and the upload schedule."
+    },
+    {
+     "question": "An analyst wants to filter the data to Pickoff events instead of the default event types. What should they do?",
+     "options": [
+      "Open the Chart Filter menu to the right of the Spray Chart",
+      "Click Event Types next to Data Source at the top of the filters list and pick from the dropdown",
+      "Use the Baserunner Movement filter",
+      "Open Settings and choose General"
+     ],
+     "correct_index": 1,
+     "explanation": "The Event Types dropdown next to Data Source lets you select any combination of event types to filter for."
+    }
+   ]
   },
   {
    "title": "Data and Chart Filters",
-   "summary": "",
-   "learning_objectives": [],
+   "summary": "How to apply, change, and reset data filters, and how to use the chart filters and chart selection tools in Multigame view.",
+   "learning_objectives": [
+    "Learners will be able to apply data filters and explain why the Apply button must be clicked.",
+    "Learners will be able to change the selected player and use Team History to add or remove teams and seasons.",
+    "Learners will be able to reset all filters or a single filter correctly.",
+    "Learners will be able to use chart filters and click-and-drag selection on the pitch chart."
+   ],
    "reference_url": "https://support.synergysports.com/support/solutions/articles/77000565404",
    "content": "## Using Data Filters\n\nIn this article, we will discuss how to use data filters in the Synergy Sports Softball Application.\n\nIn the Synergy Sports Softball Application, filters are used to customize the data and video presented. The filters located on the left-hand side of the application are dynamic and update the visual representation as they are applied.\n\n![Screenshot: Using Data Filters](https://pregame-academy.vickerydigital.com/assets/synergy/77000565404-01.jpg)\n\nSome filters contain additional sub-filters to refine your search even further. The filters section can be collapsed or expanded by selecting the arrow to the right vertical gray filters bar.\n\nFor all data filters, after you select the parameters you wish to use, you must click the **Apply** button to put the filter into place.\n\nYou can select one or multiple values for each filter using the radio buttons or slider (depending on the filter) to view additional options.  Use the **Reset** option to clear the selections for an active filter.\n\n### Using Data Filters in Different Views\n\nThe Synergy Softball app defaults to the Multigame View. Here, you can compare a variety of filters across several games.  If you would like to explore other views, simply select the desired view from the options at the top right.\n\n![Screenshot: Using Data Filters](https://pregame-academy.vickerydigital.com/assets/synergy/77000565404-02.jpg)\n\nEach view requires initial input to get started.\n\nFirst, choose the **Data Source**.  Choose from Ingested, Synergy, or Team.\n\nOnce the source is defined, select filters for **Pitcher**, **Hitter**, **Fielder**, **Baserunner**, and **Catcher** to act as primary filters for the data set you are trying to generate.\n\nWhen making selections for these fields, select the parameters from the dropdown menu(s) or enter text to search for Teams/Players in Pitcher(s), Hitter(s), Fielder(s), Baserunner(s), Catcher(s).\n\n![Screenshot: Using Data Filters](https://pregame-academy.vickerydigital.com/assets/synergy/77000565404-03.jpg)\n\nIf you start by selecting a pitcher, for example, you can then also select hitters who appeared against that pitcher, or, in the hitter filter, you can change the pitcher selection (and vice versa for all player filters) using the **Change** button in the top right of the filter details window.\n\n![Screenshot: Using Data Filters](https://pregame-academy.vickerydigital.com/assets/synergy/77000565404-04.jpg)\n\nAfter selecting initial player information in the data filters, your initial report will be generated, and the new Team History button will appear next to the player's name in the filter menu. The Team History button allows you to return to the players' Team History page to easily add or remove teams and seasons to your search results. This feature is available in both the Multigame and Report views.\n\n### Screenshot: Using Data Filters\n\n### Resetting the filters\n\nTo reset all filters and to start a new report in the Multigame or Reports view, click **Reset Filters** in the top right-hand corner of the Filter Panel.\n\nIf you would like to reset just one individual filter, but leave the remaining filters intact, open the filter, and then click **Reset** on the top right-hand corner of the panel.\n\nAfter you click **Reset**, you must then click **Apply** to clear the specific filter.\n\n![Screenshot: Using Data Filters](https://pregame-academy.vickerydigital.com/assets/synergy/77000565404-06.jpg)\n\n## Chart Filters\n\nIn this article, we will discuss the chart filters that are available in the Synergy Sports Softball Application.\n\nFor use with Multigame view, access the filters using the grey Chart Filter menu to the right of the Spray Chart.\n\nFilter Options include:\n\n- Display Filters\n  - Pitch Chart\n    - Type\n    - Zones\n      - Total\n      - Percentage\n      - AVG\n      - OBP\n      - SLG\n      - OPS\n    - Efficiency\n  - Spray Chart\n    - Total\n    - Percentage\n      - Type\n      - Zones\n- Visual Filters\n  - Left / Right\n    - Pitcher\n      - LHP\n      - RHP\n    - Hitter\n      - LHH\n      - RHH\n    - Pitcher vs Hitter\n      - LHP vs LHH\n      - LHP vs RHH\n      - RHP vs LHH\n      - RHP vs RHH\n- - Pitch\n    - Type\n      - Unknown\n      - Fastball\n      - Riseball\n      - Dropball\n    - Velocity (MPH)\n    - Result\n      - Ball\n      - Strike Taken\n      - Strike Swing\n      - Foul\n      - Ball In Play\n    - Pitch # Sequence\n- - BIP\n    - Type\n      - Groundball\n      - Fly Ball\n      - Popup\n      - Line Drive\n      - Bunt\n    - Result\n      - Out\n      - Single\n      - Home Run\n      - Fielder's Choice - Out\n      - Double\n      - Double Play\n      - Error\n\nAdditionally, you can click and drag anywhere on the pitch chart to select multiple events from a specific area, or with the zones filter select multiple zones by clicking on the desired zones, and deselect a zone by clicking it a second time.\n\nTo reset all filters and to start a new report in the Multigame or Reports view, click **Reset Filters** in the top right-hand corner of the Filter Panel.\n\nIf you would like to reset just one individual filter, but leave the remaining filters intact, open the filter, and then click **Reset** on the top right-hand corner of the panel.After you click **Reset**, you must then click **Apply** to clear the specific filter.",
-   "questions": []
+   "questions": [
+    {
+     "question": "A user selects values in a data filter but the report does not change. Which step was missed?",
+     "options": [
+      "Clicking Reset",
+      "Clicking Apply",
+      "Clicking Change",
+      "Clicking Team History"
+     ],
+     "correct_index": 1,
+     "explanation": "After you select the parameters for any data filter, you must click Apply to put the filter into place."
+    },
+    {
+     "question": "A user wants to clear only the Pitcher filter and keep every other filter in place. What should they do?",
+     "options": [
+      "Click Reset Filters in the top right of the Filter Panel",
+      "Collapse the filters section with the arrow on the gray bar",
+      "Click Change in the filter details window",
+      "Open that filter, click Reset, and then click Apply"
+     ],
+     "correct_index": 3,
+     "explanation": "Reset inside the individual filter clears only that filter, and you must then click Apply for it to take effect."
+    },
+    {
+     "question": "A coach picked one pitcher and now wants to look at a different pitcher without starting over. Which control should they use?",
+     "options": [
+      "Team History",
+      "Reset Filters",
+      "Change",
+      "Data Source"
+     ],
+     "correct_index": 2,
+     "explanation": "The Change button in the top right of the filter details window lets you change the selection."
+    },
+    {
+     "question": "After the initial report is generated, a user wants to add another team and season to a player's results. Where should they go?",
+     "options": [
+      "The Team History button next to the player's name",
+      "Reset Filters",
+      "The chart filters",
+      "Data Source"
+     ],
+     "correct_index": 0,
+     "explanation": "The Team History button returns you to the player's Team History page to add or remove teams and seasons."
+    },
+    {
+     "question": "In Multigame view, an analyst wants to select several pitches from one area of the pitch chart at once. How can they do it?",
+     "options": [
+      "Click Reset and then Apply",
+      "Click and drag anywhere on the pitch chart",
+      "Change the Data Source filter",
+      "Open Spray Chart in the Display Filters"
+     ],
+     "correct_index": 1,
+     "explanation": "You can click and drag on the pitch chart to select multiple events from a specific area."
+    }
+   ]
   },
   {
    "title": "Data Filter Definitions",
-   "summary": "",
-   "learning_objectives": [],
+   "summary": "What each player and game-state data filter does, including ranges, camera angles, scores, pitch zones, and sequence filters.",
+   "learning_objectives": [
+    "Learners will be able to choose the right data filter to narrow a data set to a specific situation.",
+    "Learners will be able to use Add Range to combine multiple ranges in filters such as Score and Pitch Type/Velocity.",
+    "Learners will be able to explain how the Camera Angle filter options differ.",
+    "Learners will be able to distinguish similar filters such as Pitch # Count, Pitch # Sequence, Lineup Order, and Hitter(s) Position."
+   ],
    "reference_url": "https://support.synergysports.com/support/solutions/articles/77000565405",
    "content": "In this article, we will discuss the data filter definitions that you will find when using the Synergy Sports Softball Application.\n\nThe Synergy Softball app currently provides the following player and game state (data) filters and sub-filters.  Sub-filters will become available after the report has been created (for most primary filters):\n\n- Pitcher(s): Select or search from the list of pitchers that pitched in the original data set\n\n![Screenshot: Data Filter Definitions](https://pregame-academy.vickerydigital.com/assets/synergy/77000565405-01.jpg)\n\n- - Pitch Delivery\n  - Mound Position\n  - Leg Kick/ Slide Step\n  - Arm Release Angle\n- Hitter(s): Select or search from the list of hitters who batted in the original data set.\n  - Hands\n  - Stride\n  - Leg Kick\n  - Swing Type\n- Left/Right: Filter results to include only left-handed or right-handed pitchers, and/or left-handed or right-handed hitters.\n\n![Screenshot: Data Filter Definitions](https://pregame-academy.vickerydigital.com/assets/synergy/77000565405-02.jpg)\n\n- Fielder(s): Select or search fielders from the list of fielders from the original data set. Note that the fielder in this filter is the first player to touch the ball after it was hit. Fielder Position\n  - Fielder Touch Order\n  - Previous Fielder\n  - Next Fielder\n  - Fielding Type\n  - Fielding Direction\n  - Fielding Extra Effort\n  - Throw Type\n  - Throw To Base\n  - Throw Accuracy\n- Baserunner(s): Select or search from the list of baserunners that were on base during the original data set.\n  - Start Location\n  - End Location\n- Catcher(s): Select or search from the list of catchers that received pitches in the original data set.\n  - Blocks\n  - Throws\n- Camera Angle:\n  - Displays each available Camera Angle from both single angle and multi-angle pitches\n  - A drop-down menu with two different playback options\n  - All pitches with at least one selected angle\n    - Eg: Select Broadcast and Low Home, then all pitches with either angle would be displayed\n  - Only pitches including each selected angle\n    - Eg: Select Broadcast and Low Home, then only pitches including both angles would be displayed\n  - For multi-angle pitches, selected option(s) display in right video window by default\n  - \"As Logged\" clips display in the left video window by default\n  - Data available beginning in 2018 for Synergy logged games\n\n![Screenshot: Data Filter Definitions](https://pregame-academy.vickerydigital.com/assets/synergy/77000565405-03.jpg)\n\n- Game(s):Narrow the selection of games that are displayed in your reports and charts. By default, the data filters will show everything that has been logged for the initial player (or other selection). You can select one or multiple games to filter. Expand the subfilters by selecting the arrow to the right. Use the additional quick filters to select\n  - Start Date\n  - End Date\n  - Previous # Games\n  - Previous # At Bats\n  - Day of the Week\n  - Game Type\n  - Conference(S)\n  - Division(s).\n\n![Screenshot: Data Filter Definitions](https://pregame-academy.vickerydigital.com/assets/synergy/77000565405-04.jpg)\n\n- Innings: Narrow the data set to specific innings of play by:\n\n![Screenshot: Data Filter Definitions](https://pregame-academy.vickerydigital.com/assets/synergy/77000565405-05.jpg)\n\n- - Range: Toggle the bar to select which range of innings you would like to include.\n    - You can also choose to manually type into designated boxes on the left and right.\n    - Click “Add Range” to filter multiple inning ranges. For example, you can include innings 2-4 and 6-8.\n    - To delete a range, you can click “Delete Range” and then select the red “X” on the right-hand side to clear.\n  - Grouped Innings: You can select a specific group of innings from the pre-designated list. You can select one or multiple options from this panel.\n  - Individual Innings*:* You can select a specific inning from this list. You can select one or multiple innings from this panel to include.\n  - Extra Innings*:* This panel is the same as individual innings, however, it separates the extra innings from the regular game-length innings.\n- Score: Narrow the data set to plays where the score of the game is within the set range. You can select one or multiple filters to apply.\n\n![Screenshot: Data Filter Definitions](https://pregame-academy.vickerydigital.com/assets/synergy/77000565405-06.jpg)\n\n- - Range*:*You can toggle the bar to select which range of scores you would like to include. You can also choose to manually type into designated boxes on the left and right.\n    - Click **Add Range** to filter multiple score ranges. For example, you can include -5 to -1 and 1 to 6 to eliminate every play when the game is tied.\n    - If you would like to delete a range, you can click **Delete Range** and then select the red **X** on the right side to clear.\n- Runners on Base: Narrow the data set to scenarios in which there are (or are not) runners on base. You can select one or multiple filters to apply.\n\n![Screenshot: Data Filter Definitions](https://pregame-academy.vickerydigital.com/assets/synergy/77000565405-07.jpg)\n\n- Outs: With this filter, you can narrow the data set to scenarios in which there are a specific number of outs. You can select one or multiple filters to apply.\n\n![Screenshot: Data Filter Definitions](https://pregame-academy.vickerydigital.com/assets/synergy/77000565405-08.jpg)\n\n- Count: Narrow the data set to scenarios with a specific pitch count. You can select one or multiple filters to apply.\n\n![Screenshot: Data Filter Definitions](https://pregame-academy.vickerydigital.com/assets/synergy/77000565405-09.jpg)\n\n- Pitch Type/Velocity: Narrow the data set to specific pitch types, as well as to pitches with a specific velocity. You can select one or multiple filters to apply.\n\n![Screenshot: Data Filter Definitions](https://pregame-academy.vickerydigital.com/assets/synergy/77000565405-10.jpg)\n\n- - Pitch Velocity average column added to the right of each available Pitch Type\n  - Pitch Velocity range now reflective of total velocity range based on search and filters\n  - Click **Add Range**to filter multiple pitches. For example, you can include changeups that are above 85 MPH and fastballs above 90 MPH.\n  - If you would like to delete a range, you can click **Delete Range** and then select the red **X** on the right side to clear.\n- Pitch Result: Narrow the data set to plays in which the pitch resulted in a specific scenario, such as a ball, strike, in play, etc. You can select one or multiple filters to apply.\n\n![Screenshot: Data Filter Definitions](https://pregame-academy.vickerydigital.com/assets/synergy/77000565405-11.jpg)\n\n- Pitch Zones: Narrow the data set to pitches in specific zones both inside and outside the strike zone. Please note that the innermost box represents the strike zone while the area between the boxes represents the “one ball off zone” (the equivalent to one baseball width outside of the strike zone). You can select one or multiple filters to apply in addition to 4 group filters.\n\n![Screenshot: Data Filter Definitions](https://pregame-academy.vickerydigital.com/assets/synergy/77000565405-12.jpg)\n\n- BIP Type: Narrow the data set to plays in which the ball was put into play, and then further narrow it down to a specific type of play (i.e. ground ball, fly ball, etc.) You can select one or multiple filters to apply.\n\n![Screenshot: Data Filter Definitions](https://pregame-academy.vickerydigital.com/assets/synergy/77000565405-13.jpg)\n\n- BIP Result: With this filter, you can narrow the data set to plays in which the ball was put into play, and then further narrow it down to a specific result (i.e. safe/out, fielder’s choice, error, etc.) You can select one or multiple filters to apply.\n\n![Screenshot: Data Filter Definitions](https://pregame-academy.vickerydigital.com/assets/synergy/77000565405-14.jpg)\n\n- BIP Zones (Multi-Game & Reports):A visual filter with 24 individual BIP Zones for balls in play. Click the desired area from the baseball field diagram:\n\n![Screenshot: Data Filter Definitions](https://pregame-academy.vickerydigital.com/assets/synergy/77000565405-15.jpg)\n\n- - Areas include:\n    - Home Plate\n    - Infield Left Foul Line\n    - Infield Left\n    - Infield Center\n    - Infield Right\n    - Infield Right Foul Line\n    - Outfield Left Foul Line\n    - Outfield Left\n    - Outfield Left Center\n    - Outfield Center\n    - Outfield Right Center\n    - Outfield Right\n    - Outfield Right Foul Line\n    - Home Run Left Foul Line\n    - Home Run Left\n    - Home Run Left Center\n    - Home Run Center\n    - Home Run Right Center\n    - Home Run Right\n    - Home Run Right Foul Line\n    - Foul Infield Left\n    - Foul Infield Right\n    - Foul Outfield Left\n    - Foul Outfield Right\n  - Also includes 8 BIP Zones groups for balls in play\n    - Infield Left Side\n    - Infield Right Side\n    - All Infield\n    - All Outfield Left\n    - All Outfield Center\n    - All Outfield Right\n    - All Outfield\n    - All Home Runs\n- BIP Hardness: Narrow the data set to at-bat result by distance or strength at which the ball is hit.\n\n**\n![Screenshot: Data Filter Definitions](https://pregame-academy.vickerydigital.com/assets/synergy/77000565405-16.jpg)**\n\n- Non-BIP Result**:** Narrow the data set to at-bat result pitches in at-bats that did not end with a ball put in play (i.e. strikeout, walk, etc.) You can select one or multiple filters to apply.\n\n![Screenshot: Data Filter Definitions](https://pregame-academy.vickerydigital.com/assets/synergy/77000565405-17.jpg)\n\n- Baserunner Movement (Multi-Game & Reports): Use to filter Safe and Out options for baserunner movement:\n\n![Screenshot: Data Filter Definitions](https://pregame-academy.vickerydigital.com/assets/synergy/77000565405-18.jpg)\n\n- Bunts**:** Narrow the data set to pitches where a bunt attempt was made by the hitter, and then further narrow it down to what type of bunt attempt occurred, if the bunt was put into play and the trajectory of the bunt. You can select one or multiple filters to apply.\n\n![Screenshot: Data Filter Definitions](https://pregame-academy.vickerydigital.com/assets/synergy/77000565405-19.jpg)\n\n- Pitch # Sequence: With this filter, you can narrow the data set to the specific number pitch within an at-bat (i.e. all 1 stpitches of an at-bat.) Additionally, there is an option within this filter to filter for all last pitches of an at-bat. You can select one or multiple filters to apply.\n\n![Screenshot: Data Filter Definitions](https://pregame-academy.vickerydigital.com/assets/synergy/77000565405-20.jpg)\n\n- Pitch # Count: Narrow the data set to a range of pitch numbers of a pitcher’s appearance (i.e. the 1 st20 pitches from all a pitcher’s outings.) You can select one or multiple filters to apply.\n  - Click **Add Range** to add an additional range of pitches.\n\n![Screenshot: Data Filter Definitions](https://pregame-academy.vickerydigital.com/assets/synergy/77000565405-21.jpg)\n\n- Lineup Order: With this filter, you can narrow the data set to pitches seen by hitters in a specific spot in the lineup (i.e. all pitches seen by the leadoff hitter.) You can select one or multiple filters to apply.\n\n![Screenshot: Data Filter Definitions](https://pregame-academy.vickerydigital.com/assets/synergy/77000565405-22.jpg)\n\n- Hitter(s) Position: Narrow the data set to pitches seen by hitters in playing a specific position at the time of the at-bat (i.e. all pitches that were seen by the first baseman.) You can select one or multiple filters to apply.\n\n![Screenshot: Data Filter Definitions](https://pregame-academy.vickerydigital.com/assets/synergy/77000565405-23.jpg)",
-   "questions": []
+   "questions": [
+    {
+     "question": "An analyst selects Broadcast and Low Home in the Camera Angle filter and wants only pitches that include both angles. Which playback option should they choose?",
+     "options": [
+      "All pitches with at least one selected angle",
+      "Only pitches including each selected angle",
+      "As Logged",
+      "The default multi-angle display"
+     ],
+     "correct_index": 1,
+     "explanation": "The option for pitches including each selected angle shows only pitches that have every selected angle."
+    },
+    {
+     "question": "A coach wants to remove every play where the game was tied using the Score filter. What should they do?",
+     "options": [
+      "Set one range from -5 to 6",
+      "Select Grouped Innings",
+      "Use Add Range to create two ranges, such as -5 to -1 and 1 to 6",
+      "Use Delete Range on the score bar"
+     ],
+     "correct_index": 2,
+     "explanation": "Two ranges that skip zero eliminate every play when the game is tied."
+    },
+    {
+     "question": "An analyst wants changeups above 85 MPH and fastballs above 90 MPH in the same data set. What should they do?",
+     "options": [
+      "Use Add Range to set a separate velocity range for each pitch type",
+      "Apply a single velocity range above 85 MPH",
+      "Use the Pitch # Sequence filter",
+      "Use the Pitch Velocity average column to hide fastballs"
+     ],
+     "correct_index": 0,
+     "explanation": "Add Range lets you filter multiple pitch types with different velocity ranges at once."
+    },
+    {
+     "question": "In the Pitch Zones filter, what does the area between the inner and outer boxes represent?",
+     "options": [
+      "The strike zone",
+      "Foul territory",
+      "A zone used only for bunts",
+      "The one ball off zone, one baseball width outside the strike zone"
+     ],
+     "correct_index": 3,
+     "explanation": "The innermost box is the strike zone, and the area between the boxes is the one ball off zone."
+    },
+    {
+     "question": "A ball is hit to the shortstop, who throws to first base. Which fielder does the Fielder(s) filter use for that play?",
+     "options": [
+      "The first baseman, who made the out",
+      "The shortstop, who first touched the ball",
+      "The pitcher",
+      "The catcher"
+     ],
+     "correct_index": 1,
+     "explanation": "The fielder in this filter is the first player to touch the ball after it was hit."
+    },
+    {
+     "question": "A coach wants to review the first 20 pitches of every one of a pitcher's outings. Which filter fits?",
+     "options": [
+      "Pitch # Count",
+      "Pitch # Sequence",
+      "Previous # Games",
+      "Count"
+     ],
+     "correct_index": 0,
+     "explanation": "Pitch # Count narrows to a range of pitch numbers in a pitcher's appearance, while Pitch # Sequence refers to the pitch number within an at-bat."
+    },
+    {
+     "question": "A coach wants every pitch seen by hitters batting first in the lineup. Which filter should they use?",
+     "options": [
+      "Hitter(s) Position",
+      "Pitch # Sequence",
+      "Hitter(s)",
+      "Lineup Order"
+     ],
+     "correct_index": 3,
+     "explanation": "Lineup Order narrows the data to pitches seen by hitters in a specific spot in the lineup, such as the leadoff hitter."
+    },
+    {
+     "question": "A coach wants to study at-bats that ended in a strikeout or a walk. Which filter fits best?",
+     "options": [
+      "BIP Result",
+      "Pitch Result",
+      "Non-BIP Result",
+      "BIP Type"
+     ],
+     "correct_index": 2,
+     "explanation": "Non-BIP Result narrows the data to at-bats that did not end with a ball put in play, such as a strikeout or walk."
+    }
+   ]
   },
   {
    "title": "Report Tab and Video Playback",
-   "summary": "",
-   "learning_objectives": [],
+   "summary": "How to use the report tab features, including Duplicate Tab - Multiple, and how to choose and control video playback options.",
+   "learning_objectives": [
+    "Learners will be able to use the report tab menu to save, duplicate, rename, undo, and revert reports.",
+    "Learners will be able to create report tabs for several players at once with Duplicate Tab - Multiple.",
+    "Learners will be able to choose between Playback, Editor, and Compare for video.",
+    "Learners will be able to use the in-app video player controls and clip duration settings."
+   ],
    "reference_url": "https://support.synergysports.com/support/solutions/articles/77000565408",
    "content": "## Report Tab Features\n\nIn this article, we will discuss the report tab features that you can use in Multigame View, and Reports View in the Synergy Sports Softball Application.\n\nAfter you have generated a report in Multigame or Report view, a blue report tab is generated at the bottom of the app window.\n\n![Screenshot: Report Tab Features](https://pregame-academy.vickerydigital.com/assets/synergy/77000565408-01.jpg)\n\nBy clicking on the carrot icon, you can view the features of the report tab:\n\n- **Save** - save your report for future use. Saved reports can be found in the Saved Reports view in the top right of the app.\n- **Save As** - allows you to name your report before saving\n- **Duplicate Tab** - this will create a duplicate report tab, allowing you to make modifications to one report, then toggle back and forth\n- **Duplicate Tab - Multiple** - this is a new feature and will be discussed in more detail below.\n- **Add New Tab** - create a brand new tab to allow you to work on multiple reports simultaneously\n- **Undo Last** - this will undo the last filter applied from the filters list on the left of the app, to return to your previous report results\n- **Revert To Saved** - if working from a previously saved report, and filters have been applied, this will revert back to the originally saved report\n- **Rename Tab** - change the name of your report tab at any time\n- **Close Tab** - this will close the report tab, and prompt you to save any changes before closing the report\n\n### Screenshot: Report Tab Features\n\n###\n\n### Duplicate Tab - Multiple\n\nThis new feature allow you to create duplicate tabs for multiple players at one time. This is a tool to create multiple reports within a roster for easy side-by-side comparison. Once you have clicked Duplicate Tab - Multiple, you will see a list of players within the roster of your current report tab. From here you can select the players you would like to compare, as well as selecting which seasons you would like to be included in the reports. Select players by clicking the radio buttons next to their names, or select all by clicking the radio button next to the position title at the top of the chart. This will create separate report tabs for each player selected and include all seasons played. To refine your results, click the carrot icon next to each players name, allowing you to view only the seasons desired for each player. Once your selections have been made, click **Apply** to generate the reports.\n\n![Screenshot: Report Tab Features](https://pregame-academy.vickerydigital.com/assets/synergy/77000565408-03.jpg)\n\nOnce applied, the new report tabs will be listed at the bottom of the app window.\n\n![Screenshot: Report Tab Features](https://pregame-academy.vickerydigital.com/assets/synergy/77000565408-04.jpg)\n\n## Video Playback\n\nIn this article, we will discuss the video playback options in the Synergy Sports Softball Application.\n\nVideo playback is an essential and dynamic part of the Synergy Softball app. Not only can you use the app to watch film, but you can also send desired clips and games to the Synergy Editor for use in your own custom edits and playlists that can be shared with your entire team.\n\n### Playback Options\n\nFrom the app's menu selections, either send the video to the in-app player by selecting **Playback**, send the clips to the Synergy Editor, or select **Compare** to view clips side by side with the in-app player.\n\n![Screenshot: Video Playback](https://pregame-academy.vickerydigital.com/assets/synergy/77000565409-01.jpg)\n\n- **Playback**: This is the default setting and uses the Softball Application's built-in video player.  When viewing clips in Playback mode, you can also send playlists to the Synergy Editor. This is done from the player window.\n- **Editor**: Send playlists directly to the Synergy Editor, where you can create Custom Edits, trim clips, and review video.\n- **Compare**: View playlists using the in-app player's split-screen mode which allows you to compare two separate plays simultaneously, or view multiple angles, when available, of a single play simultaneously.\n\nIn the Synergy Sports Softball app, to set your preference, make a selection from the top left of any view. The app will remember your setting until you manually change it again. In order to play the video click the Play icon button as shown below.\n\n### Video Player\n\nThe in-app video player has been redesigned to provide an even better user experience, utilizing a Multi-Angle Layout, allowing you to view multiple camera angles of the same plays at the same time. With the dark theme, you can view comfortably in any environment and watch multi-angle events side by side.\n\n![Screenshot: Video Playback](https://pregame-academy.vickerydigital.com/assets/synergy/77000565409-02.jpg)\n\n#### Video Player Controls\n\nThe in-app video player contains a variety of controls to make the most of your experience. Controls currently available are (from top left to bottom right):\n\n- Return Arrow: return to the Synergy Sports Softball app from the In-Browser Player\n- Full AB: click to expand the full At-Bat data associated with the current clip or set of clips. Click again to return to the playlist view.\n- Playlist/Event View: Toggle the selected clips as a list view or see them charted\n- Clip Duration: choose to view the *Standard* - the point from which the ball leaves the pitcher’s hand until it is returned to him or the play has concluded, or the *Extended - play back all available video between pitches.*\n- Pitch Release Time: set the time in the clip prior to the release of the pitch using the dropdown menu. Default is 3 sec.\n- Show/Hide: click to show or hide the Download, Pop-Out, and Fullscreen controls above the video window\n  - Multi-Angle (View next to camera icon**)**: used to view the multi-angle video of a clip (when available)\n    - Camera Angle Names\n      - Top bar above video player\n        - Camera Angle menu\n        - Send to Editor\n        - Popout window\n        - Fullscreen\n- Detailed Pitch Info\n  - Bottom bar below video player\n  - Includes Pitch Type and Pitch Velocity when available\n\n- Player Controls: video player controls -\n  - Play/Pause\n  - Jump to Beginning of Clip\n  - Previous Clip\n  - Back One Frame\n  - Playhead Scrubber\n  - Forward One Frame\n  - Next Clip\n  - Jump to End of Clip\n  - Send Clips to Editor\n  - Full Screen\n- Side-by-Side View: Choose between Player to view the standard single screen video, or switch to Compare to view video side-by-side. For a more in-depth look at this exciting new feature, check out the Softball Application: Compare Video (see the “Compare Video and Sending Clips” lesson) article.\n\n![Screenshot: Video Playback](https://pregame-academy.vickerydigital.com/assets/synergy/77000565409-03.jpg)",
-   "questions": []
+   "questions": [
+    {
+     "question": "A user loaded a saved report, applied several filters, and now wants to return to the report exactly as it was saved. Which option should they use?",
+     "options": [
+      "Undo Last",
+      "Revert To Saved",
+      "Duplicate Tab",
+      "Close Tab"
+     ],
+     "correct_index": 1,
+     "explanation": "Revert To Saved goes back to the originally saved report, while Undo Last removes only the most recent filter."
+    },
+    {
+     "question": "An analyst wants to try a different filter on a report while keeping the current results so they can toggle between them. What should they do?",
+     "options": [
+      "Add New Tab",
+      "Rename Tab",
+      "Duplicate Tab",
+      "Save As"
+     ],
+     "correct_index": 2,
+     "explanation": "Duplicate Tab creates a copy so you can modify one report and toggle back and forth."
+    },
+    {
+     "question": "A coach wants separate report tabs for several players on the same roster for side-by-side comparison. What should they do?",
+     "options": [
+      "Use Duplicate Tab - Multiple, select the players and seasons, and click Apply",
+      "Click Add New Tab once for each player",
+      "Use Save As for each player",
+      "Use Undo Last to step through the players"
+     ],
+     "correct_index": 0,
+     "explanation": "Duplicate Tab - Multiple creates a report tab for each selected player at one time."
+    },
+    {
+     "question": "A coach wants to send a playlist straight to the Synergy Editor to trim clips and build Custom Edits. Which playback option should they choose?",
+     "options": [
+      "Playback",
+      "Compare",
+      "Pop-Out",
+      "Editor"
+     ],
+     "correct_index": 3,
+     "explanation": "The Editor option sends playlists directly to the Synergy Editor."
+    },
+    {
+     "question": "A coach wants to watch two separate plays at the same time in the app's player. Which playback option should they choose?",
+     "options": [
+      "Compare",
+      "Playback",
+      "Editor",
+      "Show/Hide"
+     ],
+     "correct_index": 0,
+     "explanation": "Compare uses the in-app player's split-screen mode to view two plays, or multiple angles of one play, at once."
+    },
+    {
+     "question": "In the video player, a user wants to play all available video between pitches rather than the standard clip. Which Clip Duration setting should they pick?",
+     "options": [
+      "Standard",
+      "Pitch Release Time",
+      "Extended",
+      "Full AB"
+     ],
+     "correct_index": 2,
+     "explanation": "Extended plays back all available video between pitches, while Standard runs from the pitcher's release until the play concludes."
+    }
+   ]
   },
   {
    "title": "Compare Video and Sending Clips",
-   "summary": "",
-   "learning_objectives": [],
+   "summary": "How to build side-by-side playlists in Compare mode, sync clips, and send clips from each view to the Synergy Editor.",
+   "learning_objectives": [
+    "Learners will be able to create a side-by-side playlist and send it to the left player, right player, or both.",
+    "Learners will be able to use Set and Go To to sync two clips.",
+    "Learners will be able to send clips to the Synergy Editor from Multigame, Single Game, and Reports views."
+   ],
    "reference_url": "https://support.synergysports.com/support/solutions/articles/77000565411",
    "content": "## Compare Video\n\nIn this article, we will discuss how to use the video player to view side-by-side playlists within the Synergy Sports Softball Application.\n\nThe Compare Video tool allows you to search for results on Multigame, Reports, or Single Game View and the corresponding video side-by-side so that you can compare and contrast multiple players at once.\n\n### Creating a Side By Side Playlist\n\nIn order to create a side-by-side playlist, you will need to search for results using the multi-game, reports, or single game view.  At the top of any view, switch the video option to **Compare** to send the playlist to the video player.\n\nOnce a player is chosen, send the playlist to both video players, only left, or only right side of the view using the drop-down list. Once in the video player, you can also toggle between Compare and Player modes by clicking on the buttons at the bottom of the screen.\n\n### Compare Mode in Video Player\n\nOnce you've sent the playlist to the video player in compare mode, you can select video clips from each playlist to view the video.  When a video is chosen, have a variety of options to control the video that you'd like to view.\n\nChange camera angle or adjust video duration above each video player.\n\n![Screenshot: Compare Video](https://pregame-academy.vickerydigital.com/assets/synergy/77000565411-01.jpg)\n\nUse play controls under each video player to change location in the video clip\\Universal play controls at the bottom operate both video players.\n\nOnce you have chosen the clips you wish to compare, you can use the **Set** button to mark the sync point for each video player. Drag the sync point to move location in video clip and click **Set** again to remove the sync point. If you'd like to jump to the sync point in each video play you can click **Go To**.\n\nIf you would like to collapse or expand playlists you can do so by clicking the arrow above the respective playlist.\n\nYou have additional options to customize your playlist name and preferences using the following:\n\n- Rename playlist titles by clicking the **Edit** buttons above each playlist table\n- Use the settings gear icon in the bottom right contains options when switching video clips in each playlist\n  - Autoplay begins playing video automatically\n  - Lock Time maintains the same time in scrubber\n\n## Sending Clips to the Synergy Editor\n\nIn this article we will discuss how to send video from the Synergy Sports Softball Application to the Synergy Editor.\n\nTo add clips to your Custom Edit, you will need to send clips from the Synergy Softball app to the Synergy Editor, or import your own film via the Live Capture process (see the section on Live Capture (see the “Live Capture and Streaming” lesson in Synergy Editor) for more detail).\n\nTo do this, ensure that you have Editor selected as the video choice in the Softball app and make your selections either Standard or Extended, and set the lead duration anywhere from 0 to 10 seconds.\n\n![Screenshot: Sending Clips to the Synergy Editor](https://pregame-academy.vickerydigital.com/assets/synergy/77000565413-01.jpg)\n\nUse the remaining tabs and filters to narrow down the video you would like to use in your Custom Edit. In Multigame view, once you have data you would like to send to the Editor, use the Play arrow icon above the chart to send the clips to the Editor.\n\n![Screenshot: Sending Clips to the Synergy Editor](https://pregame-academy.vickerydigital.com/assets/synergy/77000565413-02.jpg)\n\nIn Single Game View, Choose to send all clips from the report to the Editor using the central Play button, or select individual clips to send from a variety of displays.\n\n![Screenshot: Sending Clips to the Synergy Editor](https://pregame-academy.vickerydigital.com/assets/synergy/77000565413-03.jpg)\n\nIn Report View, you can simply select any box containing a number associated with a particular filter, topic, or statistic. This will automatically send those clips to the Editor and create a temporary playlist containing the clips.\n\n![Screenshot: Sending Clips to the Synergy Editor](https://pregame-academy.vickerydigital.com/assets/synergy/77000565413-04.jpg)\n\nOnce you have sent your clips to the Editor, a temporary playlist is created.  Save, export, or close this playlist, or move the clips into existing playlists by dragging and dropping the clips.\n\n![Screenshot: Sending Clips to the Synergy Editor](https://pregame-academy.vickerydigital.com/assets/synergy/77000565413-05.jpg)",
-   "questions": []
+   "questions": [
+    {
+     "question": "A coach wants a playlist to load into only the right-hand video player in Compare mode. What should they do?",
+     "options": [
+      "Choose the right side from the drop-down list when sending the playlist",
+      "Click Set on the right-hand player",
+      "Rename the playlist with Edit",
+      "Turn on Lock Time"
+     ],
+     "correct_index": 0,
+     "explanation": "The drop-down list lets you send the playlist to both players, only the left, or only the right."
+    },
+    {
+     "question": "Two clips are loaded in Compare mode and a coach has marked a sync point in each. Which button jumps each video to its sync point?",
+     "options": [
+      "Set",
+      "Edit",
+      "Go To",
+      "Autoplay"
+     ],
+     "correct_index": 2,
+     "explanation": "Set marks the sync point and Go To jumps to the sync point in each video."
+    },
+    {
+     "question": "A user clicks the Play arrow in Multigame view, but the clips open in the in-app player instead of the Editor. What should have been set first?",
+     "options": [
+      "Lock Time",
+      "Editor as the video choice",
+      "Autoplay",
+      "Compare as the video choice"
+     ],
+     "correct_index": 1,
+     "explanation": "To send clips to the Editor, make sure Editor is selected as the video choice in the Softball app."
+    },
+    {
+     "question": "In Reports view with Editor selected, how does a user send the clips behind a particular statistic to the Editor?",
+     "options": [
+      "Click the central Play button, as in Single Game View",
+      "Use the Play arrow icon above the chart",
+      "Click Duplicate Tab",
+      "Select the box containing the number for that statistic"
+     ],
+     "correct_index": 3,
+     "explanation": "Selecting a box with a number automatically sends those clips to the Editor and creates a temporary playlist."
+    }
+   ]
   },
   {
    "title": "Single Game View",
-   "summary": "",
-   "learning_objectives": [],
+   "summary": "How to find a game in Single Game View and use the Line Score, strike zone chart, report views, and filters to review at-bats.",
+   "learning_objectives": [
+    "Learners will be able to select a league, season, team, and game to open a report.",
+    "Learners will be able to use the Line Score to choose innings and at-bats.",
+    "Learners will be able to switch the strike zone between pitcher's and catcher's perspective.",
+    "Learners will be able to use the Find Game menu and the Player/Innings filters."
+   ],
    "reference_url": "https://support.synergysports.com/support/solutions/articles/77000565419",
    "content": "In this article, we will discuss how to use the Single Game View in the Synergy Sports Softball Application.\n\nSingle Game View generates a detailed report of your filtered data from a specific game. Explore in detail individual games from throughout the season using robust filters, easy-to-use navigation, and essential tools to create informative, rich reports.\n\n## Getting Started\n\nAccess Single Game View by selecting the icon from the View menu in the upper right.\n\n![Screenshot: Single Game View](https://pregame-academy.vickerydigital.com/assets/synergy/77000565419-01.jpg)\n\nTo get started, select a League, Season, and Team. You may also enter an opponent and select a game from a specific matchup, however, this field is not required. If you do not select an opponent, a list of all games for the selected season will populate and you can select a game from the list.\n\n![Screenshot: Single Game View](https://pregame-academy.vickerydigital.com/assets/synergy/77000565419-02.jpg)\n\n## Using the Report\n\nThe Single Game View report contains a variety of details and data.  When getting started with your report, be sure to make your video playback choice from the top left of the application window. Choose to view clips either in the In-App Player by selecting **Player**, **Editor**, which will send selected clips to the Synergy Editor application, or **Compare**, which will allow you to view clips side-by-side in the In-App Player for comparison. For a more in-depth look at the exciting new Compare feature, check out the Softball Application: Compare Video (see the “Compare Video and Sending Clips” lesson)article. Whichever you choose, your video setting will remain the same for the session in all views until you change it.\n\n![Screenshot: Single Game View](https://pregame-academy.vickerydigital.com/assets/synergy/77000565419-03.jpg)\n\nLocated at the top left of the report are the details of the selected game, including the team names and date played. On the far left of the app window is an arrow icon that provides quick access to the collapsible **Find Game** menu. From here, you can quickly change any of the filters previously set, or select a new game.\n\n![Screenshot: Single Game View](https://pregame-academy.vickerydigital.com/assets/synergy/77000565419-04.jpg)\n\nTo the right is the **Line Score**. Here, each inning and the runs scored in that inning are displayed and used to navigate easily through your report data. Click one or multiple boxes to view the associated data. When selected, the box icon will be displayed as a light blue color, and the At-Bat data for that inning will be represented below the charts and tables. To view all of the At-Bats for a team, select the radio button to the far right of the Line Score.\n\nContinuing on to the next section, we can see the **Strike Zone** chart. This is where the pitch locations from the currently selected at-bat are visualized. This view defaults to the pitcher’s perspective but can be switched to the catcher’s perspective by using the **Catcher’s View** tab above the strike zone chart.\n\n![Screenshot: Single Game View](https://pregame-academy.vickerydigital.com/assets/synergy/77000565419-05.jpg)\n\nTo view the full game video, click the **Play** icon button below the Line Score. Choose to Display/Hide Pickoff Attempts using the associated radio button, as well as change the data view using the icons to the right. The At-Bat Summary is selected by default, but choose from Pitch List, Pitch Detail, or Sequential views as well. Click on any line in the report table to view the associated data, or click the **Play** button to view the clip in the In-App player, or send it to the Synergy Editor depending on the video selection you made at the top left of the application window.\n\nCustomize the report further with the **Player/Innings** filters.  Select the arrow on the right side of the app window to expand the filters. Choose from either View By Player or View By Inning at the top and make your selections.\n\nFilters available are:\n\n**View By Player**\n\n- Pitcher\n- Hitter\n- Fielder\n- Baserunner\n- Catcher\n\n**View by Inning**\n\n- filter by At-Bat from the top or bottom of the inning\n- select individual At-Bat's from the selected inning summary\n\nAt the bottom right of the app is a sequence of At-Bat displays for all at-bats that occurred during the inning(s) selected on the Line Score (all innings in light blue). You can select a specific at-bat by clicking the associated display, or scroll left or right using the arrow icons located at the bottom right corner.\n\n![Screenshot: Single Game View](https://pregame-academy.vickerydigital.com/assets/synergy/77000565419-06.jpg)",
-   "questions": []
+   "questions": [
+    {
+     "question": "A user opens Single Game View and selects a league, season, and team but does not enter an opponent. What happens?",
+     "options": [
+      "Nothing displays until an opponent is entered",
+      "A list of all games for the selected season appears and they can pick one",
+      "The most recent game opens automatically",
+      "The app returns to Multigame view"
+     ],
+     "correct_index": 1,
+     "explanation": "The opponent field is not required; without it, all games for the selected season are listed."
+    },
+    {
+     "question": "A user wants to see all the at-bats for a team rather than a single inning. What should they do?",
+     "options": [
+      "Select the radio button at the far right of the Line Score",
+      "Click each inning box twice",
+      "Click Find Game",
+      "Switch to Catcher's View"
+     ],
+     "correct_index": 0,
+     "explanation": "The radio button at the far right of the Line Score shows all of a team's at-bats."
+    },
+    {
+     "question": "The strike zone chart shows the pitcher's perspective. How can a user see it from the catcher's perspective?",
+     "options": [
+      "Select View By Player",
+      "Open the Find Game menu",
+      "Click the Catcher's View tab above the strike zone chart",
+      "Choose the Sequential view"
+     ],
+     "correct_index": 2,
+     "explanation": "The chart defaults to the pitcher's perspective and the Catcher's View tab switches it."
+    },
+    {
+     "question": "While reviewing one game, a user wants to switch to a different game without leaving the view. Where should they go?",
+     "options": [
+      "The Line Score",
+      "The Player/Innings filters",
+      "The strike zone chart",
+      "The collapsible Find Game menu, opened with the arrow icon on the far left"
+     ],
+     "correct_index": 3,
+     "explanation": "The Find Game menu lets you quickly change the filters you set or select a new game."
+    }
+   ]
   },
   {
    "title": "Multigame View",
-   "summary": "",
-   "learning_objectives": [],
+   "summary": "How to use Multigame view charts, chart filters, data tables, video playback, report duplication, and PDF export.",
+   "learning_objectives": [
+    "Learners will be able to read the default pitch chart, spray chart, and data tables.",
+    "Learners will be able to use chart filters without changing the data filters.",
+    "Learners will be able to play video for a single pitch, a selection of pitches, or table rows.",
+    "Learners will be able to customize a display and save it as a PDF."
+   ],
    "reference_url": "https://support.synergysports.com/support/solutions/articles/77000565420",
    "content": "## Multigame View: Overview\n\nIn this article, we will provide an overview of the Multigame view in the Synergy Sports Softball Application.\n\nMultigame view provides rich visual displays for pitch locations and BIP results, as well as basic statistics, based on the data filters you apply.\n\nThe Multigame view is the first navigation icon in the top right of the application, and the default view for the Synergy Softball App. You can hover over the icons with the mouse to see each icon label.\n\n![Screenshot: Multigame View: Overview](https://pregame-academy.vickerydigital.com/assets/synergy/77000565420-01.jpg)\n\nUse the filters on the left to select the player and season you would like to view and click **Apply**. Once finished, your report will generate and you will be able to view the information in both the chart and table views. You can play back video, customize the displays, rename, add notes, print to PDF, or save these displays and reports.\n\n## Multigame View: Charts and Chart Filters\n\nIn this article, we will discuss the charts and chart filters that can be used in Multigame View in the Synergy Sports Softball Application.\n\nBy default, you will see two charts, a pitch chart, and a spray chart, followed by a set of expanding and collapsing tables with commonly used statistics.\n\n#### Pitch Chart\n\nBy default, this is the leftmost chart. The Pitch Chart displays all pitch types that were thrown, grouped by Type. Each color corresponds to a specific pitch type.\n\nYou can display (or hide) the legend below the chart to see detailed information, or you can use the visual filters to view pitches by efficiency scale or zone placement instead.\n\n####\n\n![Screenshot: Multigame View: Charts and Chart Filters](https://pregame-academy.vickerydigital.com/assets/synergy/77000565421-01.jpg)\n\n####\n\n#### Spray Chart\n\nBy default, this is the rightmost chart. The Spray Chart displays all contact from the listed pitchers.\n\nAs with the pitches, each colored line corresponds to a specific hit type. You can display or hide the legend below the chart to see detailed information.\n\n#### Screenshot: Multigame View: Charts and Chart Filters\n\n####\n\n#### Chart Filters\n\nThe chart filters are located to the right of the Spray Chart. Click the arrow in the grey bar to expand or collapse these filters. Use the arrow to the left of the filter name to expand each option further. These filters do not change the data filters you have applied using the left panel options of the view, such as player and game state.\n\nThe current filters available are:\n\nDisplay Settings\n\n- Pitch Chart: These in-view filters allow you to choose how to display pitch data in the chart.\n  - Type\n  - Zones\n  - Efficiency\n\n![Screenshot: Multigame View: Charts and Chart Filters](https://pregame-academy.vickerydigital.com/assets/synergy/77000565421-03.jpg)\n\n- Spray Chart: These in-view filters allow you to choose how to display spray data in the chart.\n  - Type\n  - Zones\n\n![Screenshot: Multigame View: Charts and Chart Filters](https://pregame-academy.vickerydigital.com/assets/synergy/77000565421-04.jpg)\n\nVisual Filters\n\n- Left / Right\n  - Pitcher\n  - Hitter\n  - Pitcher vs. Hitter\n\n![Screenshot: Multigame View: Charts and Chart Filters](https://pregame-academy.vickerydigital.com/assets/synergy/77000565421-05.jpg)\n\n- Pitch\n  - Type\n  - Velocity (MPH)\n  - Result\n  - Pitch # Sequence\n\n![Screenshot: Multigame View: Charts and Chart Filters](https://pregame-academy.vickerydigital.com/assets/synergy/77000565421-06.jpg)\n\n- BIP\n  - Type\n  - Result\n\n![Screenshot: Multigame View: Charts and Chart Filters](https://pregame-academy.vickerydigital.com/assets/synergy/77000565421-07.jpg)\n\n## Multigame View: Basic Statistics and Data Tables\n\nIn this article we will discuss the basic statistics and data tables that are available in the Multigame View in the Synergy Sports Softball Application.\n\nMultigame view, in addition to the pitch and spray charts, provides six additional tables with pitch totals and percent calculations, based on the data filters you have applied:\n\n- Basic Statistics\n- Pitch Type\n- Pitch Result\n- BIP Type\n- BIP Result\n- Non-BIP Result\n\nYou can playback video for any row, including the overall rows of each table by selecting the row, and then clicking the **Play** icon above the display charts.\n\nYou can also expand or collapse each table individually.\n\n## Multigame View: Customizing the Multigame Displays\n\nIn this article, we will discuss how to customize multigame displays in the Multigame View in the Synergy Sports Softball Application.\n\nThe following tools are available to customize the view:\n\n- To resize the controls, use the **+** and **-** icons immediately below the pitch chart.\n- You can also display or hide the legend and your applied filter selections.\n\n![Screenshot: Multigame View: Customizing the Multigame Displays](https://pregame-academy.vickerydigital.com/assets/synergy/77000565423-01.jpg)\n\nTo show only the pitch chart or only the spray chart, click the corresponding icon above the displays, to the right of the pitch count and playback icon:\n\n![Screenshot: Multigame View: Customizing the Multigame Displays](https://pregame-academy.vickerydigital.com/assets/synergy/77000565423-02.jpg)\n\nTo change the title of the multi-game report and add notes, click the drop-down arrow next to the chart display options and then click **Edit Display**\n\n## Multigame View: Video Playback\n\nIn this article, we will discuss how to playback video for displays and reports in the Multigame view of the Synergy Sports Softball Application.\n\nPlaying clips from Multigame view works the same way as with the other views. In the upper left of the corner of the app, select your video playback option, Player, Editor, or Compare. Player will play video in the In-App player, Editor will send your selected clips to the Synergy Editor, and Compare will allow you to view video side-by-side in the In-App player. For a more in-depth look at the exciting new Compare feature, check out the [Softball Application: Compare Video](https://support.synergysports.com/hc/en-us/articles/360060813431-Softball-Application-Compare-Video) article.\n\n![Screenshot: Multigame View: Video Playback](https://pregame-academy.vickerydigital.com/assets/synergy/77000565424-01.jpg)\n\nOnce you've chosen a playback option, select the clips you wish to view. To play all pitches or events, click the blue playback icon next to the display title and pitch count, above the display.\n\nTo play a single pitch or event only, click the pitch or spray chart line, and then click the **Play**icon.\n\nTo play video for a selection of pitches, contact results, or pitch zones, either hold CTRL while you click the ones you want to review, or click and drag over an area of the chart to quickly select multiple pitches. Then click the video playback icon above the chart.\n\nTo play a selection of video for any report below the displays, except the Basic Statistics table, click on the row of interest in the table or click the Overall row to play all video for that specific table.\n\n> Note: AVG, OBP, SLG, and OPS percentages in the Basic Statistics table will not play video when selected. These percentages can be viewed by applying chart filters with the grey bar on the right of the spray chart. To learn more about chart filters, check out theSoftball Application: Chart Filters (see the “Data and Chart Filters” lesson) article.\n\n## Multigame View: Duplicating or Deleting Reports\n\nIn this article, we will discuss how to duplicate or delete reports in the Multigame view in the Synergy Sports Softball Application.\n\nTo find these options, use the drop-down menu option next to the icons above the chart display. From this drop-down menu, you can choose which charts to view, edit your display chart, duplicate the report for side-by-side comparisons, or delete a report.\n\n## Multigame View: Saving as PDF\n\nIn this article, we will discuss how to save any charts or data to PDF within the Multigame view in the Synergy Sports Softball Application.\n\nTo save a report as a PDF, use the menu with the PDF icon, above the chart display, directly next to the options to change, duplicate, or delete charts.\n\nYou can Save as PDF using one of 4 selections to print or distribute to your team:\n\n- With Data: Includes images with data tables in portrait format\n- No Data: Includes images only in landscape format\n- All - With Data: Includes all duplicated images and data in landscape format\n- All - No Data: Includes all duplicated images only in a landscape format\n\n![Screenshot: Multigame View: Saving as PDF](https://pregame-academy.vickerydigital.com/assets/synergy/77000565426-01.jpg)\n\nOnce you've made a selection, you will be prompted to name your report and choose a location to save it to on your device.\n\n![Screenshot: Multigame View: Saving as PDF](https://pregame-academy.vickerydigital.com/assets/synergy/77000565426-02.jpg)",
-   "questions": []
+   "questions": [
+    {
+     "question": "A user wants to watch video for several pitches from one area of the pitch chart. What should they do?",
+     "options": [
+      "Click the Overall row of the Basic Statistics table",
+      "Click and drag over the area of the chart and then click the video playback icon",
+      "Use Edit Display",
+      "Click the AVG value in the Basic Statistics table"
+     ],
+     "correct_index": 1,
+     "explanation": "You can hold CTRL while clicking or click and drag over an area to select multiple pitches, then use the playback icon."
+    },
+    {
+     "question": "A user clicks the AVG value in the Basic Statistics table and no video plays. What should they know?",
+     "options": [
+      "The table must be expanded first",
+      "Video playback is set to Compare",
+      "AVG, OBP, SLG, and OPS values do not play video; chart filters show those percentages",
+      "The row must be CTRL-clicked"
+     ],
+     "correct_index": 2,
+     "explanation": "Those percentages do not play video and can be viewed by applying chart filters from the gray bar on the right of the spray chart."
+    },
+    {
+     "question": "A user applies a chart filter in the gray bar to the right of the spray chart. What effect does it have on the data filters in the left panel?",
+     "options": [
+      "The data filters are reset",
+      "The data filters are applied a second time",
+      "The data filters are saved as a new report",
+      "None; chart filters do not change the data filters in the left panel"
+     ],
+     "correct_index": 3,
+     "explanation": "Chart filters do not change the data filters you applied using the left panel."
+    },
+    {
+     "question": "A user wants to change a Multigame report's title and add notes. What should they do?",
+     "options": [
+      "Click the drop-down arrow next to the chart display options and choose Edit Display",
+      "Use the + and - icons below the pitch chart",
+      "Hide the legend and the applied filters",
+      "Delete the report and start over"
+     ],
+     "correct_index": 0,
+     "explanation": "Edit Display, found in the drop-down next to the chart display options, lets you change the title and add notes."
+    },
+    {
+     "question": "A coach has duplicated several reports and wants a PDF containing all the duplicated images plus their data tables, in landscape. Which PDF option fits?",
+     "options": [
+      "With Data",
+      "No Data",
+      "All - No Data",
+      "All - With Data"
+     ],
+     "correct_index": 3,
+     "explanation": "All - With Data includes all duplicated images and data in landscape format."
+    },
+    {
+     "question": "A user wants to play video for just one pitch from the pitch chart. What should they do?",
+     "options": [
+      "Click the blue playback icon next to the display title",
+      "Click the Overall row of a table",
+      "Click the pitch on the chart and then click the Play icon",
+      "Switch to Reports view"
+     ],
+     "correct_index": 2,
+     "explanation": "To play a single pitch, click it on the chart and then click the Play icon."
+    },
+    {
+     "question": "A user wants to show only the pitch chart and hide the spray chart. What should they do?",
+     "options": [
+      "Click the corresponding icon above the displays, next to the pitch count and playback icon",
+      "Use the + icon below the pitch chart",
+      "Select Edit Display",
+      "Hide the legend"
+     ],
+     "correct_index": 0,
+     "explanation": "Clicking the chart icon above the displays shows only that chart."
+    }
+   ]
   },
   {
    "title": "Reports View",
-   "summary": "",
-   "learning_objectives": [],
+   "summary": "How to create reports, choose report types and player filters, play video from reports, and save, open, and delete saved reports.",
+   "learning_objectives": [
+    "Learners will be able to create a report by selecting a league, season, team, and player.",
+    "Learners will be able to choose the player type filter that matches the data you need.",
+    "Learners will be able to open and delete saved reports.",
+    "Learners will be able to interpret the grey-to-blue efficiency color scale."
+   ],
    "reference_url": "https://support.synergysports.com/support/solutions/articles/77000565427",
    "content": "## Reports View: Overview\n\nIn this article, we will provide an overview and directions on how to get started with the Reports View in the Synergy Sports Softball Application.\n\nReports view allows you to visualize statistical reports designed to easily display the most frequent user-viewed data. To access, click the **Reports View**icon in the upper right. Hover with the mouse to see each icon label as well.\n\n![Screenshot: Reports View: Overview](https://pregame-academy.vickerydigital.com/assets/synergy/77000565427-01.jpg)\n\n###\n\n### Getting Started\n\nTo create a report, select a league, season, and team. For an individual player report, select a pitcher, hitter, fielder, baserunner, or catcher, using the filter selection on the right. Additionally, you can search for a player by name after filtering for player type.\n\nThe default report type is Basic Statistics. Use the report drop-down menu in the upper right of the application to change report types.  Choose from:\n\n![Screenshot: Reports View: Overview](https://pregame-academy.vickerydigital.com/assets/synergy/77000565427-02.jpg)\n\n- Basic Statistics\n- Left/Right Splits\n- Matchups (Count)\n- Pitch Types (Pitch Result)\n- Pitch Type (BIP Result)\n- Synergy Pitcher Attributes\n- Synergy Hitter Attributes\n- Pickoffs\n- Stolen Bases\n- Fielding\n- Throwing\n\n> Note: The grey-to-blue scale of colors represents efficiency, ranging from low (grey) to high (blue). Report cells are color-coded by this efficiency scale.\n\n## Reports View: Player Filters\n\nIn this article, we will discuss the different player filters available in the Reports View in the Synergy Sports Softball Application.\n\nIt is important to note that player type filters are going to display different data sets for each report. Some player-type filters are more useful than others for certain reports.\n\nBelow is a breakdown of the types of data displayed with each player type filter, which you select by expanding the slide-out panel on the left side of the app:\n\n- Pitcher(s) - This filter will show every pitch that a pitcher has thrown for that team over the filtered time frame.\n- Hitter(s) - This filter will show every pitch that the hitter has seen for that team over the filtered time frame.\n- Fielder(s ) - This filter will show every fielding play that the fielder has been involved in for that team over the filtered time frame.\n- Baserunner(s) - This filter will show every pitch that baserunner was on base for that team over the filtered time frame.\n- Catcher(s) - This filter will show every pitch that the catcher has received for that team over the filtered time frame.\n\n## Reports View: Playing Video\n\nIn this article, we will discuss how to play video in Reports View in the Synergy Sports Softball Application.\n\nTo playback video in a report, select any cell of a report that displays either a number or a percentage.\n\n![Screenshot: Reports View: Playing Video](https://pregame-academy.vickerydigital.com/assets/synergy/77000565430-01.jpg)\n\nTo change how you playback video for a report or any other view in the Synergy Sports Softball application, use the playback application options in the upper left of any view type.\n\n![Screenshot: Reports View: Playing Video](https://pregame-academy.vickerydigital.com/assets/synergy/77000565430-02.jpg)\n\n## Saved Reports\n\nIn this article, we will discuss Saved Reports in the Synergy Sports Softball Application.\n\nReports represent information and data that is important, relevant, and necessary to making the best decisions, improving play and coaching, and exploring a variety of other aspects of the game.\n\nOnce you've created the report, if you don't want to lose that work, and you want to be able to access it for future use, use the Save Report feature to store the report in your Saved Reports View.\n\nAfter filtering for a set of data, save your report for future use by selecting the carrot icon in the active tab located below the report. You will have the option to save in both the Reports and Multigame View.\n\n![Screenshot: Saved Reports](https://pregame-academy.vickerydigital.com/assets/synergy/77000565431-01.jpg)\n\nFrom here, you can use the Save or Save As option to save the filtered data.\n\n![Screenshot: Saved Reports](https://pregame-academy.vickerydigital.com/assets/synergy/77000565431-02.jpg)\n\nTo open a saved report, navigate to the **Saved Reports**View and select the radio button next to the desired report, then click **Load**.\n\n![Screenshot: Saved Reports](https://pregame-academy.vickerydigital.com/assets/synergy/77000565431-03.jpg)\n\nIf you would like to delete a saved report, you must first click the radio button next to Delete from the top right above the list, then click the **X**icons next to the items you would like to delete.\n\n![Screenshot: Saved Reports](https://pregame-academy.vickerydigital.com/assets/synergy/77000565431-04.jpg)",
-   "questions": []
+   "questions": [
+    {
+     "question": "A coach wants to see every fielding play a player was involved in over a time frame. Which player type filter should they choose?",
+     "options": [
+      "Hitter(s)",
+      "Fielder(s)",
+      "Catcher(s)",
+      "Pitcher(s)"
+     ],
+     "correct_index": 1,
+     "explanation": "The Fielder(s) filter shows every fielding play the fielder has been involved in for that team."
+    },
+    {
+     "question": "A user wants to open a report they saved earlier. What should they do?",
+     "options": [
+      "Open the Saved Reports view, select the radio button next to the report, and click Load",
+      "Click Revert To Saved",
+      "Open Reports view and click Save As",
+      "Select the X next to the report"
+     ],
+     "correct_index": 0,
+     "explanation": "Saved reports are opened from the Saved Reports view by selecting the radio button and clicking Load."
+    },
+    {
+     "question": "A user wants to delete an old saved report. What is the first step?",
+     "options": [
+      "Click the X next to the report",
+      "Open the Settings menu",
+      "Click the radio button next to Delete at the top right above the list",
+      "Click Load"
+     ],
+     "correct_index": 2,
+     "explanation": "You first click the Delete radio button above the list and then click the X next to each item to delete."
+    },
+    {
+     "question": "A user notices report cells shaded from grey to blue. What does the color scale represent?",
+     "options": [
+      "Pitch velocity from slow to fast",
+      "Which cells have video available",
+      "Left- and right-handed splits",
+      "Efficiency, from low (grey) to high (blue)"
+     ],
+     "correct_index": 3,
+     "explanation": "Report cells are color-coded on a grey-to-blue efficiency scale from low to high."
+    }
+   ]
   },
   {
    "title": "Report Types",
-   "summary": "",
-   "learning_objectives": [],
+   "summary": "What each Reports view report shows, how its percentages are calculated, and which cells play video.",
+   "learning_objectives": [
+    "Learners will be able to choose the report type that answers a given coaching question.",
+    "Learners will be able to explain how percentages are calculated in the Left/Right Splits report.",
+    "Learners will be able to play video from reports whose percentage rows do not play video.",
+    "Learners will be able to tell the Pitcher Attributes and Hitter Attributes reports apart."
+   ],
    "reference_url": "https://support.synergysports.com/support/solutions/articles/77000565428",
    "content": "In this article we will discuss the types of reports that you can use in Reports View in the Synergy Sports Softball Application.\n\n### Basic Statistics Report\n\nThis is the default report for this view. It is a display of six data tables featuring the most commonly used softball statistics.\n\n![Screenshot: Reports View: Report Types](https://pregame-academy.vickerydigital.com/assets/synergy/77000565428-01.jpg)\n\nThe data tables displayed in this view match what is displayed in the Multigame data tables which appear under the pitch and spray charts in that view. Both views provide:\n\n· Basic statistics\n\n· Pitch Type\n\n· Pitch Result\n\n· BIP Type\n\n· BIP Result\n\n· Non-BIP Result\n\n> Note: AVG, OBP, SLG, and OPS percentages in the Basic Statistics reports will not play video when selected. These percentages are to provide stats based on Synergy’s data. To view these, use the Chart Filters in the Multigame view. For more information on how to do this, check out the Softball Application: Chart Filters (see the “Data and Chart Filters” lesson)\n\n###\n\n### Left/Right Splits Report\n\nThis report details the number of pitches thrown or seen in different at-bat pitch counts broken down even further by hitter/pitcher handedness.\n\nThis report can be viewed by using the Grouped Counts tab or the All Counts tab in the upper left of the report.\n\nPercentages are calculated by dividing the number in a row by the number in the Overall row in the same column.\n\n![Screenshot: Reports View: Report Types](https://pregame-academy.vickerydigital.com/assets/synergy/77000565428-02.jpg)\n\nBy clicking the carrot icon to the left side of the row name, you can expand the report to see a breakdown of pitch types in each specific situation.\n\nPercentages are calculated by dividing the number in a pitch type row by the number in the hitter/pitcher handedness row in the same column (RHP in the example below).\n\nYou can further expand the report by clicking on the individual pitch types. This will provide a breakdown of the pitch results for each pitch type.\n\nPercentages are calculated by dividing the number in a pitch result row by the number in the pitch type row in the same column.\n\n![Screenshot: Reports View: Report Types](https://pregame-academy.vickerydigital.com/assets/synergy/77000565428-03.jpg)\n\n###\n\n### Matchups Report *(Counts)*\n\nThis report details the number of pitches thrown or seen in different at-bat pitch counts. At the top of this report, you will find the filtered player's data against all hitters/pitchers. Below that will be the filtered player's data against individual hitters/pitchers. Expand a row by clicking the carrot icon to the left of the row name to view the pitch types thrown/seen in various counts.\n\n![Screenshot: Reports View: Report Types](https://pregame-academy.vickerydigital.com/assets/synergy/77000565428-04.jpg)\n\n> Note: The percentages displayed represent that column's pitch total divided by the pitch total in the “All” column.\n\n### Pitch Types (Pitch Result)\n\nThis report displays pitch results as compared to the pitch type that the pitcher threw, or the hitter faced, based on the data filters you have applied using the left slide-out panel of the application.\n\nWhen you click and expand any row title, the report displays both In-Zone and Out-Of-Zone pitches in addition to batting average, slugging percentage, and batting average on balls in play breakdown. You can switch between these by clicking on the greyed-out term you would like to view.\n\n![Screenshot: Reports View: Report Types](https://pregame-academy.vickerydigital.com/assets/synergy/77000565428-05.jpg)\n\nExpanding a row of the report and filter further by selecting the options in the sub-row titles:\n\n- In-Zone: (default) or Out-Of-Zone\n- AVG: (default), SLG or BABIP tabs\n\n> Note: the row containing the AVG, SLG and BABIP percentages will not play video when selected. You must select the number above the percentage, in the In-Zone/Out-of-Zone row, or in the row containing total counts for that section of the report to play video for those events.\n\n### Pitch Types (BIP Result)\n\nThis report breaks down BIP results and trajectory when facing or throwing certain pitch types based on the data filters you have applied using the left slide-out panel of the application.\n\nWhen you click and expand any row title, the report displays both In-Zone and Out-Of-Zone pitches in addition batting average, slugging percentage, and batting average on balls in play breakdown.\n\n![Screenshot: Reports View: Report Types](https://pregame-academy.vickerydigital.com/assets/synergy/77000565428-06.jpg)\n\nExpanding a row of the report and filter further by selecting the options in the sub-row titles:\n\n- In-Zone: (default) or Out-Of-Zone\n- AVG: (default), SLG or BABIP tabs\n\n> Note: The row containing the AVG, SLG and BABIP percentages will not play video when selected. You must select the number above the percentage, in the In-Zone/Out-of-Zone row, or in the row containing total counts for that section of the report to play video for those events.\n\n### Synergy Pitcher Attributes Report *(Pitching - Result & Type Report)*\n\nThis report displays the pitcher attributes that Synergy tracks in professional baseball leagues. Use the tabs at the top of the report to filter for various pitch results and ball in play trajectories. To see the breakdown of the pitcher attributes, click each row title or carrot icon to expand the report. Percentages are calculated by dividing the number in a column by the number in the All Pitches column in the same row.\n\n![Screenshot: Reports View: Report Types](https://pregame-academy.vickerydigital.com/assets/synergy/77000565428-07.jpg)\n\n### Synergy Hitter Attributes Report *(Hitting - BIP Type & Quality Report)*\n\nThis report displays hitter attributes that Synergy tracks in professional baseball leagues. Unlike the Pitching – Result & Type report, this report will only include balls in play.\n\nUse the tabs at the top of the report to filter by the ball in play trajectories. To see the breakdown of the hitter attributes, click each row title (or the expand/collapse icon to the left of each row title) to expand the report. Percentages are calculated by dividing the number in a column by the number in the “All BIP” column in the same row.\n\n![Screenshot: Reports View: Report Types](https://pregame-academy.vickerydigital.com/assets/synergy/77000565428-08.jpg)\n\n###\n\n### Pickoffs\n\nThis report details when and where pickoffs occur for the filtered player. Use this report to see the counts and outs when the filtered player attempted pickoffs and bases where the filtered player has attempted pickoffs. It is important to note that successful pickoffs will be listed in the Pickoffs row. Percentages are calculated by dividing the number in a column by the number in the Total column in the same row.\n\n![Screenshot: Reports View: Report Types](https://pregame-academy.vickerydigital.com/assets/synergy/77000565428-09.jpg)\n\n###\n\n### Stolen Bases\n\nThis report details situations and results of stolen base attempts by a baserunner. You can also use this report to view stolen base attempts against pitchers and catchers. Use the tabs above the report to filter for different at-bat pitch counts. Percentages in this report are calculated by taking the number in a column and dividing it by the SB Attempts column.\n\n![Screenshot: Reports View: Report Types](https://pregame-academy.vickerydigital.com/assets/synergy/77000565428-10.jpg)\n\n### Fielding\n\nThis report details all fielding plays that a fielder was involved in based on the data filters you have applied using the grey filter panel to the left in the app.\n\nSynergy logs several fielding data points including:\n\n- Type of fielding play\n- The direction the fielder was moving\n- Any extra effort by the fielder.\n\nThis report displays Fielding Touches for BIP Types with Synergy Proprietary data for Fielding Type, Fielding Direction, and Fielding Extra Effort.  It also includes views for Ground Ball, Line Drive, Fly Ball, Flare, Pop Up, Bunt, as well as Totals for All Touches as well as specific BIP Out and BIP Safe events.\n\nTo see all fielding data in the report click each row title to expand the report. Use the tabs above the report to filter for different BIP trajectories. Percentages are calculated by dividing the number in a column by the number in the Total Touches column.\n\n![Screenshot: Reports View: Report Types](https://pregame-academy.vickerydigital.com/assets/synergy/77000565428-11.jpg)\n\nAfter you expand a row by clicking the row title, click the sub-row titles to see a more detailed breakdown of the fielding by BIP quality, for example, under Fielding Type Standard, you can see:\n\n- Hard Hit\n- Soft Hit\n- Very Hard Hit\n- Medium Hit\n- Very Soft Hit\n\n![Screenshot: Reports View: Report Types](https://pregame-academy.vickerydigital.com/assets/synergy/77000565428-12.jpg)\n\n### Throwing\n\nThis report details fielder throwing events based on the data filters you have applied using the filters panel to the left in the app.\n\nSynergy logs several throwing data points including:\n\n- The fielder threw a runner out, the throw type\n- Position thrown to\n- Cutoff throws\n- Throw accuracy\n\nThis report displays all Fielder Throws for Balls In Play with Synergy Proprietary data for Throw Type, Throw From Position, and Throw Accuracy. Additionally, this includes Throws for BIP Type and All Fly Balls events, Totals for All Throws as well as To 1st Base, To 2nd Base, To 3rd Base, and To Home.\n\nTo see all throwing data in the report, click each row title to expand the report. Use the tabs above the report to filter for different BIP results. Percentages are calculated by dividing the number in a column by the number in the All Throws column.\n\n![Screenshot: Reports View: Report Types](https://pregame-academy.vickerydigital.com/assets/synergy/77000565428-13.jpg)\n\nBy clicking on the rows containing the throwing tags, you can see an additional breakdown of the report by BIP trajectory.\n\nAfter you expand a row by clicking the row title, click any sub-row titles to see a more detailed breakdown of the Throwing report. For example, under Throw Type, Standard, you can see:\n\n- Ground Ball\n- All Fly Balls\n- All Bunts\n\nIf you click All Fly Balls, then you can see:\n\n- Line Drive\n- FlyBall + Flare (total\n- Fly Ball\n- Flare\n- Pop Up",
-   "questions": []
+   "questions": [
+    {
+     "question": "A coach wants pitches thrown or seen in different counts, broken down by hitter and pitcher handedness. Which report fits?",
+     "options": [
+      "Matchups (Count)",
+      "Left/Right Splits",
+      "Pitch Types (Pitch Result)",
+      "Stolen Bases"
+     ],
+     "correct_index": 1,
+     "explanation": "The Left/Right Splits report breaks pitch counts down by hitter and pitcher handedness."
+    },
+    {
+     "question": "A coach wants to compare the filtered pitcher's results against each individual hitter. Which report fits?",
+     "options": [
+      "Left/Right Splits",
+      "Pickoffs",
+      "Matchups (Count)",
+      "Fielding"
+     ],
+     "correct_index": 2,
+     "explanation": "The Matchups report shows the filtered player's data against all hitters or pitchers and then against each individual one."
+    },
+    {
+     "question": "A user selects the AVG percentage row in a Pitch Types report and no video plays. How can they play video for those events?",
+     "options": [
+      "Select the number above the percentage, such as in the In-Zone/Out-Of-Zone or total counts row",
+      "Switch to the SLG tab",
+      "Collapse the row and click again",
+      "Use Revert To Saved"
+     ],
+     "correct_index": 0,
+     "explanation": "The percentage row does not play video, so you select the count number in the In-Zone/Out-Of-Zone row or the total counts row."
+    },
+    {
+     "question": "A coach wants to see stolen base attempts against a team's catchers. Which report fits?",
+     "options": [
+      "Pickoffs",
+      "Throwing",
+      "Fielding",
+      "Stolen Bases"
+     ],
+     "correct_index": 3,
+     "explanation": "The Stolen Bases report shows stolen base attempts by baserunners as well as against pitchers and catchers."
+    },
+    {
+     "question": "A coach wants to know at which bases a pitcher has attempted pickoffs. Which report fits?",
+     "options": [
+      "Pickoffs",
+      "Stolen Bases",
+      "Throwing",
+      "Matchups (Count)"
+     ],
+     "correct_index": 0,
+     "explanation": "The Pickoffs report lists the counts and outs for pickoff attempts and the bases where they were attempted."
+    },
+    {
+     "question": "A coach wants attribute data for hitters that looks only at balls in play. Which report fits?",
+     "options": [
+      "Synergy Pitcher Attributes",
+      "Synergy Hitter Attributes",
+      "Fielding",
+      "Basic Statistics"
+     ],
+     "correct_index": 1,
+     "explanation": "The Synergy Hitter Attributes report includes only balls in play."
+    },
+    {
+     "question": "A coach wants to review throw accuracy and the position fielders threw to. Which report fits?",
+     "options": [
+      "Fielding",
+      "Pickoffs",
+      "Throwing",
+      "Stolen Bases"
+     ],
+     "correct_index": 2,
+     "explanation": "The Throwing report details fielder throwing events including throw type, position thrown to, and throw accuracy."
+    },
+    {
+     "question": "In the Left/Right Splits report, a row shows a percentage. What is it calculated against?",
+     "options": [
+      "The number in the Total Touches column",
+      "The number in the SB Attempts column",
+      "The sum of all rows in the report",
+      "The number in the Overall row of the same column"
+     ],
+     "correct_index": 3,
+     "explanation": "Percentages are calculated by dividing the number in a row by the number in the Overall row in the same column."
+    }
+   ]
   },
   {
    "title": "Practice Views",
-   "summary": "",
-   "learning_objectives": [],
+   "summary": "How to browse, filter, and review team practice sessions by type, and how to analyze several sessions together in Multi-Practice view.",
+   "learning_objectives": [
+    "Learners will be able to search and filter practice sessions and return to the practice list.",
+    "Learners will be able to describe the four practice session types and what each displays.",
+    "Learners will be able to review Bullpen sessions, including compare and overlay video.",
+    "Learners will be able to use Multi-Practice view to analyze several sessions at once."
+   ],
    "reference_url": "https://support.synergysports.com/support/solutions/articles/77000565418",
    "content": "## Practice View\n\nThe all new Practice view is located in the top right of the Baseball App, between the Reports view and the Single Game view. This tab allows you to retrieve practice footage and it's associated data that your team has captured using the Synergy Team Logger. You practice data is only viewable by members of your team.\n\n#### Getting Started\n\nWhen you open the Practice view, all of your uploaded practice data from the Synergy Team Logger will be displayed, grouped by practice session type, in tables. The practice session types are:\n\n- **Sim Games**\n- **Batting Practice**\n- **Bullpen**\n- **Training/Workout**\n\nIn the top left of the Practice view, you have the ability to search the your practice sessions by Player or Team using the search bar. Additionally, you can filter your practice sessions by League, Season, Team, and Player, using the dropdown menus. Only practice sessions including your search and filter results will display. To clear your search or session filters, click the **Clear** button.\n\n![Screenshot: Practice View](https://pregame-academy.vickerydigital.com/assets/synergy/77000565418-01.jpg)\n\nYou can also sort all table columns by clicking on the header, and reversing the order by clicking a second time.\n\nTo quickly view all video clips associated with a practice, you can simply click the play icon next to the practice session you would like to view.\n\nFor a comprehensive view of the data logged during your practice session, select the desired session, and then click the **View Session** button.\n\n![Screenshot: Practice View](https://pregame-academy.vickerydigital.com/assets/synergy/77000565418-02.jpg)\n\n> NOTE: To return to the practice tab home screen from within a practice session, you must click the arrow button on the left of the screen. This will allow you to select a different practice session.\n\n####\n\n#### Sim Game\n\nSim Games function very similarly to a standard game. This session type is best for scrimmages and unconventional game situations. When viewing a Sim Game session, it will display in the Single Game format, with pitch locations, hit locations, event results, associated video, and any other data you have logged during the session. For a more detailed look into the Single Game format and all of its features, click here (see the “Single Game View” lesson).\n\n![Screenshot: Practice View](https://pregame-academy.vickerydigital.com/assets/synergy/77000565418-03.jpg)\n\n####\n\n#### Batting Practice\n\nSelect the batting practice session you would like to review, and above the tables, a list of the players who participated in that session will be displayed. Click the View Session button to view your recorded data.\n\n![Screenshot: Practice View](https://pregame-academy.vickerydigital.com/assets/synergy/77000565418-04.jpg)\n\nTo view the full batting practice session, click the Play Full Game icon in the center of the screen.\n\nTo view an individual pitch, you can click on the play icon on the right of the event.\n\n![Screenshot: Practice View](https://pregame-academy.vickerydigital.com/assets/synergy/77000565418-05.jpg)\n\nEach group from the batting practice session will be displayed along the top right of the window. You can the events by group, by selecting the desired group button. By selecting a group, all of that groups events will display along the bottom of the window. You can deselect the group by clicking the group button a second time.\n\n![Screenshot: Practice View](https://pregame-academy.vickerydigital.com/assets/synergy/77000565418-06.jpg)\n\nWhen a group is selected, the players within the group will be displayed below the group buttons. You can filter for each player by clicking on the players name beneath the group name, and this will display only the selected players events.\n\nIf you have have entered any hit location or other data, it will be reflected in the hit location chart, and the data table.\n\nIf you have only entered time stamps, and no data has been logged, the clips are still available for viewing, but the data fields will be listed as unknown. This can be a quick and easy way to simply cut up your batting practices for easier review by players and staff.\n\n####\n\n#### Bullpen\n\nIn the Bullpen table, all of your logged bullpen practices will be listed. There is a play icon next to each practice. Click the **Play** icon and it will play all of the video associated with the practice session. To view the associated data, select your session, and above the tables click the **View Session** button.\n\n![Screenshot: Practice View](https://pregame-academy.vickerydigital.com/assets/synergy/77000565418-07.jpg)\n\nTo view the a playlist of all pitches in the data table, click the **Play Full Game** button above the data table. To view the video of an individual pitch, click the **Play** icon next to the pitch you would like to watch.\n\n![Screenshot: Practice View](https://pregame-academy.vickerydigital.com/assets/synergy/77000565418-08.jpg)\n\nA button for each of the pitchers from the bullpen session will be displayed in the upper right of the window. When a player is selected, all of the players pitches will be listed in the data table, and the pitch locations are shown on the display. When a pitch is selected in the data table, the intended pitch location will be highlighted on the display, as well as the pitch location itself.\n\n![Screenshot: Practice View](https://pregame-academy.vickerydigital.com/assets/synergy/77000565418-09.jpg)\n\nIn the video player, the video will display, if multiple angles were used, they will display side-by-side. To the right of the video player your pitch playlist will be display and you can navigate between the different clips. Above the playlist, you can click the **Field** icon, and this will display the data associated with the clip you are viewing, including Pitch Location, Pitch Type, Velocity, Pitch Delivery, Pitch Execution, and Intended Pitch Location.\n\n![Screenshot: Practice View](https://pregame-academy.vickerydigital.com/assets/synergy/77000565418-10.jpg)\n\nThe video player also has tools to play and pause the video, advance or reverse by one frame, skip clips back and forth, and advance and reverse the video. Above the navigation tools on the left, you can adjust the amount of pre-roll before the pitch using the dropdown menu.\n\n![Screenshot: Practice View](https://pregame-academy.vickerydigital.com/assets/synergy/77000565418-11.jpg)\n\nYou also have the ability to use the compare view by clicking **Compare** at the bottom right of the window. This allows you to compare two separate pitches side by side, or overlay video from two pitches by clicking the Overlay button within the compare view. For a more in depth look at the compare view, check out the article here (see the “Compare Video and Sending Clips” lesson).\n\n#### Training/Workout\n\nThe Training/Workout sessions are purely video files, with no data attached to them. This is meant to be a simple video repository, to allow for categorization of video files that can be easily accessed by members of your staff. When you select a Training/Workout session, all players and labels assigned to the session will display above the tables as a preview.\n\n![Screenshot: Practice View](https://pregame-academy.vickerydigital.com/assets/synergy/77000565418-12.jpg)\n\nTo view Training/Workout video, simply click the play icon next to the listed workout and the grouped clips will display in the video player.\n\n![Screenshot: Practice View](https://pregame-academy.vickerydigital.com/assets/synergy/77000565418-13.jpg)\n\nYou can view the players and labels associated by clicking the labels button in the top right of the video player.\n\n![Screenshot: Practice View](https://pregame-academy.vickerydigital.com/assets/synergy/77000565418-14.jpg)\n\n## Multi-Practice View\n\nMulti-Practice view allows you to consolidate and analyze data from multiple practice sessions simultaneously, providing a holistic understanding of player performance and development trends over time. Just like Multigame view enables comprehensive game analysis, Multi-Practice view empowers you to dive deep into your practice data.\n\n####\n\n#### **Key Enhancements for Practice Workflows**\n\nThe Multi-Practice view brings enhanced capabilities to your practice analysis. To access the Multi-Practice view, click the Multi-Practice icon in the upper right of the application.\n\n![Screenshot: Multi-Practice View](https://pregame-academy.vickerydigital.com/assets/synergy/77000591726-01.png)\n\n#### **Search Across Multiple Sessions from Practice Workflows**\n\nYou can now seamlessly search and aggregate data from various practice types logged in Synergy Team Logger.\n\n- **Sim Game**: Analyze performance and outcomes from simulated game scenarios.\n- **Batting Practice**: Track hitter performance, contact quality, and progress during BP sessions.\n- **Bullpen**: Evaluate pitcher mechanics, pitch usage, and execution during bullpen sessions.\n\n#### **New Filters Specific to Practice Workflows**\n\nTo provide more granular insights, we've introduced several new filters designed specifically for practice data:\n\n**Hitter(s)**: Filter by specific hitter(s) to analyze individual performance trends.\n\n- **Swing Result**: Narrow your focus by the outcome of each swing, helping you identify patterns in contact, misses, and ball in play results.\n\n![Screenshot: Multi-Practice View](https://pregame-academy.vickerydigital.com/assets/synergy/77000591726-02.png)\n\n**Practice(s):**Select all desired practices across which you would like to review data\n\n![Screenshot: Multi-Practice View](https://pregame-academy.vickerydigital.com/assets/synergy/77000591726-03.png)\n\n**Practice Type**: Easily sort and view data from specific practice types.\n\n![Screenshot: Multi-Practice View](https://pregame-academy.vickerydigital.com/assets/synergy/77000591726-04.png)\n\n**Pitch Zones**: Gain insights into pitch location and effectiveness with these dedicated filters:\n\n- **Pitch Execution**: Analyze how well pitches were executed relative to their intended location.\n\n![Screenshot: Multi-Practice View](https://pregame-academy.vickerydigital.com/assets/synergy/77000591726-05.png)\n\n**Intended Pitch Zone**: Filter by the planned target zone for each pitch, allowing for evaluation of strategic execution.\n\n#### Screenshot: Multi-Practice View",
-   "questions": []
+   "questions": [
+    {
+     "question": "A coach asks who can see practice data uploaded from the Synergy Team Logger. What is correct?",
+     "options": [
+      "Any Synergy user in the league",
+      "Only team admins",
+      "Only members of your team",
+      "Any user who knows the session name"
+     ],
+     "correct_index": 2,
+     "explanation": "Your practice data is only viewable by members of your team."
+    },
+    {
+     "question": "A user filtered the Practice view by player and season and now wants to see all sessions again. What should they do?",
+     "options": [
+      "Click the Clear button",
+      "Click View Session",
+      "Click the arrow button on the left of the screen",
+      "Open the Multi-Practice view"
+     ],
+     "correct_index": 0,
+     "explanation": "The Clear button clears your search and session filters."
+    },
+    {
+     "question": "A user is inside a practice session and wants to choose a different session. What should they do?",
+     "options": [
+      "Click the Clear button",
+      "Click the arrow button on the left of the screen",
+      "Click Play Full Game",
+      "Click View Session"
+     ],
+     "correct_index": 1,
+     "explanation": "To return to the practice tab home screen from within a session, click the arrow button on the left."
+    },
+    {
+     "question": "A coach wants a simple video repository of workout footage with no data attached. Which session type fits?",
+     "options": [
+      "Bullpen",
+      "Batting Practice",
+      "Sim Games",
+      "Training/Workout"
+     ],
+     "correct_index": 3,
+     "explanation": "Training/Workout sessions are purely video files with no data attached."
+    },
+    {
+     "question": "A coach wants to review a scrimmage and see pitch locations, hit locations, and results in a familiar format. Which session type fits, and how does it display?",
+     "options": [
+      "Bullpen, displayed as a list of pitchers",
+      "Training/Workout, displayed as a video list",
+      "Sim Games, displayed in the Single Game format",
+      "Batting Practice, displayed by group"
+     ],
+     "correct_index": 2,
+     "explanation": "Sim Games are best for scrimmages and display in the Single Game format."
+    },
+    {
+     "question": "A team only entered time stamps during batting practice and logged no data. What will the coach see?",
+     "options": [
+      "The session will not appear in the Practice view",
+      "The clips can be viewed, with the data fields listed as unknown",
+      "Only the hit location chart is shown",
+      "The clips are hidden until data is entered"
+     ],
+     "correct_index": 1,
+     "explanation": "Clips are still available for viewing, and the data fields are listed as unknown."
+    },
+    {
+     "question": "A pitching coach wants to lay video from two bullpen pitches on top of each other. What should they do?",
+     "options": [
+      "Click the Field icon above the playlist",
+      "Use the Multi-Practice view",
+      "Click Play Full Game above the data table",
+      "Click Compare at the bottom right of the window and then Overlay"
+     ],
+     "correct_index": 3,
+     "explanation": "Compare lets you view two pitches side by side, and the Overlay button within it overlays the video from both."
+    },
+    {
+     "question": "A coach wants to review hitter performance across several batting practice and bullpen sessions at once. Which view should they use?",
+     "options": [
+      "Practice view with View Session",
+      "Single Game view",
+      "Multi-Practice view",
+      "Saved Reports"
+     ],
+     "correct_index": 2,
+     "explanation": "Multi-Practice view consolidates data from multiple practice sessions simultaneously."
+    }
+   ]
   }
  ]
 }
