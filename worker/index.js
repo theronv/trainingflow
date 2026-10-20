@@ -1343,6 +1343,25 @@ app.patch('/api/sections/:id', requireAdmin, async (c) => {
   return c.json({ ok: true })
 })
 
+// Persists the display order of every section. The list must contain each existing section
+// exactly once; sort_order becomes the position. Sub-sections are grouped under their parent
+// by the clients, so one flat order is enough.
+app.put('/api/sections/order', requireAdmin, async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  const ids = body.ids
+  if (!Array.isArray(ids) || ids.some(i => typeof i !== 'string') || new Set(ids).size !== ids.length) {
+    return c.json({ error: 'ids must be a list of unique section ids' }, 400)
+  }
+  const db = getDb(c.env)
+  await ensureSetup(db)
+  const existing = toObjs(await db.execute('SELECT id FROM sections')).map(r => r.id)
+  if (existing.length !== ids.length || existing.some(i => !ids.includes(i))) {
+    return c.json({ error: 'The section list has changed. Refresh the page and try again.' }, 409)
+  }
+  if (ids.length) await db.batch(ids.map((id, i) => ({ sql: 'UPDATE sections SET sort_order = ? WHERE id = ?', args: [i, id] })), 'write')
+  return c.json({ ok: true })
+})
+
 app.delete('/api/sections/:id', requireAdmin, async (c) => {
   const db = getDb(c.env)
   try { await db.execute({ sql: 'UPDATE courses SET section_id = NULL WHERE section_id = ?', args: [c.req.param('id')] }) } catch {}

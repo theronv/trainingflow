@@ -69,10 +69,10 @@ const Manager = {
     try {
       let [apiCourses, sections] = await Promise.all([managerApi('/api/courses'), managerApi('/api/sections').catch(() => [])]);
       if (Manager._navSeq !== seq) return;
-      const courseCard = c => {
+      const courseCard = (c, attrs = '') => {
         const nc = normCourse(c);
         const n = nc.mods ? nc.mods.length : 0;
-        return `<div class="card cc">
+        return `<div class="card cc" ${attrs}>
           <div class="cc-top">
             <div class="cc-icon" aria-hidden="true">${courseIcon(nc.icon)}</div>
             <div class="cc-body">
@@ -93,13 +93,17 @@ const Manager = {
         apiCourses.forEach(c => { if(c.section_id && bySec[c.section_id]) bySec[c.section_id].push(c); else unsec.push(c); });
         sections.forEach(s => {
           if(!bySec[s.id].length) return;
-          html += `<div class="section-header" style="grid-column:1/-1;">${esc(s.label)}</div>` + bySec[s.id].map(courseCard).join('');
+          const parentId = s.depth ? s.parent_id : '';
+          html += SectionFold.headHtml({ cls: 'section-header', id: s.id, parentId, title: s.label, count: String(bySec[s.id].length) })
+            + bySec[s.id].map(c => courseCard(c, SectionFold.attrs(s.id, parentId))).join('');
         });
-        if(unsec.length) html += `<div class="section-header" style="grid-column:1/-1;">Other</div>` + unsec.map(courseCard).join('');
+        if(unsec.length) html += SectionFold.headHtml({ cls: 'section-header', id: SectionFold.OTHER, title: 'Other', count: String(unsec.length) })
+          + unsec.map(c => courseCard(c, SectionFold.attrs(SectionFold.OTHER))).join('');
       } else {
         html = apiCourses.map(courseCard).join('');
       }
       $$('m-courses-grid').innerHTML = html;
+      SectionFold.apply($$('m-courses-grid'));
     } catch(e) { Toast.err(e.message); }
   },
 

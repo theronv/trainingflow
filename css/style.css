@@ -2312,3 +2312,21 @@ button, .nav-btn, .quiz-opt, .course-card, .role-tile, label { touch-action: man
 .rv-errors ul { margin: var(--space-2) 0 0; padding-left: var(--space-5); }
 .rv-reply { margin-bottom: var(--space-4); }
 .rv-reply summary { cursor: pointer; font-weight: 600; min-height: 44px; display: flex; align-items: center; }
+
+/* ── Collapsible, reorderable course sections ── */
+[data-sec][hidden], [data-sec-head][hidden] { display: none !important; }
+.sec-fold {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  min-height: 44px; padding: 0; background: none; border: 0; border-radius: var(--radius-md);
+  color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.sec-fold:focus-visible, .sec-move .icon-btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.sec-chev { width: 18px; height: 18px; flex-shrink: 0; color: var(--ink-3); transition: transform 0.15s; }
+.sec-fold[aria-expanded="false"] .sec-chev { transform: rotate(-90deg); }
+.sec-fold .sec-count { font-size: var(--text-xs); font-weight: 500; color: var(--ink-3); }
+.section-header .sec-title { font-size: var(--text-md); font-weight: 600; }
+.sec-head { align-items: center; padding-bottom: 0; }
+.sec-move { margin-left: auto; display: inline-flex; gap: var(--space-1); }
+.sec-move .icon-btn { width: 44px; height: 44px; border-radius: var(--radius-md); }
+.sec-move .icon-btn svg { width: 18px; height: 18px; }
+.icon-btn:disabled { opacity: 0.35; cursor: default; pointer-events: none; }

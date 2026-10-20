@@ -100,7 +100,7 @@ const Learner = {
         .sort((a, z) => (progOf(normCourse(z).id).updated_at || 0) - (progOf(normCourse(a).id).updated_at || 0));
       const resumeIds = new Set(resumeCourses.map(c => normCourse(c).id));
 
-      const renderCard = (c, resume = false) => {
+      const renderCard = (c, resume = false, attrs = '') => {
         const nc = normCourse(c);
         const assignment = apiAssigns.find(a => a.course_id === nc.id);
         const assigned = !!assignment;
@@ -126,7 +126,7 @@ const Learner = {
         const pct = prog && totalMods ? Math.min(100, Math.round(modsDone / totalMods * 100)) : 0;
         const bar = prog && totalMods ? `<div class="lc-progress" aria-hidden="true"><span style="width:${pct}%"></span></div>` : '';
         const cta = passed ? 'Review' : (prog ? 'Continue' : 'Start');
-        return `<div class="course-card lc${resume ? ' lc-resume' : ''}" role="button" tabindex="0" onclick="Learner.startCourse('${nc.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();Learner.startCourse('${nc.id}')}">
+        return `<div class="course-card lc${resume ? ' lc-resume' : ''}" ${attrs} role="button" tabindex="0" onclick="Learner.startCourse('${nc.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();Learner.startCourse('${nc.id}')}">
           <div class="lc-top">
             <div class="lc-icon" aria-hidden="true">${courseIcon(nc.icon)}</div>
             <div class="lc-body">
@@ -159,17 +159,19 @@ const Learner = {
         });
         sections.forEach(s => {
           if(!bySec[s.id].length) return;
-          html += `<div class="section-header" style="grid-column:1/-1;">${esc(s.label)}</div>`;
-          html += bySec[s.id].map(c => renderCard(c)).join('');
+          const parentId = s.depth ? s.parent_id : '';
+          html += SectionFold.headHtml({ cls: 'section-header', id: s.id, parentId, title: s.label, count: String(bySec[s.id].length) });
+          html += bySec[s.id].map(c => renderCard(c, false, SectionFold.attrs(s.id, parentId))).join('');
         });
         if(unsec.length) {
-          html += `<div class="section-header" style="grid-column:1/-1;">Other</div>`;
-          html += unsec.map(c => renderCard(c)).join('');
+          html += SectionFold.headHtml({ cls: 'section-header', id: SectionFold.OTHER, title: 'Other', count: String(unsec.length) });
+          html += unsec.map(c => renderCard(c, false, SectionFold.attrs(SectionFold.OTHER))).join('');
         }
       } else {
         html += restCourses.map(c => renderCard(c)).join('');
       }
       grid.innerHTML = html || '<div class="empty" style="grid-column:1/-1;"><div class="empty-icon">' + ICON.book + '</div><div class="empty-title">No training assigned yet</div><div class="empty-hint">Your manager will add courses to your plan. Check back soon — or let them know you\'re ready to start.</div></div>';
+      SectionFold.apply(grid);
     } catch(e) {
       grid.innerHTML = `<div class="card" style="grid-column:1/-1;color:var(--fail);">${esc(e.message)}</div>`;
     }

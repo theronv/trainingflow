@@ -865,40 +865,74 @@ const Admin = {
       // Count enrolled learners per course
       const enrolled = {};
       (assignments || []).forEach(a => { enrolled[a.course_id] = (enrolled[a.course_id] || 0) + 1; });
+      Admin._cv = { courses, enrolled };
 
       if (!courses.length) {
         grid.innerHTML = '<div class="empty" style="grid-column:1/-1;"><div class="empty-icon">' + ICON.book + '</div><div class="empty-title">No courses yet</div><div class="empty-hint">Create your first course with the AI Importer or build one from scratch.</div><div class="empty-action"><button class="btn btn-primary btn-sm" onclick="App.aNav(\'importer\')">+ New Course</button></div></div>';
+        SectionFold.apply(grid);
         return;
       }
-
-      // Group courses by section
-      const bySec = {};
-      const unsec = [];
-      sections.forEach(s => { bySec[s.id] = []; });
-      courses.forEach(c => {
-        if(c.section_id && bySec[c.section_id]) bySec[c.section_id].push(c);
-        else unsec.push(c);
-      });
-
-      let html = '';
-      sections.forEach(s => {
-        const n = bySec[s.id].length;
-        html += `<div class="sec-head"><span class="sec-title">${esc(s.label)}</span><span class="sec-count">${n} ${n === 1 ? 'course' : 'courses'}</span></div>`;
-        if(!n) {
-          html += `<div class="sec-empty">No courses in this section yet.</div>`;
-        } else {
-          html += bySec[s.id].map(c => Admin._courseCard(c, sections, enrolled)).join('');
-        }
-      });
-      if(unsec.length) {
-        if(sections.length) html += `<div class="sec-head"><span class="sec-title">Unsectioned</span><span class="sec-count">${unsec.length} ${unsec.length === 1 ? 'course' : 'courses'}</span></div>`;
-        html += unsec.map(c => Admin._courseCard(c, sections, enrolled)).join('');
-      }
-      grid.innerHTML = html;
+      Admin._paintCourses();
     } catch(e) {
       grid.innerHTML = `<div class="card" style="grid-column:1/-1;color:var(--fail);">${esc(e.message)}</div>`;
     }
   },
+
+  // Draws the section headers and course cards from the cached fetch (Admin._cv) and sectionsCache.
+  _paintCourses() {
+    const grid = $$('a-courses-grid'); if(!grid || !Admin._cv) return;
+    const { courses, enrolled } = Admin._cv, sections = sectionsCache;
+    Admin._renderSectionsBar(sections);
+
+    // Group courses by section
+    const bySec = {};
+    const unsec = [];
+    sections.forEach(s => { bySec[s.id] = []; });
+    courses.forEach(c => {
+      if(c.section_id && bySec[c.section_id]) bySec[c.section_id].push(c);
+      else unsec.push(c);
+    });
+
+    const plural = n => `${n} ${n === 1 ? 'course' : 'courses'}`;
+    let html = '';
+    sections.forEach(s => {
+      const n = bySec[s.id].length, parentId = s.depth ? s.parent_id : '';
+      const attrs = SectionFold.attrs(s.id, parentId);
+      html += SectionFold.headHtml({ cls: 'sec-head', id: s.id, parentId, title: s.label, count: plural(n), extra: Admin._moveButtons(s) });
+      html += n
+        ? bySec[s.id].map(c => Admin._courseCard(c, sections, enrolled, attrs)).join('')
+        : `<div class="sec-empty" ${attrs}>No courses in this section yet.</div>`;
+    });
+    if(unsec.length) {
+      const attrs = SectionFold.attrs(SectionFold.OTHER);
+      if(sections.length) html += SectionFold.headHtml({ cls: 'sec-head', id: SectionFold.OTHER, title: 'Unsectioned', count: plural(unsec.length) });
+      html += unsec.map(c => Admin._courseCard(c, sections, enrolled, sections.length ? attrs : '')).join('');
+    }
+    grid.innerHTML = html;
+    SectionFold.apply(grid);
+  },
+
+  _moveButtons(s) {
+    const can = dir => moveSectionOrder(sectionsCache, s.id, dir) !== null;
+    const btn = (dir, label, icon) => `<button type="button" class="icon-btn" data-move="${dir}" aria-label="Move ${esc(s.name)} ${label}" title="Move ${label}"${can(dir) ? '' : ' disabled'} onclick="Admin.moveSection('${s.id}',${dir})">${icon}</button>`;
+    return `<span class="sec-move">${btn(-1, 'up', Admin._ico.up)}${btn(1, 'down', Admin._ico.down)}</span>`;
+  },
+
+  // Optimistic: reorder locally and repaint, then save. Saves are chained so rapid clicks land in order.
+  moveSection(id, dir) {
+    const ids = moveSectionOrder(sectionsCache, id, dir);
+    if(!ids) return;
+    const byId = new Map(sectionsCache.map(s => [s.id, s]));
+    sectionsCache = orderSections(ids.map(i => byId.get(i)));
+    Admin._paintCourses();
+    const keep = document.querySelector(`[data-sec-head="${id}"] [data-move="${dir}"]:not(:disabled)`) || document.querySelector(`[data-sec-head="${id}"] [data-move="${-dir}"]`);
+    if(keep) keep.focus();
+    Admin._orderSave = (Admin._orderSave || Promise.resolve())
+      .then(() => api('/api/sections/order', { method: 'PUT', body: JSON.stringify({ ids }) }))
+      .catch(e => { Toast.err(e.message); Admin.renderCourses(); });
+  },
+
+  toggleAllSections() { SectionFold.toggleAll($$('a-courses-grid')); },
 
   _renderSectionsBar(sections) {
     const bar = $$('a-sections-bar'); if(!bar) return;
@@ -916,17 +950,19 @@ const Admin = {
     key: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>',
     pencil: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>',
     x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>',
+    up: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 15-6-6-6 6"/></svg>',
+    down: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>',
     trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
     userPlus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6"/><path d="M22 11h-6"/></svg>',
   },
 
-  _courseCard(c, sections, enrolled = {}) {
+  _courseCard(c, sections, enrolled = {}, attrs = '') {
     const secOpts = sections.map(s => `<option value="${s.id}" ${c.section_id===s.id?'selected':''}>${esc(s.label || s.name)}</option>`).join('');
     const count = enrolled[c.id] || 0;
     const enrollBadge = count > 0
       ? `<span class="chip chip-green">${count} assigned</span>`
       : `<span class="chip">Unassigned</span>`;
-    return `<div class="card cc">
+    return `<div class="card cc" ${attrs}>
       <div class="cc-top">
         <div class="cc-icon" aria-hidden="true">${courseIcon(c.icon)}</div>
         <div class="cc-body">

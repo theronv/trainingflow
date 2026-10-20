@@ -75,7 +75,7 @@ cd worker && npm test            # one-shot
 cd worker && npm run test:watch  # watch mode
 ```
 
-Coverage: `worker/test/` — `auth` (login + rate limiting), `rbac` (role gates + manager team scoping), `scoring` (answer-key stripping, server-side grading and score computation), `scrape` (URL import validation). `importer` (the frontend `js/importer.js` loaded with browser globals stubbed: reply parsing, question validation, answer shuffling, prompt building, reply merging, save validation). `learner` (the source-link visibility helper). The rest of `js/` has no tests yet.
+Coverage: `worker/test/` — `auth` (login + rate limiting), `rbac` (role gates + manager team scoping), `scoring` (answer-key stripping, server-side grading and score computation), `scrape` (URL import validation). `importer` (the frontend `js/importer.js` loaded with browser globals stubbed: reply parsing, question validation, answer shuffling, prompt building, reply merging, save validation). `learner` (the source-link visibility helper), `sections-ui` (`js/sections.js`: section move/collapse logic) and `sections` (incl. the order endpoint). The rest of `js/` has no tests yet.
 
 ## Environment Variables
 
@@ -159,6 +159,7 @@ All routes in `worker/index.js`. Auth middleware: `requireAdmin`, `requireManage
 | `GET` | `/api/sections` | Any authenticated | List all sections |
 | `POST` | `/api/sections` | Admin | Create a section |
 | `PATCH` | `/api/sections/:id` | Admin | Rename a section |
+| `PUT` | `/api/sections/order` | Admin | Save display order: `{ids}` must list every section exactly once (400 malformed, 409 if the set changed); `sort_order` = position |
 | `DELETE` | `/api/sections/:id` | Admin | Delete a section |
 | `GET` | `/api/learners` | Admin/Manager | List learners (team-scoped for managers) |
 | `POST` | `/api/learners` | Admin/Manager | Create a learner (team_id locked to manager's team) |
@@ -306,6 +307,8 @@ Admin → AI Importer (`js/importer.js`). Lessons are imported **verbatim** (Mar
 - **Review is editable:** titles, summaries, objectives, lesson text, questions, correct answers; add/remove questions and modules; "Redo with Claude" per module. Saving is blocked (with a list of problems) until every module has valid questions (`validateCourse()`).
 - **Drafts:** state is saved to `localStorage` (`trainflow_import_draft`) so a refresh or closed tab can resume from the Upload screen.
 - Full-course JSON import (Claude writes everything) still exists on the Upload screen and shares the same question validation.
+
+**Course sections (collapse + order):** `js/sections.js` is shared by the Admin, Manager and Learner course lists. Section headers have a fold button; collapsed ids live per browser in `localStorage` (`trainflow_collapsed_sections`) and collapsing a parent hides its sub-sections. Admin headers also have move up/down buttons (siblings only; a parent carries its sub-sections), saved through `PUT /api/sections/order`; since all three lists use `orderSections()`, the saved order shows everywhere. The Admin page has a Collapse all / Expand all button.
 
 **Hidden source links:** `HIDDEN_SOURCE_DOMAINS` at the top of `js/learner.js` lists hosts whose `reference_url` never renders the learner "Before You Begin / Open Source Material" banner (currently `support.synergysports.com`, being retired). The URL stays stored; add hosts to the list as needed (subdomains match too).
 

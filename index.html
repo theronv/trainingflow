@@ -802,6 +802,7 @@ if (typeof marked !== 'undefined') {
             <div class="page-title">Courses</div>
           </div>
           <div style="display:flex;gap:var(--space-2);">
+            <button class="btn btn-outline" id="a-fold-all" onclick="Admin.toggleAllSections()" disabled>Collapse all</button>
             <button class="btn btn-outline" onclick="App.openCreateSection()">+ New Section</button>
             <button class="btn btn-primary" onclick="App.openBuilder()">+ New Course</button>
           </div>
@@ -1421,6 +1422,7 @@ if (typeof marked !== 'undefined') {
 </div><!-- #app -->
 
 <script src="js/core.js"></script>
+<script src="js/sections.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/admin.js"></script>
 <script src="js/importer.js"></script>
