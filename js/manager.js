@@ -69,11 +69,14 @@ const Manager = {
     try {
       let [apiCourses, sections] = await Promise.all([managerApi('/api/courses'), managerApi('/api/sections').catch(() => [])]);
       if (Manager._navSeq !== seq) return;
+      Manager._courseIds = apiCourses.map(c => c.id);
+      Builder.selPrune(Manager._courseIds);
       const courseCard = (c, attrs = '') => {
         const nc = normCourse(c);
         const n = nc.mods ? nc.mods.length : 0;
         return `<div class="card cc" ${attrs}>
           <div class="cc-top">
+            ${Builder.courseCheckbox(nc.id, nc.title)}
             <div class="cc-icon" aria-hidden="true">${courseIcon(nc.icon)}</div>
             <div class="cc-body">
               <div class="cc-title">${esc(nc.title)}</div>

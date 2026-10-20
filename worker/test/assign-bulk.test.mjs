@@ -66,4 +66,47 @@ describe('POST /api/assignments/bulk', () => {
     expect((await h.request('/api/assignments/bulk', { method: 'POST', token: h.adminToken(), body: { course_id: 'nope', learner_ids: [a1.id] } })).status).toBe(404)
     expect((await h.request('/api/assignments/bulk', { method: 'POST', token: h.adminToken(), body: { course_id: course.id } })).status).toBe(400)
   })
+
+  describe('several courses at once', () => {
+    let course2, course3
+    beforeEach(async () => {
+      course2 = await h.createCourse()
+      course3 = await h.createCourse()
+    })
+    const post = (token, body) => h.request('/api/assignments/bulk', { method: 'POST', token, body })
+
+    it('assigns every selected course to a team and an individual, skipping existing pairs', async () => {
+      await h.assign(course.id, a1.id)
+      const res = await post(h.adminToken(), { course_ids: [course.id, course2.id], team_ids: [teamA], learner_ids: [b1.id], due_at: '2026-12-01' })
+      expect(res.status).toBe(201)
+      expect(res.json).toMatchObject({ added: 5, skipped: 1 })
+      expect(await count()).toBe(6)
+    })
+
+    it('still accepts a single course_id, and de-duplicates repeated course ids', async () => {
+      expect((await post(h.adminToken(), { course_id: course.id, learner_ids: [a1.id] })).json.added).toBe(1)
+      const res = await post(h.adminToken(), { course_ids: [course2.id, course2.id], learner_ids: [a1.id] })
+      expect(res.json).toMatchObject({ added: 1, skipped: 0 })
+    })
+
+    it('writes nothing when any course id is unknown', async () => {
+      const res = await post(h.adminToken(), { course_ids: [course.id, 'nope'], learner_ids: [a1.id] })
+      expect(res.status).toBe(404)
+      expect(await count()).toBe(0)
+    })
+
+    it('rejects an empty or oversized course list', async () => {
+      expect((await post(h.adminToken(), { course_ids: [], learner_ids: [a1.id] })).status).toBe(400)
+      const many = Array.from({ length: 101 }, (_, i) => `c${i}`)
+      expect((await post(h.adminToken(), { course_ids: many, learner_ids: [a1.id] })).status).toBe(400)
+    })
+
+    it('keeps a manager inside their own team across all courses', async () => {
+      const ok = await post(h.managerToken(mgrA), { course_ids: [course.id, course2.id, course3.id], team_ids: [teamA] })
+      expect(ok.json.added).toBe(6)
+      const out = await post(h.managerToken(mgrA), { course_ids: [course.id, course2.id], learner_ids: [b1.id] })
+      expect(out.status).toBe(404)
+      expect(await count()).toBe(6)
+    })
+  })
 })

@@ -1513,6 +1513,19 @@ pre code { display: block; padding: var(--space-4); line-height: 1.7; }
   background: var(--brand-glow); font-size: 22px;
 }
 .cc-body { min-width: 0; flex: 1; }
+.cc-check {
+  display: grid; place-items: center; flex-shrink: 0; cursor: pointer;
+  width: 44px; height: 44px; margin: calc(var(--space-2) * -1) calc(var(--space-2) * -1) 0 calc(var(--space-3) * -1);
+}
+.cc-check input { width: 20px; height: 20px; margin: 0; cursor: pointer; accent-color: var(--brand); }
+.sel-bar {
+  position: sticky; top: var(--space-2); z-index: 5;
+  display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap;
+  padding: var(--space-3) var(--space-4); margin-bottom: var(--space-4);
+  background: var(--surface-raised); border: 1px solid var(--border-2);
+  border-radius: var(--radius-lg); box-shadow: var(--shadow-md);
+}
+.sel-bar-count { font-size: var(--text-sm); font-weight: 600; color: var(--ink-1); margin-right: auto; }
 .cc-title { font-size: var(--text-md); font-weight: 600; line-height: 1.35; color: var(--ink-1); }
 .cc-meta { display: flex; align-items: center; gap: var(--space-2); margin-top: var(--space-2); flex-wrap: wrap; }
 .cc-select {

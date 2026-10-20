@@ -1654,18 +1654,23 @@ app.post('/api/assignments', requireManager, async (c) => {
 
 // Assign one course to many learners and/or whole teams in a single batch.
 // Body: { course_id, learner_ids?: string[], team_ids?: (number|string)[], due_at? }
+const MAX_BULK_COURSES = 100
 app.post('/api/assignments/bulk', requireManager, async (c) => {
   const caller = c.get('user')
   const body = await c.req.json().catch(() => ({}))
   const db = getDb(c.env)
-  const courseId = body.course_id
-  if (!courseId) return c.json({ error: 'course_id required' }, 400)
+  // One course (`course_id`) or several (`course_ids`); each selected learner is assigned every course.
+  const rawCourseIds = Array.isArray(body.course_ids) ? body.course_ids : (body.course_id ? [body.course_id] : [])
+  const courseIds = [...new Set(rawCourseIds)]
+  if (!courseIds.length) return c.json({ error: 'course_id or course_ids required' }, 400)
+  if (courseIds.length > MAX_BULK_COURSES) return c.json({ error: `Select at most ${MAX_BULK_COURSES} courses at a time` }, 400)
   const learnerIds = Array.isArray(body.learner_ids) ? body.learner_ids : []
   const teamIds = Array.isArray(body.team_ids) ? body.team_ids : []
   if (!learnerIds.length && !teamIds.length) return c.json({ error: 'Select at least one learner or team' }, 400)
 
-  const course = await db.execute({ sql: 'SELECT id FROM courses WHERE id = ?', args: [courseId] })
-  if (!course.rows.length) return c.json({ error: 'Course not found' }, 404)
+  const marks = courseIds.map(() => '?').join(',')
+  const found = await db.execute({ sql: `SELECT id FROM courses WHERE id IN (${marks})`, args: courseIds })
+  if (found.rows.length !== courseIds.length) return c.json({ error: 'Course not found' }, 404)
 
   // Resolve every target to a real learner row; managers are limited to their own team.
   const ids = new Set()
@@ -1683,14 +1688,15 @@ app.post('/api/assignments/bulk', requireManager, async (c) => {
   }
   if (!ids.size) return c.json({ error: 'No matching learners' }, 404)
 
-  const before = await db.execute({ sql: 'SELECT COUNT(*) AS n FROM assignments WHERE course_id = ?', args: [courseId] })
-  await db.batch([...ids].map(lid => ({
+  const countSql = `SELECT COUNT(*) AS n FROM assignments WHERE course_id IN (${marks})`
+  const before = await db.execute({ sql: countSql, args: courseIds })
+  await db.batch(courseIds.flatMap(cid => [...ids].map(lid => ({
     sql: 'INSERT OR IGNORE INTO assignments (course_id, learner_id, due_at) VALUES (?, ?, ?)',
-    args: [courseId, lid, body.due_at || null]
-  })), 'write')
-  const after = await db.execute({ sql: 'SELECT COUNT(*) AS n FROM assignments WHERE course_id = ?', args: [courseId] })
+    args: [cid, lid, body.due_at || null]
+  }))), 'write')
+  const after = await db.execute({ sql: countSql, args: courseIds })
   const added = Number(after.rows[0].n) - Number(before.rows[0].n)
-  return c.json({ ok: true, added, skipped: ids.size - added }, 201)
+  return c.json({ ok: true, added, skipped: ids.size * courseIds.length - added }, 201)
 })
 
 app.delete('/api/assignments', requireManager, async (c) => {

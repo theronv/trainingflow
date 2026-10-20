@@ -341,10 +341,10 @@ const Demo = {
     if (route === '/api/assignments/bulk' && method === 'POST') {
       const ids = new Set([...(body.learner_ids || []), ...(body.team_ids || []).flatMap(() => S.people.map(p => p.id))]);
       let added = 0;
-      ids.forEach(id => {
-        if (S.assignments.some(a => a.course_id === body.course_id && a.learner_id === id)) return;
-        S.assignments.push({ course_id: body.course_id, learner_id: id, due_at: body.due_at || null }); added++;
-      });
+      (body.course_ids || [body.course_id]).forEach(cid => ids.forEach(id => {
+        if (S.assignments.some(a => a.course_id === cid && a.learner_id === id)) return;
+        S.assignments.push({ course_id: cid, learner_id: id, due_at: body.due_at || null }); added++;
+      }));
       return { added };
     }
     if (route === '/api/invites' && method === 'POST') {

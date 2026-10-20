@@ -75,7 +75,7 @@ cd worker && npm test            # one-shot
 cd worker && npm run test:watch  # watch mode
 ```
 
-Coverage: `worker/test/` — `auth` (login + rate limiting), `rbac` (role gates + manager team scoping), `scoring` (answer-key stripping, server-side grading and score computation), `scrape` (URL import validation). `importer` (the frontend `js/importer.js` loaded with browser globals stubbed: reply parsing, question validation, answer shuffling, prompt building, reply merging, save validation). `learner` (the source-link visibility helper), `sections-ui` (`js/sections.js`: section move/collapse logic) and `sections` (incl. the order endpoint). The rest of `js/` has no tests yet.
+Coverage: `worker/test/` — `auth` (login + rate limiting), `rbac` (role gates + manager team scoping), `scoring` (answer-key stripping, server-side grading and score computation), `scrape` (URL import validation). `importer` (the frontend `js/importer.js` loaded with browser globals stubbed: reply parsing, question validation, answer shuffling, prompt building, reply merging, save validation). `learner` (the source-link visibility helper), `assign-bulk` (multi-course bulk assignment) and `assign-ui` (`js/builder.js` course selection + assign counts), `sections-ui` (`js/sections.js`: section move/collapse logic) and `sections` (incl. the order endpoint). The rest of `js/` has no tests yet.
 
 ## Environment Variables
 
@@ -191,6 +191,7 @@ All routes in `worker/index.js`. Auth middleware: `requireAdmin`, `requireManage
 | `GET` | `/api/assignments` | Admin/Manager | List assignments |
 | `GET` | `/api/assignments/me` | Learner | Own assignments with status |
 | `POST` | `/api/assignments` | Admin/Manager | Assign a course (team-scoped for managers) |
+| `POST` | `/api/assignments/bulk` | Admin/Manager | Assign `course_ids` (or one `course_id`, max 100) to `team_ids` and/or `learner_ids`, optional `due_at`; skips existing pairs, returns `{added, skipped}`. Managers: own team's learners only |
 | `DELETE` | `/api/assignments` | Admin/Manager | Remove an assignment (team-scoped for managers) |
 | `GET` | `/api/completions/me` | Learner | Own completion records |
 | `POST` | `/api/quiz/answer` | Learner | Grade one answer server-side; returns `{correct, correct_index, explanation}` |
@@ -298,6 +299,10 @@ Renamed from TrainFlow and re-skinned to match the Pregame site (pregame.vickery
 - Logo: `assets/academy-icon-{192,512}.png` (graduation cap over the three-bar Pregame motif; source `assets/academy-icon.svg`) is the default logo/favicon on every surface; an admin-uploaded logo overrides it.
 - Legacy defaults (`TrainFlow`, old blues/purples, `Inter`) saved in the `brand` row are migrated to the new defaults at runtime by `normBrand()`; customised values are kept.
 - Deliberately **not** renamed (internal identifiers): the Worker/DB names (`trainflow-worker`, `trainflow-theronv`), repo/Pages path (`/trainingflow/`), and `trainflow_*` localStorage/sessionStorage keys — changing them would break the deployed URL and sign users out.
+
+## Bulk assignment — 2026-10-20
+
+Admin and Manager course lists have a checkbox on every card plus a "Select all" button; selecting courses shows a sticky bar with "Assign selected…", which opens the usual Assign modal for all of them (teams, individuals, one shared due date). Selection state is `Builder._sel` (`js/builder.js`); the modal button reads "Assign N courses to M learners".
 
 ## Content Importer — 2026-10-20
 

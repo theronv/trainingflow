@@ -271,7 +271,15 @@ if (typeof marked !== 'undefined') {
             <div class="page-eyebrow">Content</div>
             <div class="page-title">Courses</div>
           </div>
-          <button class="btn btn-primary" onclick="App.openBuilder()">+ New Course</button>
+          <div style="display:flex;gap:var(--space-2);">
+            <button class="btn btn-outline" id="m-sel-all" onclick="Builder.selectAllCourses()">Select all</button>
+            <button class="btn btn-primary" onclick="App.openBuilder()">+ New Course</button>
+          </div>
+        </div>
+        <div class="sel-bar hidden" id="m-sel-bar" role="region" aria-label="Selected courses">
+          <span class="sel-bar-count" id="m-sel-count" aria-live="polite"></span>
+          <button class="btn btn-ghost btn-sm" onclick="Builder.clearCourseSel()">Clear</button>
+          <button class="btn btn-primary btn-sm" onclick="Builder.openAssignSelected()">Assign selected…</button>
         </div>
         <div class="courses-grid" id="m-courses-grid"></div>
       </div>
@@ -802,12 +810,18 @@ if (typeof marked !== 'undefined') {
             <div class="page-title">Courses</div>
           </div>
           <div style="display:flex;gap:var(--space-2);">
+            <button class="btn btn-outline" id="a-sel-all" onclick="Builder.selectAllCourses()">Select all</button>
             <button class="btn btn-outline" id="a-fold-all" onclick="Admin.toggleAllSections()" disabled>Collapse all</button>
             <button class="btn btn-outline" onclick="App.openCreateSection()">+ New Section</button>
             <button class="btn btn-primary" onclick="App.openBuilder()">+ New Course</button>
           </div>
         </div>
         <div id="a-sections-bar" style="display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2);margin-bottom:var(--space-8);min-height:28px;"></div>
+<div class="sel-bar hidden" id="a-sel-bar" role="region" aria-label="Selected courses">
+          <span class="sel-bar-count" id="a-sel-count" aria-live="polite"></span>
+          <button class="btn btn-ghost btn-sm" onclick="Builder.clearCourseSel()">Clear</button>
+          <button class="btn btn-primary btn-sm" onclick="Builder.openAssignSelected()">Assign selected…</button>
+        </div>
         <div class="courses-grid" id="a-courses-grid"></div>
       </div>
       <div class="page hidden" id="ap-learners">

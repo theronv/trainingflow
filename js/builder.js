@@ -130,19 +130,71 @@ const Builder = {
     finally { if (btn) { btn.disabled = false; if (origText) btn.textContent = origText; } }
   },
 
-  // ─── ASSIGN COURSE (ADMIN + MANAGER) ───
-  // Pick whole teams and/or individual learners, optional due date, one batch submit.
+  // ─── ASSIGN COURSES (ADMIN + MANAGER) ───
+  // Pick one or more courses (card checkboxes), then whole teams and/or individual learners, an
+  // optional due date, one batch submit.
+  _sel: new Set(),
   _assign: null,
   _assignApi: () => (curManager ? managerApi : api),
 
-  async openAssign(cid, title) {
-    App._assignCourseId = cid;
-    $$('assign-subtitle').textContent = title;
+  _selPrefix: () => (curManager ? 'm' : 'a'),
+  _selAllIds: () => (curManager ? (Manager._courseIds || []) : (Admin._cv?.courses || []).map(c => c.id)),
+
+  toggleCourseSel(id, on) {
+    on ? Builder._sel.add(id) : Builder._sel.delete(id);
+    Builder._selBarUpdate();
+  },
+  selectAllCourses() {
+    const all = Builder._selAllIds();
+    const everySelected = all.length > 0 && all.every(id => Builder._sel.has(id));
+    Builder._sel = new Set(everySelected ? [] : all);
+    Builder._selSyncBoxes();
+    Builder._selBarUpdate();
+  },
+  clearCourseSel() { Builder._sel = new Set(); Builder._selSyncBoxes(); Builder._selBarUpdate(); },
+  _selSyncBoxes() {
+    document.querySelectorAll('#a-courses-grid .cc-check input, #m-courses-grid .cc-check input')
+      .forEach(el => { el.checked = Builder._sel.has(el.dataset.id); });
+  },
+  // Called after the course list is fetched: forget selections for courses that no longer exist.
+  selPrune(ids) {
+    const live = new Set(ids);
+    Builder._sel = new Set([...Builder._sel].filter(id => live.has(id)));
+    Builder._selBarUpdate();
+  },
+  _selBarUpdate() {
+    const p = Builder._selPrefix(), n = Builder._sel.size;
+    const bar = $$(`${p}-sel-bar`); if (!bar) return;
+    bar.classList.toggle('hidden', n === 0);
+    $$(`${p}-sel-count`).textContent = `${n} course${n === 1 ? '' : 's'} selected`;
+    const all = Builder._selAllIds();
+    const btn = $$(`${p}-sel-all`);
+    if (btn) btn.textContent = all.length && all.every(id => Builder._sel.has(id)) ? 'Deselect all' : 'Select all';
+  },
+  courseCheckbox(id, title) {
+    return `<label class="cc-check"><input type="checkbox" data-id="${id}" aria-label="Select ${esc(title)}" ${Builder._sel.has(id) ? 'checked' : ''} onchange="Builder.toggleCourseSel('${id}', this.checked)"></label>`;
+  },
+  openAssignSelected() {
+    const ids = [...Builder._sel];
+    if (!ids.length) return;
+    Builder.openAssign(ids);
+  },
+
+  // Learners (or teams) that still lack at least one of the chosen courses.
+  _assignPending(st, learnerId) {
+    return st.courseIds.filter(cid => !st.assigned[cid].has(learnerId)).length;
+  },
+
+  async openAssign(courseIds, title) {
+    const ids = [].concat(courseIds);
+    App._assignCourseIds = ids;
+    $$('assign-subtitle').textContent = ids.length === 1 ? title : `${ids.length} courses`;
     $$('assign-search').value = '';
     $$('assign-due').value = '';
     $$('assign-overlay').classList.remove('hidden');
     $$('assign-list').innerHTML = 'Loading...';
-    Builder._assign = { teams: new Set(), learners: new Set(), assigned: new Set(), people: [], managers: [], teams_: [] };
+    Builder._assign = { courseIds: ids, teams: new Set(), learners: new Set(), assigned: {}, people: [], managers: [], teams_: [] };
+    ids.forEach(cid => { Builder._assign.assigned[cid] = new Set(); });
     Builder._assignUpdateBtn();
     try {
       const call = Builder._assignApi();
@@ -157,13 +209,14 @@ const Builder = {
       st.people = (people || []).filter(l => !l.role || l.role === 'learner');
       st.managers = (managers || []).filter(l => l.role === 'manager');
       st.teams_ = (teams || []).filter(t => st.people.some(l => l.team_id === t.id));
-      assigns.filter(a => a.course_id === cid).forEach(a => st.assigned.add(a.learner_id));
+      assigns.filter(a => st.assigned[a.course_id]).forEach(a => st.assigned[a.course_id].add(a.learner_id));
       Builder._assignRender();
     } catch(e) { $$('assign-list').innerHTML = `<p style="color:var(--fail);">${esc(e.message)}</p>`; }
   },
 
   _assignRender() {
     const st = Builder._assign;
+    const pending = id => Builder._assignPending(st, id);
     const row = (id, label, meta, checked, disabled, data) => `
       <label data-name="${esc(data)}" style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border);cursor:${disabled ? 'default' : 'pointer'};">
         <input type="checkbox" ${checked ? 'checked' : ''} ${disabled ? 'disabled' : ''} onchange="${id}">
@@ -175,7 +228,7 @@ const Builder = {
       html += '<div class="modal-sub" style="margin:4px 0;font-weight:600;">Teams</div>';
       html += st.teams_.map(t => {
         const members = st.people.filter(l => l.team_id === t.id);
-        const open = members.filter(l => !st.assigned.has(l.id)).length;
+        const open = members.filter(l => pending(l.id) > 0).length;
         const all = open === 0;
         return row(`Builder._assignToggleTeam(${t.id}, this.checked)`, esc(t.name),
           chip(all ? 'All assigned' : `${open} of ${members.length} to add`),
@@ -184,7 +237,7 @@ const Builder = {
     }
     html += '<div class="modal-sub" style="margin:12px 0 4px;font-weight:600;">Learners</div>';
     html += st.people.map(l => {
-      const done = st.assigned.has(l.id);
+      const done = pending(l.id) === 0;
       const team = st.teams_.find(t => t.id === l.team_id);
       return row(`Builder._assignToggleLearner('${l.id}', this.checked)`, esc(l.name),
         done ? `<span class="chip chip-green">Assigned</span>`
@@ -194,7 +247,7 @@ const Builder = {
     if (st.managers.length) {
       html += '<div class="modal-sub" style="margin:12px 0 4px;font-weight:600;">Managers</div>';
       html += st.managers.map(l => {
-        const done = st.assigned.has(l.id);
+        const done = pending(l.id) === 0;
         const team = st.teams_.find(t => t.id === l.team_id);
         return row(`Builder._assignToggleLearner('${l.id}', this.checked)`, esc(l.name),
           done ? `<span class="chip chip-green">Assigned</span>` : chip(team ? esc(team.name) : 'Manager'),
@@ -215,37 +268,43 @@ const Builder = {
     on ? st.learners.add(id) : st.learners.delete(id);
     Builder._assignUpdateBtn();
   },
+  // People who would receive at least one new assignment.
   _assignCount() {
     const st = Builder._assign;
     const ids = new Set(st.learners);
     st.people.filter(l => st.teams.has(l.team_id)).forEach(l => ids.add(l.id));
-    st.assigned.forEach(id => ids.delete(id));
-    return ids.size;
+    return [...ids].filter(id => Builder._assignPending(st, id) > 0).length;
   },
   _assignUpdateBtn() {
     const btn = $$('assign-submit-btn');
-    const n = Builder._assign ? Builder._assignCount() : 0;
+    const st = Builder._assign;
+    const n = st ? Builder._assignCount() : 0;
     btn.disabled = n === 0;
-    btn.textContent = n ? `Assign to ${n} learner${n === 1 ? '' : 's'}` : 'Assign';
+    const what = st && st.courseIds.length > 1 ? `${st.courseIds.length} courses` : '';
+    btn.textContent = n ? `Assign ${what ? what + ' ' : ''}to ${n} learner${n === 1 ? '' : 's'}` : 'Assign';
   },
 
   async submitAssign() {
     const st = Builder._assign;
-    if (!App._assignCourseId || !st) return Toast.err('No course selected.');
+    if (!st || !st.courseIds.length) return Toast.err('No course selected.');
     const btn = $$('assign-submit-btn');
     btn.disabled = true; btn.textContent = 'Assigning…';
     try {
       const res = await Builder._assignApi()('/api/assignments/bulk', {
         method: 'POST',
         body: JSON.stringify({
-          course_id: App._assignCourseId,
+          course_ids: st.courseIds,
           team_ids: [...st.teams],
           learner_ids: [...st.learners],
           due_at: $$('assign-due').value || null
         })
       });
-      Toast.ok(`Assigned to ${res.added} learner${res.added === 1 ? '' : 's'}.`);
+      const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+      Toast.ok(st.courseIds.length > 1
+        ? `Created ${plural(res.added, 'assignment')} across ${plural(st.courseIds.length, 'course')}.`
+        : `Assigned to ${plural(res.added, 'learner')}.`);
       $$('assign-overlay').classList.add('hidden');
+      Builder._sel = new Set();
       if (curManager) Manager.init(); else Admin.renderCourses?.();
     } catch(e) { Toast.err(e.message); Builder._assignUpdateBtn(); }
   }

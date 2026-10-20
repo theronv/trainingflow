@@ -866,6 +866,7 @@ const Admin = {
       const enrolled = {};
       (assignments || []).forEach(a => { enrolled[a.course_id] = (enrolled[a.course_id] || 0) + 1; });
       Admin._cv = { courses, enrolled };
+      Builder.selPrune(courses.map(c => c.id));
 
       if (!courses.length) {
         grid.innerHTML = '<div class="empty" style="grid-column:1/-1;"><div class="empty-icon">' + ICON.book + '</div><div class="empty-title">No courses yet</div><div class="empty-hint">Create your first course with the AI Importer or build one from scratch.</div><div class="empty-action"><button class="btn btn-primary btn-sm" onclick="App.aNav(\'importer\')">+ New Course</button></div></div>';
@@ -964,6 +965,7 @@ const Admin = {
       : `<span class="chip">Unassigned</span>`;
     return `<div class="card cc" ${attrs}>
       <div class="cc-top">
+        ${Builder.courseCheckbox(c.id, c.title)}
         <div class="cc-icon" aria-hidden="true">${courseIcon(c.icon)}</div>
         <div class="cc-body">
           <div class="cc-title">${esc(c.title)}</div>
