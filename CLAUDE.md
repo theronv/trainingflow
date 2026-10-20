@@ -2,6 +2,8 @@
 
 Team workflow (branches, PRs, checks, deploy rules): @CONTRIBUTING.md
 
+Improvement process: `~/.claude/APP_POLISH_MASTER.md`; state in `.polish/`.
+
 ## What This Is
 
 Pregame Academy is a full-stack LMS for professional teams. AI-assisted course creation, role-based access (Admin / Manager / Learner), targeted assignments, progress tracking, and verifiable PDF certificates.
@@ -74,6 +76,8 @@ libSQL DB (no mocks — `getDb()` honours a test-only `env.DB_CLIENT` hook):
 cd worker && npm test            # one-shot
 cd worker && npm run test:watch  # watch mode
 ```
+
+Lint: `npm install && npm run lint` at the repo root (ESLint + `@html-eslint` for `index.html` + `scripts/check-tokens.mjs`, a ratchet on raw colour literals — lower `scripts/token-baseline.json` as they migrate to tokens). `worker/test/contrast.test.mjs` checks WCAG AA contrast of the CSS text/background tokens in both themes. A project Stop hook (`scripts/stop-check.sh`, wired in `.claude/settings.json`) runs lint + worker tests when code files changed. CI (`.github/workflows/ci.yml`) runs lint and tests on every PR.
 
 Coverage: `worker/test/` — `auth` (login + rate limiting), `rbac` (role gates + manager team scoping), `scoring` (answer-key stripping, server-side grading and score computation), `scrape` (URL import validation). `importer` (the frontend `js/importer.js` loaded with browser globals stubbed: reply parsing, question validation, answer shuffling, prompt building, reply merging, save validation). `learner` (the source-link visibility helper), `assign-bulk` (multi-course bulk assignment) and `assign-ui` (`js/builder.js` course selection + assign counts), `sections-ui` (`js/sections.js`: section move/collapse logic) and `sections` (incl. the order endpoint). The rest of `js/` has no tests yet.
 
