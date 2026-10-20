@@ -1,63 +1,504 @@
 {
  "title": "Synergy Hockey App",
  "icon": "🏒",
- "description": "",
+ "description": "Learners gain the skills to install and sign in to the Synergy Hockey app, then analyze games, seasons and players with filters, rink displays, reports and video clips. They also learn to save and share their work.",
  "modules": [
   {
    "title": "Getting Started",
-   "summary": "",
-   "learning_objectives": [],
+   "summary": "Learn how to install the Synergy Hockey app on PC or Mac, check computer requirements, and log in using the browser-based sign-in.",
+   "learning_objectives": [
+    "Learners will be able to install the Synergy Hockey app on a PC or a Mac.",
+    "Learners will be able to identify the minimum and recommended computer requirements.",
+    "Learners will be able to log in using the Remember Me and browser sign-in steps.",
+    "Learners will be able to identify which view opens first after logging in."
+   ],
    "reference_url": "https://support.synergysports.com/support/solutions/articles/77000565974",
    "content": "## How to Install\n\nTo download the Synergy Hockey Application, click [here,](https://www.synergysportstech.com/apps/hockey/client/production) or copy and paste the address into the URL bar: <https://www.synergysportstech.com/apps/hockey/client/production>\n\n### For PC users:\n\nThe install screen will be as follows:\n\n![Screenshot: How to Install](https://pregame-academy.vickerydigital.com/assets/synergy/77000565974-01.jpg)\n\nClick **Install.**\n\n![Screenshot: How to Install](https://pregame-academy.vickerydigital.com/assets/synergy/77000565974-02.jpg)\n\nAfter installing the program will open and prompt you to log in.\n\n![Screenshot: How to Install](https://pregame-academy.vickerydigital.com/assets/synergy/77000565974-03.jpg)\n\n### For Mac users:\n\nTo download the Synergy Hockey Application, click [here,](https://www.synergysportstech.com/apps/hockey/client/production) or copy and paste the address into the URL bar: <https://www.synergysportstech.com/apps/hockey/client/production>\n\n![Screenshot: How to Install](https://pregame-academy.vickerydigital.com/assets/synergy/77000565974-04.jpg)\n\n1. Select **Download**\n\n2. Once downloaded, open the DMG file and drag the Synergy Hockey App icon into the Applications folder icon. This step is necessary to receive notifications for future updates\n\n![Screenshot: How to Install](https://pregame-academy.vickerydigital.com/assets/synergy/77000565974-05.jpg)\n\n3. From the Applications folder, open the Synergy Hockey App. If prompted, click **Open** for any message asking you to confirm that you want to open Synergy Hockey App.\n\n4. After installing, open the app from your application folder.  The program will prompt you to log in.\n\n![Screenshot: How to Install](https://pregame-academy.vickerydigital.com/assets/synergy/77000565974-06.jpg)\n\n## Minimum and Recommended Requirements\n\n### Minimum Requirements\n\nSynergy requires the following *minimum* specifications to run the Synergy Hockey application.\n\n#### Mac\n\n- macOS 10.15 Catalina or higher\n- Intel quad-core i3 processor or greater\n  - At least 3GHz\n  - supported processor architecture: x86, x64 (ARM is not supported)\n- 8 GB RAM or greater\n- 512 GB or greater hard disk storage\n- Discrete graphics card\n\n#### Windows\n\n- Windows 10 (64-bit)\n- Intel dual-core i3 processor or greater\n  - At least 3GHz\n  - supported processor architecture: x86, x64 (ARM is not supported)\n- 8 GB RAM or greater\n- 512 GB or greater hard disk storage\n- Discrete graphics card\n\n> **Note**: Multi-core i3 devices that meet the requirements above will support basic functionality.\n\nIf you are upgrading or purchasing a new computer, please see the recommended requirements below.\n\n###\n\n### Recommended\n\nSynergy recommends the following specifications for running most Synergy applications, including the Basketball app. If you are purchasing a new Mac computer, a quad-core processor and a discrete graphics card are essential; for Windows, a multi-core processor is essential. Increased RAM, at or greater than the recommended configuration below, and sufficient hard disk space or video backup storage, are the next most important options to consider for capture and editing workflows.\n\n#### Mac\n\n- macOS 11 Big Sur or higher\n- Intel quad-core i7 processor or greater\n  - At least 2.3 GHz before Turbo Boost\n- 16 GB RAM or greater\n- 512 GB or greater hard disk storage\n- Discrete graphics card\n\n#### Windows\n\n- Windows 11\n- Intel quad-core i7 CPU or greater\n  - At least 2.5 GHz before Turbo Boost\n  - Supported processor architecture: x86, x64 (ARM is not supported)\n- 16 GB RAM or greater\n- 512 GB or greater hard disk storage\n- Discrete graphics card\n\n> Note: AMD processors, equivalent to the quad-core Intel i7, should also provide good performance.\n\n## How to Log In\n\nThe Synergy Hockey app login page provides several security improvements for the storage of user credentials. When logging in to the Synergy Hockey app for the first time, follow the instructions below:\n\n- Click to check the **Remember Me** box in the app to store credentials for future use.\n- Select the **Click Here to** **log in** button in the app to launch the web browser.\n- Enter your username & password in the web browser.\n- Select the **Login** button in the web browser to automatically return to the app.\n- For future use, the app will automatically login if Remember Me is selected.\n\nOnce logged in, you will be directed to the Single Game view by default. Here you can begin your session or use the options in the upper right to select a different view.\n\n> Note: Subsequent logins will open to your last previous view\n\n![Screenshot: How to Log In](https://pregame-academy.vickerydigital.com/assets/synergy/77000565976-01.jpg)",
-   "questions": []
+   "questions": [
+    {
+     "question": "A Mac user has downloaded the DMG file and wants to receive notifications about future updates. What should they do?",
+     "options": [
+      "Run the app directly from the DMG file",
+      "Leave the DMG on the desktop and open it each time",
+      "Drag the Synergy Hockey App icon into the Applications folder icon",
+      "Install the app on a PC instead"
+     ],
+     "correct_index": 2,
+     "explanation": "Dragging the icon into the Applications folder is necessary to receive notifications for future updates."
+    },
+    {
+     "question": "A user is buying a new Windows computer for the Synergy Hockey app. Which processor architecture is NOT supported?",
+     "options": [
+      "ARM",
+      "x86",
+      "x64",
+      "Both x86 and x64"
+     ],
+     "correct_index": 0,
+     "explanation": "The requirements list x86 and x64 as supported and state that ARM is not supported."
+    },
+    {
+     "question": "A user is logging in for the first time and wants the app to sign them in automatically next time. What should they do first?",
+     "options": [
+      "Enter the password directly in the app",
+      "Install a second copy of the app",
+      "Select Install on the login screen",
+      "Check the Remember Me box in the app"
+     ],
+     "correct_index": 3,
+     "explanation": "Checking Remember Me stores credentials so the app logs in automatically in future."
+    },
+    {
+     "question": "After clicking the log in button in the app, where does the user enter their username and password?",
+     "options": [
+      "In the app's settings menu",
+      "In a web browser, then select Login to return to the app",
+      "In the Applications folder",
+      "In the Synergy Editor"
+     ],
+     "correct_index": 1,
+     "explanation": "The app launches a web browser for credentials, and Login there returns the user to the app."
+    }
+   ]
   },
   {
    "title": "Views, Controls and Video",
-   "summary": "",
-   "learning_objectives": [],
+   "summary": "Understand the main views, rink display controls, video playback options and report tabs in the Synergy Hockey app.",
+   "learning_objectives": [
+    "Learners will be able to match each view to the type of data it provides.",
+    "Learners will be able to use the rink display controls to focus on or omit an area.",
+    "Learners will be able to choose between Playback and Editor for clips.",
+    "Learners will be able to save, rename and export work from the report tab menu."
+   ],
    "reference_url": "https://support.synergysports.com/support/solutions/articles/77000565977",
    "content": "## Views\n\nChoose between Single Game View, Multi game View, Reports View, Player Search, or Saved Reports View when opening the app. Icons are located in the top right.\n\n![Screenshot: Views](https://pregame-academy.vickerydigital.com/assets/synergy/77000565977-01.jpg)\n\nSingle Game View**:**Used to view data compiled from a single game and across a wide variety of unique filters.\n\n Multi game View: Used to view data compiled from multiple games and across a wide variety of unique filters.\n\n Reports View: Used to access Multi game Box Score data.\n\n Player View: Used for scouting purposes, search for players using physical attributes, and/or player stats across a wide variety of unique filters.\n\nSaved Reports View**:**Used to access previously created and saved reports.\n\n## Display Controls\n\nWhen viewing shot charts, or other events, you may wish to focus on a specific area for a more detailed look. Using the display controls located below the Rink display, select an area of interest and view only the data from that selection, or omit an area from a selection. Additionally, you can zoom into the Rink display for a more detailed visual representation.\n\nDisplay controls include:\n\n**Select a Region**: Use to highlight an area of the rink which you would like to focus on. Click to select the button, then click and drag on the Rink display to draw a box around the area you would like to focus on.\n\n![Screenshot: Display Controls](https://pregame-academy.vickerydigital.com/assets/synergy/77000565978-01.jpg)\n\n**Deselect a Region**: Use to highlight an area of the rink which you would like to omit from your data. Click to select the button, then click and drag on the Rink display to draw a box around the area you would like to omit.\n\n![Screenshot: Display Controls](https://pregame-academy.vickerydigital.com/assets/synergy/77000565978-02.jpg)\n\n**Reset**: Used to reset any previous selections.\n\n**Rink Zoom**: Use to choose from three levels of zoom for the Rink display: 1x, 2x, 3x.\n\n![Screenshot: Display Controls](https://pregame-academy.vickerydigital.com/assets/synergy/77000565978-03.jpg)\n\n**Enlarge**: Used to increase the size of all points on the Rink display, or points within a selected area.\n\n**Play**: Used to access and play clips associated with a chart, individually selected items, or from a selected area. Will display the number of clips in an active selection below the icon.\n\n## Playing Video\n\nThe **Playback/Editor**control is used to determine where the app will play or send the clips you select to view.\n\n- **Playback**: Used to view clips within the Synergy Hockey App\n- **Editor**: Used to send clips to the Synergy Editor application where they are available to view or use in Custom Edits\n\n![Screenshot: Playing Video](https://pregame-academy.vickerydigital.com/assets/synergy/77000565979-01.jpg)\n\n## Report Tabs\n\nCreate, work with, and save multiple charts or reports in the Hockey app using the Tab menu. Access the menu by clicking the carrot icon ( **^** )  located to the right in an active tab. Choose from the following options:\n\n- Save\n- Save As\n- Export to PDF\n- Add New Tab\n- Rename\n- Close\n\nThere is no limit to the number of tabs you can work within the Synergy Hockey app.\n\nAdditionally, use the PDF icon above the Report or Rink display to save your report as a PDF quickly.  This can be used in either Single or Multi Game views.\n\n![Screenshot: Report Tabs](https://pregame-academy.vickerydigital.com/assets/synergy/77000565980-01.jpg)",
-   "questions": []
+   "questions": [
+    {
+     "question": "A scout wants to find players by physical attributes and stats. Which view should they open?",
+     "options": [
+      "Single Game View",
+      "Reports View",
+      "Player View (Player Search)",
+      "Saved Reports View"
+     ],
+     "correct_index": 2,
+     "explanation": "Player View is used for scouting, searching players by physical attributes and/or stats."
+    },
+    {
+     "question": "A coach wants to look at box score data across several games. Which view provides this?",
+     "options": [
+      "Reports View",
+      "Single Game View",
+      "Saved Reports View",
+      "Player View"
+     ],
+     "correct_index": 0,
+     "explanation": "Reports View is used to access Multi game Box Score data."
+    },
+    {
+     "question": "A user wants to see only the shots in one zone of the rink, leaving out everything else. Which control should they use?",
+     "options": [
+      "Rink Zoom set to 1x",
+      "Select a Region, then click and drag a box on the Rink display",
+      "Reset",
+      "Enlarge"
+     ],
+     "correct_index": 1,
+     "explanation": "Select a Region limits the data to the box drawn on the Rink display."
+    },
+    {
+     "question": "A user wants clips to open in the Synergy Editor for Custom Edits instead of playing in the app. What should they set?",
+     "options": [
+      "The Playback/Editor control to Playback",
+      "Rink Zoom to 3x",
+      "The Play control to Reset",
+      "The Playback/Editor control to Editor"
+     ],
+     "correct_index": 3,
+     "explanation": "Editor sends clips to the Synergy Editor, where they can be viewed or used in Custom Edits."
+    },
+    {
+     "question": "A user wants to keep a finished chart in a new copy under a different name. Which report tab menu option fits best?",
+     "options": [
+      "Close",
+      "Add New Tab",
+      "Save As",
+      "Reset"
+     ],
+     "correct_index": 2,
+     "explanation": "Save As is one of the tab menu options for saving a report; Save, Rename and others are also available there."
+    }
+   ]
   },
   {
    "title": "Single Game View: Filters and Tables",
-   "summary": "",
-   "learning_objectives": [],
+   "summary": "Learn how to select a game, apply data filters, and read the Box Score and Event views in Single Game View.",
+   "learning_objectives": [
+    "Learners will be able to select a game using the League, Season, Team and Opponent drop-downs.",
+    "Learners will be able to apply, reset and select all filters.",
+    "Learners will be able to use a range filter such as Time.",
+    "Learners will be able to identify the default view and how to switch between views."
+   ],
    "reference_url": "https://support.synergysports.com/support/solutions/articles/77000565981",
    "content": "## Single Game View: Overview\n\nSingle Game View allows you to view data compiled from individual games and across a wide variety of unique filters.\n\nThe Single Game view provides an in-depth look at individual games and allows you to track shots, view stats, and compare lineups from a specific game. Select the **Single Game View** Icon in the upper right to begin working with this view.\n\n![Screenshot: Single Game View: Overview](https://pregame-academy.vickerydigital.com/assets/synergy/77000565981-01.jpg)\n\n## Single Game View: Data Filters\n\nTo customize a Single Game view, use the filters located on the left-hand side of the application. Filters are dynamic and update the chart as they are selected. Some filters contain additional sub-filters to refine your search even further. Charts will include only that information that fits the filtered criteria.\n\n- The filters section can be collapsed or expanded by selecting the vertical blue filters bar.\n- Select the **Apply**button to create or update the chart.\n- Select one or multiple values for each filter using the slider to view additional options.\n- Use the **Select** **All** feature to activate all of the filters in a section or in the entire filter.\n- Use the **Reset** option to clear the selections for an active filter.\n\n#### Available Filters\n\nAdditional filters will be presented based on the Team selection, as well as varied by which view is active. For Single Game view, the filters are as follows:\n\n- Game\n- Player\n- Action\n  - Giveaway\n  - Takeaway\n  - Penalty\n  - Hit\n  - Attempt Blocked\n- Strength\n  - Even\n  - PP (Power Play)\n  - PK (Penalty Kill)\n- Score\n- Time (Range Filter)\n- Shot Result\n  - Goal\n  - Shot on Goal\n  - Blocked Shot\n  - Missed Shot\n- Shot Type\n  - Wrist\n  - Backhand\n  - Snap\n  - Deflected\n  - Slap\n  - Tip\n  - Wrap Around\n- Assisted By\n- Linemates: On / Off Ice\n- Opponents: On  / Off Ice\n\n#### Range Filters\n\nThe following filters are Range Filters and are utilized differently\n\n- Time\n\nTo apply these filters, use the slider to manually adjust the range within which you want to display.\n\n####\n\n## Single Game View: Game Selection Filter\n\nThe Game filter has drop-down menus to allow for the selection of a League, Season, Team, and Opponent. Choose the game you would like to focus on from the list below the filter. Once you've made your selections, click **Apply** to begin your report or cancel the process by selecting **Cancel**at the bottom of the panel. If you would like to reset your selections, use the **Reset**link located above the drop-down menus.\n\n![Screenshot: Single Game View: Game Selection Filter](https://pregame-academy.vickerydigital.com/assets/synergy/77000565983-01.jpg)\n\nAfter selecting **Apply**to load the chart, the remaining filters will become available. The chart will dynamically update as filters are applied. Single Game defaults to the Box score view. Using the view selector in the upper left, choose between Event View (see the “Single Game View: Filters and Tables” lesson), Boxscore (see the “Single Game View: Filters and Tables” lesson), Faceoff (see the “Single Game View: Charts and Rink Displays” lesson), or Linemates (see the “Single Game View: Charts and Rink Displays” lesson).\n\n## Single Game View: Box Score View\n\nThe default view for Single Game is the Box Score.  Here, you can view a variety of stats for a single game, or filter by period for a more detailed look. Export any data set to PDF by clicking the **PDF**icon above the chart and follow the prompts to save.\n\n![Screenshot: Single Game View: Box Score View](https://pregame-academy.vickerydigital.com/assets/synergy/77000565984-01.jpg)\n\n## Single Game View: Event View\n\nEvent View allows you to visualize the filtered data both on the rink and as an organized chart. Use the dropdown menu in the upper left to switch between Box Score, Event View, Faceoff, and Linemates views.\n\n![Screenshot: Single Game View: Event View](https://pregame-academy.vickerydigital.com/assets/synergy/77000565985-01.jpg)",
-   "questions": []
+   "questions": [
+    {
+     "question": "A user has chosen a League, Season, Team and Opponent and picked a game. What do they click to begin the report?",
+     "options": [
+      "Reset",
+      "Apply",
+      "Select All",
+      "Cancel"
+     ],
+     "correct_index": 1,
+     "explanation": "Clicking Apply creates the report; Cancel would abandon the process."
+    },
+    {
+     "question": "Which view does Single Game open to by default?",
+     "options": [
+      "Box Score",
+      "Event View",
+      "Faceoff",
+      "Linemates"
+     ],
+     "correct_index": 0,
+     "explanation": "The default view for Single Game is the Box Score."
+    },
+    {
+     "question": "A user wants to show only events from part of the game rather than picking individual values. Which filter type applies?",
+     "options": [
+      "The Strength filter set to Even",
+      "The Shot Type filter",
+      "The Time range filter, adjusted with the slider",
+      "The Select All feature"
+     ],
+     "correct_index": 2,
+     "explanation": "Time is a Range Filter, set by adjusting the slider to the range to display."
+    },
+    {
+     "question": "A user has chosen several filter values and wants to clear the selections for one active filter. What should they use?",
+     "options": [
+      "The Apply button",
+      "The vertical blue filters bar",
+      "The PDF icon",
+      "The Reset option for that filter"
+     ],
+     "correct_index": 3,
+     "explanation": "The Reset option clears the selections for an active filter."
+    }
+   ]
   },
   {
    "title": "Single Game View: Charts and Rink Displays",
-   "summary": "",
-   "learning_objectives": [],
+   "summary": "Explore the Faceoff chart, Linemates display, Rink display controls and the Rink + Data view in Single Game View.",
+   "learning_objectives": [
+    "Learners will be able to read Offensive, Defensive and Neutral Zone faceoff results in the Faceoff chart.",
+    "Learners will be able to examine lineups and Time on Ice in Linemates.",
+    "Learners will be able to play video from the Rink + Data display.",
+    "Learners will be able to use the Event Type and Shot Type menus as a legend."
+   ],
    "reference_url": "https://support.synergysports.com/support/solutions/articles/77000565986",
    "content": "## Single Game View: Faceoff Chart\n\nSimilar to the Events Chart, the Faceoff view displays an interactive rink along with a data chart containing the associated data.\n\n![Screenshot: Single Game View: Faceoff Chart](https://pregame-academy.vickerydigital.com/assets/synergy/77000565986-01.jpg)\n\nIn this view, you're able to visualize Offensive, Defensive, and Neutral Zone Faceoff wins, losses, and totals related to the applied filters (if any).  Click on the chart to the right of the rink to view the clips associated with your selection.\n\n## Single Game View: Linemates Display\n\nLinemates uses the Rink, or Rink + Data to display each lineup from a single game. As with Event View, you can use the Event Type or Shot Type menu to filter the types of data presented, along with any additional filters applied from the Filter menu.\n\n![Screenshot: Single Game View: Linemates Display](https://pregame-academy.vickerydigital.com/assets/synergy/77000565987-01.jpg)\n\nWhen using Rink + Data view,  the presentation will show the information displayed on the rink as well as in the chart.  You will see the Time on Ice for each lineup as well as any additional associated data.\n\nExpanding the lineups will allow you to drill down deeper to better evaluate the effectiveness of a line or assess the dynamics of specific players in a given lineup in more detail.\n\n![Screenshot: Single Game View: Linemates Display](https://pregame-academy.vickerydigital.com/assets/synergy/77000565987-02.jpg)\n\nWhile in Linemates, by switching the view below the Rink Display from All On Ice to Selected Players, you can select an individual line, or a group of lines by selecting the radio buttons next to any given line. The Rink Display will dynamically update to reflect the selected events for the selected lines only allowing you to drill down even further for specific data.\n\n![Screenshot: Single Game View: Linemates Display](https://pregame-academy.vickerydigital.com/assets/synergy/77000565987-03.jpg)\n\n## Single Game View: Rink Display\n\nThe Rink display provides an interactive visualization of the filtered data.  Using the Display Controls located below the Rink display, you can perform a wide variety of functions to focus on and zoom in to an area and its associated data.\n\n![Screenshot: Single Game View: Rink Display](https://pregame-academy.vickerydigital.com/assets/synergy/77000565988-01.jpg)\n\n**Display controls include:**\n\n**Select Region**: Use to highlight an area of the rink which you would like to focus on. To use, click to select the button, then click and drag on the Rink display to draw a box around the area you would like to focus on.\n\n**Deselect Region**: Use to highlight an area of the rink which you would like to omit from your data. To use, click to select the button, then click and drag on the Rink display to draw a box around the area you would like to omit.\n\n**Reset**: Used to reset any previous selections.\n\n**Rink Zoom**: Use to choose from three levels of zoom for the Rink display: 1x, 2x, 3x\n\n**Enlarge**: Used to increase the size of all points on the Rink display, or points within a selected area.\n\n**Play Selected Events**: Used to access and play clips associated with a chart, individually selected items, or from a selected area.\n\n## Single Game View: Rink + Data Display\n\nSelecting **Rink + Data** allows you to view the filtered data visually on the Rink as well as the associated Boxscore in a chart below the Rink. If a stat has an associated video, the number will appear in blue and will be selectable.\n\n![Screenshot: Single Game View: Rink + Data Display](https://pregame-academy.vickerydigital.com/assets/synergy/77000565989-01.jpg)\n\nSelecting individual points from the Rink display will be reflected in the chart below to show only those items selected. Clicking on a blue number in the chart, or selecting the **Play**icon below the Rink display will open the video player and allow you to watch the associated clips.\n\n![Screenshot: Single Game View: Rink + Data Display](https://pregame-academy.vickerydigital.com/assets/synergy/77000565989-02.jpg)\n\n## Single Game View: Event and Shot Type Menu\n\n**Event Type** and **Shot Type** menus act as an interactive legend for the Rink display.  Each displays the color, shape, and type of points represented on the Rink Display along with additional filter settings. Click any menu item to toggle it on and off.  This will show or hide the item from view.\n\n![Screenshot: Single Game View: Event and Shot Type Menu](https://pregame-academy.vickerydigital.com/assets/synergy/77000565990-01.jpg)\n![Screenshot: Single Game View: Event and Shot Type Menu](https://pregame-academy.vickerydigital.com/assets/synergy/77000565990-02.jpg)",
-   "questions": []
+   "questions": [
+    {
+     "question": "A user wants to watch clips for a faceoff result shown in the Faceoff view. What should they do?",
+     "options": [
+      "Switch to Linemates",
+      "Click on the chart to the right of the rink",
+      "Press Reset below the rink",
+      "Collapse the filters bar"
+     ],
+     "correct_index": 1,
+     "explanation": "Clicking the chart to the right of the rink shows the clips associated with the selection."
+    },
+    {
+     "question": "In Linemates, how can a user see events for only one line on the rink?",
+     "options": [
+      "Use Rink Zoom at 3x",
+      "Click Enlarge",
+      "Save the report as a PDF",
+      "Switch the view below the Rink Display from All On Ice to Selected Players and select that line's radio button"
+     ],
+     "correct_index": 3,
+     "explanation": "Selected Players with the line's radio button makes the Rink Display show events for only the selected lines."
+    },
+    {
+     "question": "Which view shows Time on Ice for each lineup alongside the rink?",
+     "options": [
+      "Rink + Data in Linemates",
+      "Faceoff chart",
+      "Event Type menu",
+      "Rink Zoom"
+     ],
+     "correct_index": 0,
+     "explanation": "In Rink + Data, the presentation shows the rink and chart data, including Time on Ice for each lineup."
+    },
+    {
+     "question": "In the Rink + Data display, how can a user tell that a stat has associated video?",
+     "options": [
+      "The number is shown in bold black",
+      "The stat has a PDF icon beside it",
+      "The number appears in blue and can be selected",
+      "The number is grayed out"
+     ],
+     "correct_index": 2,
+     "explanation": "Stats with video appear as blue, selectable numbers."
+    },
+    {
+     "question": "A user wants to temporarily hide one type of shot from the rink without changing the filters. What should they do?",
+     "options": [
+      "Press Reset below the rink",
+      "Click that item in the Shot Type menu to toggle it off",
+      "Close the report tab",
+      "Switch to Faceoff view"
+     ],
+     "correct_index": 1,
+     "explanation": "The Event Type and Shot Type menus act as an interactive legend; clicking an item toggles it on and off."
+    }
+   ]
   },
   {
    "title": "Multi Game View",
-   "summary": "",
-   "learning_objectives": [],
+   "summary": "Explore Multi game View to build season-long shot charts using filters, rink and faceoff displays, and video.",
+   "learning_objectives": [
+    "Learners will be able to generate a Multi game shot chart by selecting League, Season and Team.",
+    "Learners will be able to refine a chart using the available filters.",
+    "Learners will be able to use the display controls to focus on an area of the rink.",
+    "Learners will be able to switch between Event and Faceoff views.",
+    "Learners will be able to show or hide the legend."
+   ],
    "reference_url": "https://support.synergysports.com/support/solutions/articles/77000565991",
    "content": "## Multi game View: Overview\n\nThis application combines unique analytical tools with our detailed and highly curated video to provide you with an invaluable team, coaching, and scouting asset.\n\nMulti game View allows you to view data compiled from multiple games and across a wide variety of unique filters. The Multi game Shot Chart allows you to track shots and their respective locations on the ice over the course of an entire season. Use this tool to select specific parameters for what types of shots you want to see. Select the **Multi game View** icon in the upper right to begin working with this view.\n\n![Screenshot: Multi game View: Overview](https://pregame-academy.vickerydigital.com/assets/synergy/77000565991-01.jpg)\n\n## Multi game View: Data Filters\n\nTo customize a Multi game Shot Chart, use the filters located on the left-hand side of the application. Filters are dynamic and update the chart as they are selected.  Some filters contain additional sub-filters to refine your search even further. Charts will include only those shots which fit the filtered criteria and indicate the location of where each shot was taken on the ice.\n\n- The filters section can be collapsed or expanded by selecting the vertical grey filters bar.\n- Select the **Apply**button to create or update the chart.\n- Select one or multiple values for each filter using the slider to view additional options.\n- Use the **Select** **All** feature to activate all of the filters in a section or in the entire filter.\n- Use the **Reset** option to clear the selections for an active filter.\n\n**Available Filters**\n\nAdditional filters will be presented based on the **Team** selection, as well as varied by which view is active.  For Multi game View, the filters are as follows:\n\n- **Team**\n- **Player**\n- **Game**\n- **Action**\n  - Giveaway\n  - Takeaway\n  - Penalty\n  - Hit\n  - Attempted Block\n- **Strength**\n  - Even\n  - Power Play (PP)\n  - Penalty Kill (PK)\n- **Score**\n- **Time**\n- **Shot Result**\n  - Goal\n  - Shot on Goal\n  - Blocked Shot\n  - Missed Shot\n- **Shot Type**\n  - Wrist\n  - Backhand\n  - Snap\n  - Deflected\n  - Slap\n  - Tip\n  - Wrap Around\n- **Assisted By**\n- **Linemates: On/Off Ice**\n- **Opponents: On/Off Ice**\n\n#### Range Filters\n\nThe following filters are Range Filters and are utilized differently\n\n- **Time**\n\nTo apply these filters, use the slider to manually adjust the range within which you want to display.\n\n## Multi game View: Rink Display\n\nMulti game shot charts open to the Rink display by default. This display provides an interactive visualization of the filtered data. Using the Display Controls located below the Rink display, you can perform a wide variety of functions to focus on and zoom in to an area and its associated data.\n\n**Display controls include:**\n\n**Area Select**: Use to highlight an area of the rink which you would like to focus on. To use, click to select the button, then click and drag on the Rink display to draw a box around the area you would like to focus on.\n\n**Area Deselect**: Use to highlight an area of the rink which you would like to omit from your data. To use, click to select the button, then click and drag on the Rink display to draw a box around the area you would like to omit.\n\n**Reset**: Used to reset any previous selections.\n\n**Rink Zoom**: Use to choose from three levels of zoom for the Rink display: Full Ice, Zoom: 1x, 2x, and 3x.\n\n**Enlarge**: Used to increase the size of all points on the Rink display, or points within a selected area\n\n**Play Selected Events**: Used to access and play clips associated with a chart, individually selected items, or from a selected area.\n\n## Multi game View: Rink + Data Display\n\nSelecting **Rink + Data** allows you to view the filtered data visually on the Rink as well as the associated Boxscore in a chart below the Rink. If a stat has an associated video, the number will appear in blue and will be selectable.\n\n![Screenshot: Multi game View: Rink + Data Display](https://pregame-academy.vickerydigital.com/assets/synergy/77000565994-01.jpg)\n\nSelecting individual points from the Rink display will be reflected in the chart below to show only those items selected.  Clicking on a blue number in the chart or selecting the **Play** icon below the Rink display will open the video player and allow you to watch the associated clips.\n\n![Screenshot: Multi game View: Rink + Data Display](https://pregame-academy.vickerydigital.com/assets/synergy/77000565994-02.jpg)\n\n## Multi game View: Event and Shot Type Menu\n\nEvent Type and Shot Type menus act as an interactive legend for the Rink display. Each displays the color, shape, and type of points represented on the Rink Display along with additional filter settings. Click any menu item to toggle it on and off. This will show or hide the item from view. Use **Hide Legend/Show Legend**to toggle this display on and off.\n\n![Screenshot: Multi game View: Event and Shot Type Menu](https://pregame-academy.vickerydigital.com/assets/synergy/77000565995-01.jpg)\n![Screenshot: Multi game View: Event and Shot Type Menu](https://pregame-academy.vickerydigital.com/assets/synergy/77000565995-02.jpg)\n\n## Multi game View: Faceoff Chart\n\nUse the dropdown menu above the Rink display to switch between Event view and Faceoff view.\n\nSimilar to Event View, the Faceoff view displays an interactive rink along with a data chart containing the associated data.\n\n![Screenshot: Multi game View: Faceoff Chart](https://pregame-academy.vickerydigital.com/assets/synergy/77000565996-01.jpg)\n\nIn this view, you're able to visualize Offensive, Defensive, and Neutral Zone Faceoff wins, losses, and totals related to the applied filters (if any). Click on the chart to view the clips associated with your selection.\n\n## Multi game View: Generating A Shot Chart\n\nThe Team filter has drop-down menus to allow for the selection of a League, Season, and Team. Once you've made your selections, click **Apply** to begin your report or cancel the process by selecting **Cancel**at the bottom of the panel. If you would like to reset your selections, use the **Reset**link located above the drop-down menus.\n\n![Screenshot: Multi game View: Generating A Shot Chart](https://pregame-academy.vickerydigital.com/assets/synergy/77000565997-01.jpg)\n\nAfter selecting a league, season, and team, click **Apply**to load the chart. This will enable the additional filters. The chart will dynamically update as filters are applied. This view includes every shot taken by the selected team, including the location on the ice over the course of the selected season.\n\n![Screenshot: Multi game View: Generating A Shot Chart](https://pregame-academy.vickerydigital.com/assets/synergy/77000565997-02.jpg)",
-   "questions": []
+   "questions": [
+    {
+     "question": "A user opens Multi game View and wants a season shot chart for one team. Which selections are needed before clicking Apply?",
+     "options": [
+      "League, Season, Team and Opponent",
+      "Game and Player only",
+      "League, Season and Team",
+      "Shot Type and Strength"
+     ],
+     "correct_index": 2,
+     "explanation": "The Team filter has drop-downs for League, Season and Team; Apply then loads the chart."
+    },
+    {
+     "question": "After the chart loads, the additional filters become available. What triggered this?",
+     "options": [
+      "Selecting a league, season and team and clicking Apply",
+      "Choosing Select All",
+      "Switching to Faceoff view",
+      "Exporting to PDF"
+     ],
+     "correct_index": 0,
+     "explanation": "Clicking Apply after choosing league, season and team loads the chart and enables the additional filters."
+    },
+    {
+     "question": "A coach wants to see how a team shoots on the power play only. Which filter should they use?",
+     "options": [
+      "Score",
+      "Strength, set to Power Play (PP)",
+      "Assisted By",
+      "Linemates: On/Off Ice"
+     ],
+     "correct_index": 1,
+     "explanation": "Strength has Even, Power Play (PP) and Penalty Kill (PK) sub-filters."
+    },
+    {
+     "question": "A user wants to leave a crowded area of the rink out of the data. Which display control should they use?",
+     "options": [
+      "Area Select",
+      "Enlarge",
+      "Rink Zoom",
+      "Area Deselect"
+     ],
+     "correct_index": 3,
+     "explanation": "Area Deselect omits the box drawn on the Rink display from the data."
+    },
+    {
+     "question": "Which zoom choices does the Multi game Rink Zoom control offer?",
+     "options": [
+      "Full Ice, and Zoom 1x, 2x and 3x",
+      "Only 1x, 2x and 3x",
+      "Only Full Ice",
+      "Zoom 1x only"
+     ],
+     "correct_index": 0,
+     "explanation": "Multi game Rink Zoom includes Full Ice plus Zoom 1x, 2x and 3x."
+    },
+    {
+     "question": "A user wants to switch from the shot Event view to faceoff results in Multi game View. What should they use?",
+     "options": [
+      "The Hide Legend control",
+      "The vertical grey filters bar",
+      "The dropdown menu above the Rink display",
+      "The Reset link"
+     ],
+     "correct_index": 2,
+     "explanation": "The dropdown above the Rink display switches between Event view and Faceoff view."
+    },
+    {
+     "question": "The rink legend is covering part of the view. How can a user hide it?",
+     "options": [
+      "Click Reset",
+      "Use Hide Legend",
+      "Use Area Deselect",
+      "Collapse the report tab"
+     ],
+     "correct_index": 1,
+     "explanation": "Hide Legend/Show Legend toggles the Event Type and Shot Type legend display."
+    }
+   ]
   },
   {
    "title": "Reports View",
-   "summary": "",
-   "learning_objectives": [],
+   "summary": "Learn how to generate, save, load and share reports in Reports View.",
+   "learning_objectives": [
+    "Learners will be able to generate a report by selecting League, Season and Team.",
+    "Learners will be able to customize a report with filters.",
+    "Learners will be able to save work using the report tab menu.",
+    "Learners will be able to open a saved report from Saved Reports.",
+    "Learners will be able to share a report with their team."
+   ],
    "reference_url": "https://support.synergysports.com/support/solutions/articles/77000565998",
    "content": "## Reports View: Overview\n\nReports View allows you to view data, organized and detailed in a chart view, across a wide variety of unique filters.\n\n![Screenshot: Reports View: Overview](https://pregame-academy.vickerydigital.com/assets/synergy/77000565998-01.jpg)\n\n## Reports View: Data Filters\n\nTo customize a report, use the filters located on the left-hand side of the application. Filters are dynamic and update the chart as they are selected. Some filters contain additional sub-filters to refine your search even further. Charts will include only those items which fit the filtered criteria.\n\n- The filters section can be collapsed or expanded by selecting the vertical grey filters bar.\n- Select the **Apply**button to create or update the chart.\n- Select one or multiple values for each filter using the slider to view additional options.\n- Use the **Select** **All** feature to activate all of the filters in a section or in the entire filter.\n- Use the **Reset** option to clear the selections for an active filter.\n\n#### Available Filters\n\nAdditional filters will be presented based on the Team filter selection, as well as varied by which view is active. For Reports View, the filters are as follows:\n\n- Game\n- Player\n- Action\n  - Giveaway\n  - Takeaway\n  - Penalty\n  - Hit\n  - Attempt Blocked\n- Strength\n  - Even\n  - Power Play (PP)\n  - Penalty Kill (PK)\n- Score\n- Time\n- Shot Result\n  - Goal\n  - Shot on Goal\n  - Blocked Shot\n  - Missed Shot\n- Shot Type\n  - Wrist\n  - Backhand\n  - Snap\n  - Deflected\n  - Slap\n  - Tip\n  - Wrap Around\n- Assisted By\n- Linemates: On/Off Ice\n- Opponents: On/Off Ice\n\n#### Range Filters\n\nThe following filters are Range Filters and are utilized differently\n\n- Time\n\nTo apply these filters, use the slider to manually adjust the range within which you want to display.\n\n![Screenshot: Reports View: Data Filters](https://pregame-academy.vickerydigital.com/assets/synergy/77000565999-01.jpg)\n\n## Reports View: Generating A Report\n\nThe Team filter has drop-down menus to allow for the selection of a League, Season, and Team. Once you've made your selections, click **Apply** to begin your report or cancel the process by selecting **Cancel**at the bottom of the panel. If you would like to reset your selections, use the **Reset**link located above the drop-down menus.\n\nAfter selecting a league, season, and team, click **Apply**to load the chart. This will enable the additional filters. The chart will dynamically update as filters are applied.\n\n![Screenshot: Reports View: Generating A Report](https://pregame-academy.vickerydigital.com/assets/synergy/77000566000-01.jpg)\n\n## Reports View: Saving Reports\n\nCreate, work with, and save multiple charts or reports in the Hockey App using the Tab menu.  Access the menu by clicking the carrot icon ( **^** )  located to the right in an active tab.  Choose from the following options:\n\n- **Save**\n- **Save As**\n- **Export to PDF**\n- **Add New Tab**\n- **Rename**\n- **Close**\n\nThere is no limit to the number of tabs you can work within the Synergy Hockey app.\n\nAdditionally, use the PDF icon above the Rink display to quickly save your report as a PDF.  This can be done from either Single, Multi Game, or Reports view.\n\n![Screenshot: Reports View: Saving Reports](https://pregame-academy.vickerydigital.com/assets/synergy/77000566001-01.jpg)\n\nAccess previously saved reports or reports that have been shared with you from the **Saved Reports** view.\n\n![Screenshot: Reports View: Saving Reports](https://pregame-academy.vickerydigital.com/assets/synergy/77000566001-02.jpg)\n\nClick to select a report from the list, then click the **Load**button to open the report.\n\n![Screenshot: Reports View: Saving Reports](https://pregame-academy.vickerydigital.com/assets/synergy/77000566001-03.jpg)\n\n## Reports View: Sharing Reports\n\nWhen you choose to save your report, you have the option to share it with other members of your organization.  Use the checkbox to select **I want to share this report with my team**. This will allow other users on your team to access your saved report.  Additionally, you can save or export your report as a PDF.\n\n![Screenshot: Reports View: Sharing Reports](https://pregame-academy.vickerydigital.com/assets/synergy/77000566002-01.jpg)",
-   "questions": []
+   "questions": [
+    {
+     "question": "A user has set League, Season and Team in Reports View. What should they click to load the chart?",
+     "options": [
+      "Load",
+      "Cancel",
+      "Select All",
+      "Apply"
+     ],
+     "correct_index": 3,
+     "explanation": "Apply loads the chart and enables the additional filters."
+    },
+    {
+     "question": "A user wants a teammate to be able to open their saved report. What should they do when saving?",
+     "options": [
+      "Check I want to share this report with my team",
+      "Export it to PDF only",
+      "Rename the tab",
+      "Add a new tab"
+     ],
+     "correct_index": 0,
+     "explanation": "The share checkbox lets other users on the team access the saved report."
+    },
+    {
+     "question": "A user wants to reopen a report they saved last week. Where should they go?",
+     "options": [
+      "Reports View, then Reset",
+      "Player Search, then Apply",
+      "The Saved Reports view, then select the report and click Load",
+      "Single Game View, then Select All"
+     ],
+     "correct_index": 2,
+     "explanation": "Saved Reports lists saved and shared reports; select one and click Load."
+    },
+    {
+     "question": "A user wants a quick PDF of the report on screen. What can they use?",
+     "options": [
+      "The Reset link",
+      "The PDF icon above the report or Rink display",
+      "The vertical grey filters bar",
+      "The Cancel button"
+     ],
+     "correct_index": 1,
+     "explanation": "The PDF icon quickly saves the report as a PDF, in Single, Multi Game or Reports view."
+    }
+   ]
   },
   {
    "title": "Player Search View",
-   "summary": "",
-   "learning_objectives": [],
+   "summary": "Learn how to find players in Player Search View, review their data, and use the Single Player view.",
+   "learning_objectives": [
+    "Learners will be able to search for players by name, details and stats.",
+    "Learners will be able to set range filters with the slider or number boxes.",
+    "Learners will be able to generate reports for selected players.",
+    "Learners will be able to expand a player to see individual seasons.",
+    "Learners will be able to open the Single Player view."
+   ],
    "reference_url": "https://support.synergysports.com/support/solutions/articles/77000566003",
    "content": "## Player Search View: Overview\n\nThis application combines unique analytical tools with our detailed and highly curated video to provide you with an invaluable team, coaching, and scouting asset.\n\nPlayer Search View allows you to view player data compiled from multiple leagues and seasons across a wide variety of unique filters. The Single Player Search allows you to track shots, events, and their respective locations on the ice over the course of entire seasons, or multiple seasons. Use this tool to select specific parameters for what types of players you want to see. Select the **Player Search** icon in the upper right to begin working with this view.\n\n![Screenshot: Player Search View: Overview](https://pregame-academy.vickerydigital.com/assets/synergy/77000566003-01.jpg)\n\n## Player Search View: Data Filters\n\nTo customize a player search, use the filters located on the opening page of the Player Search view. Filters are dynamic and update the player list as they are selected. These filters can be used in conjunction with one another to drill down to the exact player, or players you are looking for. The player list will include all players who fit the filtered criteria and indicate their position, birth date, weight, height, team, and league.\n\n#### Player Name\n\nThe Player Name search tool allows you to search for a specific players info by name.\n\n**\n![Screenshot: Player Search View: Data Filters](https://pregame-academy.vickerydigital.com/assets/synergy/77000566004-01.jpg)**\n\n#### Player Details\n\nThe Player Details search tool allows you to filter for players based on:\n\n- League\n- Season\n- Team\n- Shooting Hand\n  - All\n  - Left\n  - Right\n- Position\n  - Goal\n  - Defense\n  - Forward\n  - Center\n  - Left Wing\n  - Right Wing\n  - Left Defense\n  - Right Defense\n- Age\n- Weight (lb)\n- Height (ft)\n\n#### Range Filters\n\nThe following filters are Range Filters and are utilized differently:\n\n- Age\n- Weight (lb)\n- Height (ft)\n\nTo apply these filters, use the slider to manually adjust the range within which you want to display. The range filters can also be set by entering a number into the boxes on either side if the slider.\n\n#### Player Data\n\nThe Player Data search tool allows you to filter for players based on:\n\n- Goals\n- Assists\n- Points\n- Penalties\n- Hits\n- Shots\n- Shot %\n- Blocked Shots\n- Giveaways\n- Takeways\n- Faceoffs Won\n\nAll player data filters are range filters, and function as described above by either adjusting the slider, or entering a number into the boxes on either side of the slider.\n\n![Screenshot: Player Search View: Data Filters](https://pregame-academy.vickerydigital.com/assets/synergy/77000566004-02.jpg)\n\nOnce all of your desired filters have been set, a list of all players who match the criteria will be listed at the bottom of the app. To view reports based on the players, select the radio button next to their name(s) and a list of the selected players will be displayed in the bottom right of the app. Click **Apply**to generate reports on the selected player(s). Use the **Reset**button a the bottom right of the app at any time to clear all applied filters.\n\n![Screenshot: Player Search View: Data Filters](https://pregame-academy.vickerydigital.com/assets/synergy/77000566004-03.jpg)\n\n## Player Search View: Player Overview\n\nOnce you have selected a player or players from the list generated by your filtered search, the players will be listed in the player overview in a data table.\n\n![Screenshot: Player Search View: Player Overview](https://pregame-academy.vickerydigital.com/assets/synergy/77000566005-01.jpg)\n\nThe data table displays each players overall information including:\n\n- **Season**\n- **Games Played**\n- **Goals**\n- **Assists**\n- **Points**\n- **Penalties**\n![Screenshot: Player Search View: Player Overview](https://pregame-academy.vickerydigital.com/assets/synergy/77000566005-02.jpg)\n- **Shots**\n- **Attempts Blocked**\n- **Missed Shots**\n- **Giveaways**\n- **Takeaways**\n- **Blocked Shots**\n- **Hits**\n- **Faceoffs Won**\n- **Faceoffs Lost**\n- **Faceoff %**\n- **Goals Against**\n- **Saves**\n- **Save %**\n- **Total**\n\nClick the triangle next to a players name to expand and display their data for each individual season played.\n\nEach blue data point has video clips associated, and can be viewed in the In-App Player, or sent to the Synergy Editor. You can also save the data table using the report tab, or save as a PDF by selecting the PDF icon.\n\n## Player Search View: Single Player\n\nTo begin using the single player view, select Single Player from the drop down at the top of the data table.\n\n![Screenshot: Player Search View: Single Player](https://pregame-academy.vickerydigital.com/assets/synergy/77000566006-01.jpg)\n\nA visual display will generate listing the players details and data, as well as an interactive rink display with the location of all events associated with the selected player.\n\n![Screenshot: Player Search View: Single Player](https://pregame-academy.vickerydigital.com/assets/synergy/77000566006-02.jpg)\n\nThis display provides an interactive visualization of the filtered data.  Using the Display Controls located below the Rink display, you can perform a wide variety of functions to focus on and zoom in to an area and its associated data.\n\n**Display controls include:**\n\n**Area Select**: Use to highlight an area of the rink which you would like to focus on. To use, click to select the button, then click and drag on the Rink display to draw a box around the area you would like to focus on.\n\n**Area Deselect**: Use to highlight an area of the rink which you would like to omit from your data. To use, click to select the button, then click and drag on the Rink display to draw a box around the area you would like to omit.\n\n**Reset**: Used to reset any previous selections.\n\n**Rink Zoom**: Use to choose from three levels of zoom for the Rink display: Full Ice, Zoom: 1x, 2x, and 3x.\n\n**Enlarge**: Used to increase the size of all points on the Rink display, or points within a selected area.\n\n**Play Selected Events**: Used to access and play clips associated with a chart, individually selected items, or from a selected area.\n\nThis view also allows you to display the data in a Heatmap and a Zones view.\n\n![Screenshot: Player Search View: Single Player](https://pregame-academy.vickerydigital.com/assets/synergy/77000566006-03.jpg)\n\n![Screenshot: Player Search View: Single Player](https://pregame-academy.vickerydigital.com/assets/synergy/77000566006-04.jpg)",
-   "questions": []
+   "questions": [
+    {
+     "question": "A scout wants left-shooting defensemen from one league. Which search tool should they use?",
+     "options": [
+      "Player Name",
+      "Player Details",
+      "Player Data",
+      "Single Player"
+     ],
+     "correct_index": 1,
+     "explanation": "Player Details filters by League, Season, Team, Shooting Hand and Position, among others."
+    },
+    {
+     "question": "A scout wants forwards with a minimum number of goals and assists. Which search tool fits?",
+     "options": [
+      "Player Name",
+      "Player Details",
+      "Player Data",
+      "Saved Reports"
+     ],
+     "correct_index": 2,
+     "explanation": "Player Data filters players by stats such as Goals and Assists, all as range filters."
+    },
+    {
+     "question": "Besides dragging the slider, how else can a range filter such as Age be set?",
+     "options": [
+      "Enter a number in the boxes on either side of the slider",
+      "Select a radio button",
+      "Use the Select All feature",
+      "Click the triangle next to the player"
+     ],
+     "correct_index": 0,
+     "explanation": "Range filters can also be set by typing numbers into the boxes beside the slider."
+    },
+    {
+     "question": "A user has filtered a list of players and picked two with radio buttons. What generates reports on them?",
+     "options": [
+      "Click Reset",
+      "Click the blue data point",
+      "Select Single Player",
+      "Click Apply"
+     ],
+     "correct_index": 3,
+     "explanation": "After selecting players, clicking Apply generates reports on them."
+    },
+    {
+     "question": "A user wants to see a player's numbers for each season they played. What should they do in the data table?",
+     "options": [
+      "Click Reset",
+      "Click the triangle next to the player's name",
+      "Select Single Player",
+      "Click the PDF icon"
+     ],
+     "correct_index": 1,
+     "explanation": "The triangle expands the player to show data for each individual season."
+    },
+    {
+     "question": "A user wants a player's details and an interactive rink display of all their events. What should they select?",
+     "options": [
+      "Player Name",
+      "Faceoff view",
+      "Single Player from the drop down at the top of the data table",
+      "Saved Reports"
+     ],
+     "correct_index": 2,
+     "explanation": "Single Player generates the player's details and data with an interactive rink of their events."
+    },
+    {
+     "question": "In the Player Overview table, how can a user watch clips behind a stat?",
+     "options": [
+      "Click a blue data point to view it in the In-App Player or send it to the Synergy Editor",
+      "Click any black number",
+      "Use the Heatmap view",
+      "Click Reset"
+     ],
+     "correct_index": 0,
+     "explanation": "Each blue data point has associated video clips."
+    }
+   ]
   }
  ]
 }
