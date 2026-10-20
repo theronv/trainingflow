@@ -1,0 +1,7 @@
+node_modules
+worker
+docs
+assets
+content
+.polish
+package-lock.json

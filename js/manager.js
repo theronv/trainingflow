@@ -206,8 +206,6 @@ const Manager = {
 
   // ─── CSV IMPORT ───
   _csvRows: null,
-
-  _csvRows: null,
   _credsRows: null,   // [{name, password}] for the credentials sheet
   _importedIds: null, // [{id, name}] returned from the API after bulk import
 
