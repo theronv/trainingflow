@@ -596,7 +596,14 @@ if (typeof marked !== 'undefined') {
 
         <!-- ── PHASE 1: Upload ── -->
         <div id="phase-upload" class="section">
-          <div class="page-sub">Add Markdown files or web pages. Each one becomes a module. Generate summaries and quiz questions automatically.</div>
+          <div id="imp-draft-banner" class="card imp-draft hidden" role="status">
+            <div id="imp-draft-text"></div>
+            <div class="imp-draft-actions">
+              <button class="btn btn-primary btn-sm" onclick="App.resumeImportDraft()">Resume</button>
+              <button class="btn btn-outline btn-sm" onclick="App.discardImportDraft()">Discard</button>
+            </div>
+          </div>
+          <div class="page-sub">Add Markdown files or web pages. Each one becomes a lesson exactly as written. Next, Claude.ai writes the summaries and quiz questions from that text.</div>
           <div class="upload-zone" id="imp-drop-zone"
             onclick="document.getElementById('md-file-input').click()"
             ondragover="event.preventDefault();this.classList.add('drag-active')"
@@ -641,7 +648,7 @@ if (typeof marked !== 'undefined') {
 
         <!-- ── PHASE 2: Configure ── -->
         <div id="phase-configure" class="section hidden">
-          <div class="page-sub">Review how your Markdown was parsed, then set course details and AI settings.</div>
+          <div class="page-sub">Review how your content was split into modules, then set the course details and quiz settings.</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-6);margin-bottom:var(--space-6)">
             <div class="card">
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-1)">
@@ -653,8 +660,40 @@ if (typeof marked !== 'undefined') {
               <div class="field"><label>Description</label><textarea id="ai-course-desc" placeholder="Brief description..." style="min-height:60px"></textarea></div>
             </div>
             <div class="card" id="ai-settings-card">
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-4)">
-                <div class="card-title" style="margin-bottom:0">AI Settings</div>
+              <div class="card-title">Quiz settings</div>
+              <div class="field">
+                <label>Questions per module</label>
+                <select id="q-per-mod">
+                  <option value="3">3 questions</option>
+                  <option value="5" selected>5 questions</option>
+                  <option value="8">8 questions</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Difficulty</label>
+                <select id="q-difficulty">
+                  <option value="foundational">Foundational</option>
+                  <option value="applied" selected>Applied</option>
+                  <option value="analytical">Analytical</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Focus area</label>
+                <select id="q-focus">
+                  <option value="howto" selected>Product how-to (steps and scenarios)</option>
+                  <option value="general">General comprehension</option>
+                  <option value="support">Support scenarios</option>
+                  <option value="process">Process and procedures</option>
+                  <option value="technical">Technical specs</option>
+                </select>
+              </div>
+
+              <details class="api-alt">
+                <summary>Use an API key instead (optional)</summary>
+                <div class="api-alt-body">
+                  <div class="page-sub">Generates inside the app and uses your own API credits. The Claude.ai route needs no key.</div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3)">
+                <div class="card-title" style="margin-bottom:0">API keys</div>
                 <button id="btn-ai-edit" class="btn btn-ghost btn-sm hidden" onclick="Admin.requestAiEdit()">Change keys</button>
               </div>
 
@@ -686,43 +725,40 @@ if (typeof marked !== 'undefined') {
                 </div>
               </div>
 
-              <div class="divider" style="margin:var(--space-4) 0"></div>
-              <div class="field">
-                <label>Questions per module</label>
-                <select id="q-per-mod">
-                  <option value="3">3 questions</option>
-                  <option value="5" selected>5 questions</option>
-                  <option value="8">8 questions</option>
-                </select>
-              </div>
-              <div class="field">
-                <label>Difficulty</label>
-                <select id="q-difficulty">
-                  <option value="foundational">Foundational</option>
-                  <option value="applied" selected>Applied</option>
-                  <option value="analytical">Analytical</option>
-                </select>
-              </div>
-              <div class="field">
-                <label>Focus area</label>
-                <select id="q-focus">
-                  <option value="general" selected>General comprehension</option>
-                  <option value="support">Support scenarios</option>
-                  <option value="process">Process and procedures</option>
-                  <option value="technical">Technical specs</option>
-                </select>
-              </div>
+                  <button class="btn btn-outline btn-sm" onclick="App.startGeneration()">Generate with API key →</button>
+                </div>
+              </details>
             </div>
           </div>
           <div id="module-preview"></div>
           <div style="margin-top:var(--space-6);display:flex;gap:var(--space-3);">
             <button class="btn btn-ghost" onclick="App.goPhase(1)">← Back</button>
-            <button class="btn btn-primary btn-lg" onclick="App.startGeneration()">Generate content →</button>
+            <button class="btn btn-primary btn-lg" onclick="App.startClaudeFlow()">Build Claude prompts →</button>
           </div>
         </div>
 
         <!-- ── PHASE 3: Generate ── -->
         <div id="phase-generate" class="section hidden">
+          <div id="gen-claude">
+            <div class="page-sub">Quiz questions come from Claude.ai, so no API key is needed. For each prompt: copy it, paste it into a new Claude.ai chat, then paste Claude's reply (or upload the questions.json file it creates) below.</div>
+            <div id="gen-batches"></div>
+            <div class="card">
+              <div class="card-title">Paste Claude's reply</div>
+              <textarea id="claude-reply-input" rows="6" placeholder="Paste the JSON from Claude here…" aria-label="Claude's reply" style="width:100%;font-family:var(--font-mono);font-size:var(--text-sm)"></textarea>
+              <div class="gen-reply-actions">
+                <button class="btn btn-primary btn-sm" onclick="App.addReply('claude-reply-input','claude-reply-status')">Add reply</button>
+                <button class="btn btn-outline btn-sm" onclick="document.getElementById('claude-reply-file').click()">Upload .json</button>
+                <input type="file" id="claude-reply-file" accept=".json,.txt" class="hidden" onchange="App.loadReplyFile(event,'claude-reply-input','claude-reply-status')">
+                <span id="claude-reply-status" role="status" style="font-size:var(--text-sm)"></span>
+              </div>
+            </div>
+            <div class="gen-foot">
+              <button class="btn btn-ghost" onclick="App.goPhase(2)">← Back</button>
+              <button class="btn btn-primary btn-lg" id="btn-claude-review" onclick="App.reviewFromClaude()" disabled>Review course →</button>
+              <span id="gen-claude-summary" style="font-size:var(--text-sm);color:var(--ink-3)"></span>
+            </div>
+          </div>
+          <div id="gen-api" class="hidden">
           <div class="page-sub">AI is generating your quiz questions and module summaries.</div>
           <div class="card">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-4);">
@@ -734,15 +770,28 @@ if (typeof marked !== 'undefined') {
             </div>
             <div id="gen-module-list"></div>
           </div>
+          </div>
         </div>
 
         <!-- ── PHASE 4: Review ── -->
         <div id="phase-export" class="section hidden">
-          <div class="page-sub">Review the generated content. Click 'Save to Database' to finalize the course.</div>
+          <div class="page-sub">Check and edit anything below, then save. Every module needs at least one question.</div>
           <div style="display:flex;gap:var(--space-3);margin-bottom:var(--space-6);">
             <button class="btn btn-primary btn-lg" onclick="App.saveAiCourse()">Save to Database</button>
-            <button class="btn btn-outline btn-lg" id="btn-edit-prompt" onclick="App.goPhase(2)">← Edit Prompt</button>
+            <button class="btn btn-outline btn-lg" id="btn-edit-prompt" onclick="App.goPhase(2)">← Edit settings</button>
           </div>
+          <div id="review-errors" class="rv-errors hidden" role="alert"></div>
+          <details id="rv-reply" class="card rv-reply">
+            <summary>Add or replace questions from Claude's reply</summary>
+            <p class="page-sub">Use "Redo with Claude" on a module, paste the prompt into Claude.ai, then paste its reply here.</p>
+            <textarea id="rv-reply-input" rows="5" placeholder="Paste the JSON from Claude here…" aria-label="Claude's reply" style="width:100%;font-family:var(--font-mono);font-size:var(--text-sm)"></textarea>
+            <div class="gen-reply-actions">
+              <button class="btn btn-primary btn-sm" onclick="App.addReply('rv-reply-input','rv-reply-status')">Add reply</button>
+              <button class="btn btn-outline btn-sm" onclick="document.getElementById('rv-reply-file').click()">Upload .json</button>
+              <input type="file" id="rv-reply-file" accept=".json,.txt" class="hidden" onchange="App.loadReplyFile(event,'rv-reply-input','rv-reply-status')">
+              <span id="rv-reply-status" role="status" style="font-size:var(--text-sm)"></span>
+            </div>
+          </details>
           <div id="review-modules"></div>
         </div>
       </div>

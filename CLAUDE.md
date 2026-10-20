@@ -75,7 +75,7 @@ cd worker && npm test            # one-shot
 cd worker && npm run test:watch  # watch mode
 ```
 
-Coverage: `worker/test/` — `auth` (login + rate limiting), `rbac` (role gates + manager team scoping), `scoring` (answer-key stripping, server-side grading and score computation), `scrape` (URL import validation). Frontend (`js/`) has no tests yet.
+Coverage: `worker/test/` — `auth` (login + rate limiting), `rbac` (role gates + manager team scoping), `scoring` (answer-key stripping, server-side grading and score computation), `scrape` (URL import validation). `importer` (the frontend `js/importer.js` loaded with browser globals stubbed: reply parsing, question validation, answer shuffling, prompt building, reply merging, save validation). The rest of `js/` has no tests yet.
 
 ## Environment Variables
 
@@ -297,6 +297,15 @@ Renamed from TrainFlow and re-skinned to match the Pregame site (pregame.vickery
 - Logo: `assets/academy-icon-{192,512}.png` (graduation cap over the three-bar Pregame motif; source `assets/academy-icon.svg`) is the default logo/favicon on every surface; an admin-uploaded logo overrides it.
 - Legacy defaults (`TrainFlow`, old blues/purples, `Inter`) saved in the `brand` row are migrated to the new defaults at runtime by `normBrand()`; customised values are kept.
 - Deliberately **not** renamed (internal identifiers): the Worker/DB names (`trainflow-worker`, `trainflow-theronv`), repo/Pages path (`/trainingflow/`), and `trainflow_*` localStorage/sessionStorage keys — changing them would break the deployed URL and sign users out.
+
+## Content Importer — 2026-10-20
+
+Admin → AI Importer (`js/importer.js`). Lessons are imported **verbatim** (Markdown files, or web pages via Jina); AI only writes the summary, objectives and questions.
+- **Claude.ai route (default, no API key):** Configure → "Build Claude prompts" splits modules into prompts of ≤30k chars (`PROMPT_CHAR_BUDGET`), each lesson tagged with a stable id (`m1`, `m2`…; screenshots become `[Screenshot: alt]` markers). The admin pastes each prompt into Claude.ai and pastes the reply (or `questions.json`) back; `applyQuestionsReply()` matches entries by id, validates every question, and shuffles option order (except "all of the above" style options). A module's entry is applied only if fully valid; lesson text and titles are never overwritten by a reply.
+- **API-key route:** collapsed under "Use an API key instead"; same validation and shuffling, one call per module.
+- **Review is editable:** titles, summaries, objectives, lesson text, questions, correct answers; add/remove questions and modules; "Redo with Claude" per module. Saving is blocked (with a list of problems) until every module has valid questions (`validateCourse()`).
+- **Drafts:** state is saved to `localStorage` (`trainflow_import_draft`) so a refresh or closed tab can resume from the Upload screen.
+- Full-course JSON import (Claude writes everything) still exists on the Upload screen and shares the same question validation.
 
 ## Demo — 2026-10-16
 

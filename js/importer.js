@@ -116,19 +116,10 @@ CONTENT RULES:
   // Returns { course, errors }. Tolerates code fences / surrounding prose.
   parseCourseJson(text) {
     const errors = [];
-    let raw = String(text || '').replace(/```json\s*/gi, '').replace(/```/g, '').trim();
-    const a = raw.indexOf('{'), b = raw.lastIndexOf('}');
-    if (a < 0 || b <= a) return { course: null, errors: ['No JSON object found.'] };
-    let data;
-    const body = raw.slice(a, b + 1);
-    try { data = JSON.parse(body); }
-    catch (e) {
-      // Chat windows often "smart-quote" copied text (“ ” instead of "); repair and retry.
-      try { data = JSON.parse(body.replace(/[\u201C\u201D\u201E\u201F\u2033]/g, '"')); }
-      catch (e2) { return { course: null, errors: ['Invalid JSON: ' + e.message] }; }
-    }
+    const { data, error } = Importer.extractJson(text);
+    if (error || !data || Array.isArray(data)) return { course: null, errors: [error || 'No JSON object found.'] };
 
-    const str = v => (typeof v === 'string' ? v.trim() : '');
+    const str = Importer.str;
     if (!str(data.title)) errors.push('Missing course "title".');
     if (!Array.isArray(data.modules) || !data.modules.length) { errors.push('"modules" must be a non-empty array.'); return { course: null, errors }; }
 
@@ -136,18 +127,7 @@ CONTENT RULES:
       const label = `Module ${mi + 1}`;
       if (!str(m.title)) errors.push(`${label}: missing "title".`);
       if (!str(m.content)) errors.push(`${label}: missing "content".`);
-      const questions = (Array.isArray(m.questions) ? m.questions : []).map((q, qi) => {
-        const ql = `${label}, question ${qi + 1}`;
-        const opts = Array.isArray(q.options) ? q.options.map(str)
-          : [q.option_a, q.option_b, q.option_c, q.option_d].map(str);
-        if (!str(q.question)) errors.push(`${ql}: missing "question".`);
-        if (opts.filter(Boolean).length < 2 || opts.slice(0, 4).some(o => !o)) errors.push(`${ql}: needs 4 non-empty options.`);
-        let ci = q.correct_index;
-        if (typeof ci === 'string' && /^[a-d]$/i.test(ci.trim())) ci = 'abcd'.indexOf(ci.trim().toLowerCase());
-        ci = Number(ci);
-        if (!Number.isInteger(ci) || ci < 0 || ci > 3) { errors.push(`${ql}: "correct_index" must be 0-3.`); ci = 0; }
-        return { question: str(q.question), options: opts.slice(0, 4), correct_index: ci, explanation: str(q.explanation) };
-      });
+      const questions = (Array.isArray(m.questions) ? m.questions : []).map((q, qi) => Importer.normalizeQuestion(q, `${label}, question ${qi + 1}`, errors));
       if (!questions.length) errors.push(`${label}: no questions.`);
       return {
         title: str(m.title), content: str(m.content), summary: str(m.summary) || null,
@@ -173,8 +153,235 @@ CONTENT RULES:
     Importer.goPhase(4);
   },
 
+  // ── Claude.ai question flow (no API key) ──────────────────────────────────
+  // Lessons stay exactly as imported. The app builds prompts that contain the lesson text and
+  // asks Claude only for summaries, objectives and questions, matched back to modules by id.
+  DEFAULT_SETTINGS: { count: 5, difficulty: 'applied', focus: 'howto' },
+  PROMPT_CHAR_BUDGET: 30000, // lesson text per prompt; keeps each paste comfortably inside a chat window
+  FOCUS: {
+    general: 'Test comprehension of the key concepts.',
+    howto: 'Product how-to: ask scenario and procedure questions (which feature achieves a goal, what to do next, what order the steps go in, where an option lives). Avoid trivia.',
+    support: 'Focus on support scenarios and customer interactions.',
+    process: 'Focus on the correct sequence of steps and procedures.',
+    technical: 'Focus on specific values, limits, and technical requirements.'
+  },
+  DIFFICULTY: {
+    foundational: 'Test basic recall and recognition.',
+    applied: 'Test application of knowledge in scenarios.',
+    analytical: 'Test judgment and nuanced understanding.'
+  },
+  settings: null,
+  phase: 1,
+
+  str(v) { return typeof v === 'string' ? v.trim() : ''; },
+
+  // Pulls the first JSON object/array out of a chat reply. Tolerates code fences, surrounding
+  // prose, and the smart quotes chat windows sometimes substitute when text is copied.
+  extractJson(text) {
+    const raw = String(text || '').replace(/```json\s*/gi, '').replace(/```/g, '').trim();
+    const starts = [raw.indexOf('{'), raw.indexOf('[')].filter(n => n >= 0);
+    const a = starts.length ? Math.min(...starts) : -1;
+    const b = Math.max(raw.lastIndexOf('}'), raw.lastIndexOf(']'));
+    if (a < 0 || b <= a) return { data: null, error: 'No JSON found in that text.' };
+    const body = raw.slice(a, b + 1);
+    try { return { data: JSON.parse(body), error: '' }; }
+    catch (e) {
+      try { return { data: JSON.parse(body.replace(/[“”„‟″]/g, '"')), error: '' }; }
+      catch { return { data: null, error: 'Invalid JSON: ' + e.message }; }
+    }
+  },
+
+  // Validates one question and returns it in canonical form; problems are appended to `errors`.
+  normalizeQuestion(q, label, errors) {
+    const str = Importer.str;
+    q = q || {};
+    const opts = Array.isArray(q.options) ? q.options.map(str) : [q.option_a, q.option_b, q.option_c, q.option_d].map(str);
+    if (!str(q.question)) errors.push(`${label}: missing "question".`);
+    if (opts.length < 4 || opts.slice(0, 4).some(o => !o)) errors.push(`${label}: needs 4 non-empty options.`);
+    let ci = q.correct_index;
+    if (typeof ci === 'string' && /^[a-d]$/i.test(ci.trim())) ci = 'abcd'.indexOf(ci.trim().toLowerCase());
+    ci = ci === null || ci === undefined || ci === '' ? NaN : Number(ci);
+    if (!Number.isInteger(ci) || ci < 0 || ci > 3) { errors.push(`${label}: "correct_index" must be 0-3.`); ci = 0; }
+    return { question: str(q.question), options: opts.slice(0, 4), correct_index: ci, explanation: str(q.explanation) };
+  },
+
+  // Models favour A/B for the right answer; reorder so position gives nothing away. Options that
+  // refer to their neighbours ("All of the above", "Both A and B") keep their order.
+  shuffleOptions(q, rand = Math.random) {
+    if (q.options.some(o => /\b(all|none|both|neither) of (the above|these)\b|^(both|a and b)\b/i.test(o))) return q;
+    const order = [0, 1, 2, 3];
+    for (let i = 3; i > 0; i--) {
+      const j = Math.floor(rand() * (i + 1));
+      [order[i], order[j]] = [order[j], order[i]];
+    }
+    return { ...q, options: order.map(i => q.options[i]), correct_index: order.indexOf(q.correct_index) };
+  },
+
+  // Lesson text as Claude sees it: screenshots become "[Screenshot: alt]" and links keep only
+  // their text, so image URLs don't eat the token budget. The saved lesson keeps the originals.
+  plainLesson(md) {
+    return String(md || '')
+      .replace(/!\[([^\]]*)\]\([^)]*\)/g, (_, alt) => (alt.trim() ? `[Screenshot: ${alt.trim()}]` : ''))
+      .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  },
+
+  // Splits modules into prompt-sized groups. A module larger than the budget gets a group of its own.
+  batchModules(modules, budget = Importer.PROMPT_CHAR_BUDGET) {
+    const batches = []; let cur = [], size = 0;
+    for (const m of modules) {
+      const len = Importer.plainLesson(m.content).length;
+      if (cur.length && size + len > budget) { batches.push(cur); cur = []; size = 0; }
+      cur.push(m); size += len;
+    }
+    if (cur.length) batches.push(cur);
+    return batches;
+  },
+
+  buildQuestionsPrompt(modules, { count, difficulty, focus }) {
+    const lessons = modules.map(m => `=== LESSON ${m._rid}: ${m.title} ===\n${Importer.plainLesson(m.content)}`).join('\n\n');
+    return `Write quiz material for a training course from the lessons below. Use ONLY facts stated in the lessons; add nothing from outside knowledge.
+
+For each lesson return a one-sentence summary (max 200 chars), 3-5 learning objectives, and up to ${count} multiple-choice questions (2-3 for lessons under 150 words).
+
+QUESTION RULES:
+- ${Importer.FOCUS[focus] || Importer.FOCUS.general}
+- ${Importer.DIFFICULTY[difficulty] || Importer.DIFFICULTY.applied}
+- Exactly 4 options: one clearly correct, three plausible but wrong. Vary which position is correct (correct_index 0-3). Never use "all of the above" or "none of the above".
+- Every question must be answerable from its own lesson. [Screenshot: ...] markers stand for images; ask about what they show only if the surrounding text says it.
+- "explanation": one sentence on why the answer is right.
+
+OUTPUT RULES (save tokens):
+- Create a file named questions.json and reply with ONE short sentence. Do not print the JSON in chat.
+- Write compact JSON: no indentation, no comments, double quotes, no trailing commas.
+- If you cannot create a file, output the JSON once inside a single code block (never as plain text, which corrupts the quotes).
+
+JSON format (one entry per lesson, using the lesson's id):
+{"modules":[{"id":"m1","summary":"","learning_objectives":["Learners will be able to ..."],"questions":[{"question":"","options":["","","",""],"correct_index":0,"explanation":""}]}]}
+
+LESSONS
+
+${lessons}`;
+  },
+
+  // Merges Claude's reply into the course. A module's entry is applied only if all of it is valid.
+  applyQuestionsReply(course, text) {
+    const { data, error } = Importer.extractJson(text);
+    if (error) return { applied: [], errors: [error] };
+    const list = Array.isArray(data) ? data : data.modules;
+    if (!Array.isArray(list)) return { applied: [], errors: ['Expected a "modules" list in the reply.'] };
+    const applied = [], errors = [];
+    for (const entry of list) {
+      const mod = course.modules.find(m => m._rid === String(entry?.id));
+      if (!mod) { errors.push(`Unknown module id "${entry?.id}".`); continue; }
+      const label = `"${mod.title}"`, local = [];
+      const questions = (Array.isArray(entry.questions) ? entry.questions : [])
+        .map((q, qi) => Importer.shuffleOptions(Importer.normalizeQuestion(q, `${label}, question ${qi + 1}`, local)));
+      if (!questions.length) local.push(`${label}: no questions in the reply.`);
+      if (local.length) { errors.push(...local); continue; }
+      mod.questions = questions;
+      mod.summary = Importer.str(entry.summary).slice(0, 250) || mod.summary || null;
+      mod.learning_objectives = Array.isArray(entry.learning_objectives) ? entry.learning_objectives.map(Importer.str).filter(Boolean) : [];
+      applied.push(mod._rid);
+    }
+    return { applied, errors };
+  },
+
+  readSettings() {
+    const d = Importer.DEFAULT_SETTINGS;
+    return {
+      count: parseInt($$('q-per-mod')?.value || d.count, 10),
+      difficulty: $$('q-difficulty')?.value || d.difficulty,
+      focus: $$('q-focus')?.value || d.focus
+    };
+  },
+
+  courseFromParsed() {
+    return {
+      title: $$('ai-course-title').value.trim(),
+      icon: $$('ai-course-icon').value || '📋',
+      description: $$('ai-course-desc').value.trim(),
+      modules: Importer.parsedModules.map((m, i) => ({
+        title: m.title, content: m.content, reference_url: m.reference_url || '',
+        summary: null, learning_objectives: [], questions: [], _rid: `m${i + 1}`
+      }))
+    };
+  },
+
+  startClaudeFlow() {
+    const existing = Importer.generatedCourse;
+    if (existing?.modules.some(m => m.questions?.length) && !confirm('Building new prompts discards the questions already added. Continue?')) return;
+    Importer.settings = Importer.readSettings();
+    Importer.generatedCourse = Importer.courseFromParsed();
+    Importer.showClaudePanel();
+    Importer.goPhase(3);
+  },
+
+  showClaudePanel() {
+    $$('gen-claude').classList.remove('hidden');
+    $$('gen-api').classList.add('hidden');
+    Importer.renderClaudePanel();
+  },
+
+  renderClaudePanel() {
+    const c = Importer.generatedCourse, list = $$('gen-batches');
+    if (!c || !list) return;
+    const batches = Importer.batchModules(c.modules);
+    list.innerHTML = batches.map((b, i) => {
+      const done = b.filter(m => m.questions.length).length;
+      const names = b.slice(0, 3).map(m => m.title).join(', ') + (b.length > 3 ? ', …' : '');
+      return `<div class="gen-batch">
+        <div class="gen-batch-info"><strong>Prompt ${i + 1} of ${batches.length}</strong><span>${b.length} lesson${b.length !== 1 ? 's' : ''}: ${esc(names)}</span></div>
+        <span class="chip ${done === b.length ? 'chip-green' : 'chip-gray'}">${done} of ${b.length} done</span>
+        <button class="btn btn-outline btn-sm" onclick="Importer.copyBatch(${i})">Copy prompt</button>
+      </div>`;
+    }).join('');
+    const ready = c.modules.filter(m => m.questions.length).length;
+    $$('gen-claude-summary').textContent = `${ready} of ${c.modules.length} lessons have questions.`;
+    $$('btn-claude-review').disabled = !ready;
+  },
+
+  async copyText(text, okMsg) {
+    try { await navigator.clipboard.writeText(text); Toast.ok(okMsg); }
+    catch { Toast.err('Could not access the clipboard. Allow clipboard access and try again.'); }
+  },
+  copyBatch(i) {
+    const batch = Importer.batchModules(Importer.generatedCourse.modules)[i];
+    Importer.copyText(Importer.buildQuestionsPrompt(batch, Importer.settings || Importer.readSettings()), `Prompt ${i + 1} copied. Paste it into a new Claude.ai chat.`);
+  },
+  copyModulePrompt(mi) {
+    const m = Importer.generatedCourse.modules[mi];
+    Importer.copyText(Importer.buildQuestionsPrompt([m], Importer.settings || Importer.readSettings()), 'Prompt copied. Paste it into Claude.ai, then paste the reply in the box at the top.');
+    $$('rv-reply').open = true;
+  },
+
+  // Shared by the Generate screen and the Review screen.
+  addReply(inputId, statusId) {
+    const input = $$(inputId), status = $$(statusId);
+    const { applied, errors } = Importer.applyQuestionsReply(Importer.generatedCourse, input.value);
+    if (applied.length) input.value = '';
+    const shown = errors.slice(0, 4).join(' ') + (errors.length > 4 ? ` (+${errors.length - 4} more)` : '');
+    status.textContent = [applied.length ? `Added questions for ${applied.length} lesson${applied.length !== 1 ? 's' : ''}.` : '', shown].filter(Boolean).join(' ');
+    status.style.color = errors.length ? 'var(--fail)' : 'var(--pass)';
+    if (!applied.length && !errors.length) status.textContent = 'Nothing to add. Paste Claude’s reply first.';
+    Importer.saveDraft();
+    Importer.renderClaudePanel();
+    if (Importer.phase === 4) Importer.renderReview();
+  },
+  loadReplyFile(e, inputId, statusId) {
+    const f = e.target.files && e.target.files[0]; if (!f) return;
+    const r = new FileReader();
+    r.onload = () => { $$(inputId).value = String(r.result || ''); Importer.addReply(inputId, statusId); };
+    r.readAsText(f);
+    e.target.value = '';
+  },
+  reviewFromClaude() { Importer.renderReview(); Importer.goPhase(4); },
+
   goPhase(n) {
-    if (n === 1) Importer.loadSavedAiKeys();
+    Importer.phase = n;
+    if (n === 1) { Importer.loadSavedAiKeys(); Importer.renderDraftBanner(); }
+    if (n === 2) { $$('gen-claude')?.classList.remove('hidden'); $$('gen-api')?.classList.add('hidden'); }
     if (n !== 4) $$('btn-edit-prompt')?.classList.remove('hidden');
     [1,2,3,4].forEach(i => {
       const pg = $$(`phase-${['upload','configure','generate','export'][i-1]}`);
@@ -188,6 +395,7 @@ CONTENT RULES:
         else { if(numEl) numEl.textContent = i; }
       }
     });
+    if (n > 1) Importer.saveDraft();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   },
 
@@ -538,11 +746,14 @@ CONTENT RULES:
 
     Importer.isGenerating = true;
     try {
+    $$('gen-claude').classList.add('hidden');
+    $$('gen-api').classList.remove('hidden');
+    Importer.generatedCourse = null;
     Importer.goPhase(3);
 
     const qCount   = parseInt($$('q-per-mod')?.value   || '5');
     const difficulty = $$('q-difficulty')?.value || 'applied';
-    const focus      = $$('q-focus')?.value      || 'general';
+    const focus      = $$('q-focus')?.value      || 'howto';
     const total = Importer.parsedModules.length;
 
     const listEl = $$('gen-module-list'); if(!listEl) return;
@@ -577,7 +788,10 @@ CONTENT RULES:
         const prompt = Importer._buildQuestionPrompt(mod.title, mod.content, qCount, difficulty, focus);
         const res = await Importer.callAI(prompt, "You are an expert instructional designer. Return JSON only, no markdown.", 3000);
         const parsed = JSON.parse(res.text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim());
-        const questions = parsed.questions || parsed;
+        const problems = [];
+        const questions = (Array.isArray(parsed.questions) ? parsed.questions : Array.isArray(parsed) ? parsed : [])
+          .map((q, qi) => Importer.shuffleOptions(Importer.normalizeQuestion(q, `question ${qi + 1}`, problems)));
+        if (problems.length || !questions.length) throw new Error(problems[0] || 'No questions returned');
         const aiTitle = parsed.title || mod.title;
         const objectives = Array.isArray(parsed.learning_objectives) ? parsed.learning_objectives : [];
         const titleEl = $$(`gentitle-${i}`);
@@ -638,17 +852,6 @@ CONTENT RULES:
   },
 
   _buildQuestionPrompt(title, content, qCount, difficulty, focus) {
-    const focusInstr = {
-      general: 'Test comprehension of the key concepts.',
-      support: 'Focus on support scenarios and customer interactions.',
-      process: 'Focus on the correct sequence of steps and procedures.',
-      technical: 'Focus on specific values, limits, and technical requirements.'
-    };
-    const diffInstr = {
-      foundational: 'Test basic recall and recognition.',
-      applied: 'Test application of knowledge in scenarios.',
-      analytical: 'Test judgment and nuanced understanding.'
-    };
     return `You are an expert instructional designer. Analyze this training module and return a JSON object.
 
 MODULE TITLE (may be generic): ${title}
@@ -666,83 +869,181 @@ Return ONLY this JSON structure (no markdown, no extra text):
 
 RULES:
 - Write exactly ${qCount} questions
-- ${focusInstr[focus]}
-- ${diffInstr[difficulty]}
+- ${Importer.FOCUS[focus] || Importer.FOCUS.general}
+- ${Importer.DIFFICULTY[difficulty] || Importer.DIFFICULTY.applied}
 - Each question must have exactly 4 options
 - learning_objectives: 3-5 bullet points starting with action verbs
 - title: must reflect the actual content, not be generic like "Part 2"`;
   },
 
-  renderReview() {
-    const el = $$('review-modules'); if(!el) return;
-    const c = Importer.generatedCourse;
-    const letters = ['A','B','C','D'];
+  // ── Review (editable) ─────────────────────────────────────────────────────
+  // Every module carries a stable `_rid` ("m1", "m2"…) that Claude's reply is matched on.
+  ensureRids(c) {
+    const used = new Set(c.modules.map(m => m._rid).filter(Boolean));
+    let n = 0;
+    c.modules.forEach(m => {
+      if (m._rid) return;
+      do { n++; } while (used.has(`m${n}`));
+      m._rid = `m${n}`; used.add(m._rid);
+    });
+  },
 
-    const header = `<div class="card" style="margin-bottom:var(--space-5);background:var(--bg-2);border:1px solid var(--border);">
-      <div style="font-size:var(--text-xs);font-weight:700;color:var(--ink-4);text-transform:uppercase;letter-spacing:.06em;">Course Preview</div>
-      <div style="font-size:var(--text-lg);font-weight:700;margin-top:2px;">${esc(c.icon || '📋')} ${esc(c.title || 'Untitled')}</div>
-      ${c.description ? `<div style="font-size:var(--text-sm);color:var(--ink-3);margin-top:4px;">${esc(c.description)}</div>` : ''}
-      <div style="font-size:11px;color:var(--ink-4);margin-top:var(--space-3);">${c.modules.length} module${c.modules.length !== 1 ? 's' : ''} · ${c.modules.reduce((s,m) => s + (m.questions?.length || 0), 0)} questions total</div>
+  renderReview() {
+    const el = $$('review-modules'); if (!el || !Importer.generatedCourse) return;
+    const c = Importer.generatedCourse;
+    Importer.ensureRids(c);
+    const letters = ['A', 'B', 'C', 'D'];
+    const total = c.modules.reduce((s, m) => s + (m.questions?.length || 0), 0);
+
+    const header = `<div class="card rv-head">
+      <div class="rv-eyebrow">Course preview</div>
+      <div class="rv-course-title">${esc(c.icon || '📋')} ${esc(c.title || 'Untitled')}</div>
+      ${c.description ? `<div class="rv-course-desc">${esc(c.description)}</div>` : ''}
+      <div class="rv-meta">${c.modules.length} module${c.modules.length !== 1 ? 's' : ''} · ${total} question${total !== 1 ? 's' : ''} · every field below is editable</div>
     </div>`;
 
+    const questionHtml = (m, mi, q, qi) => `
+      <fieldset class="rv-q">
+        <legend>Question ${qi + 1}</legend>
+        <input type="text" aria-label="Question ${qi + 1} text" value="${esc(q.question)}" onchange="Importer.setQ(${mi},${qi},'question',this.value)">
+        ${[0, 1, 2, 3].map(oi => `
+          <div class="rv-opt">
+            <input type="radio" name="rv-c-${mi}-${qi}" ${oi === q.correct_index ? 'checked' : ''} aria-label="Option ${letters[oi]} is the correct answer" onchange="Importer.setCorrect(${mi},${qi},${oi})">
+            <span class="rv-letter" aria-hidden="true">${letters[oi]}</span>
+            <input type="text" aria-label="Option ${letters[oi]}" value="${esc((q.options || [])[oi] || '')}" onchange="Importer.setOpt(${mi},${qi},${oi},this.value)">
+          </div>`).join('')}
+        <input type="text" aria-label="Explanation" placeholder="Why the correct answer is right" value="${esc(q.explanation)}" onchange="Importer.setQ(${mi},${qi},'explanation',this.value)">
+        <button class="btn btn-danger-ghost btn-sm" onclick="Importer.removeQuestion(${mi},${qi})">Remove question</button>
+      </fieldset>`;
+
     const modulesHtml = c.modules.map((m, mi) => {
-      const qCount = m.questions?.length || 0;
-      const failed = m.failed;
-      const objectives = Array.isArray(m.learning_objectives) ? m.learning_objectives : [];
-
-      const objectivesHtml = objectives.length ? `
-        <div style="margin-top:var(--space-3);">
-          <div style="font-size:10px;font-weight:700;color:var(--ink-4);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Learning Objectives</div>
-          <ul style="margin:0;padding-left:var(--space-5);">
-            ${objectives.map(o => `<li style="font-size:12px;color:var(--ink-2);margin-bottom:3px;">${esc(o)}</li>`).join('')}
-          </ul>
-        </div>` : '';
-
-      const sourceHtml = m.reference_url ? `
-        <div style="margin-top:var(--space-3);display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg-2);border-radius:6px;border:1px solid var(--border);">
-          <span style="display:inline-flex;width:14px;height:14px;color:var(--ink-3);">${ICON.link}</span>
-          <span style="font-size:11px;color:var(--ink-4);">Source:</span>
-          <a href="${esc(m.reference_url)}" target="_blank" rel="noopener noreferrer" style="font-size:11px;color:var(--brand-1);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(m.reference_url)}</a>
-        </div>` : '';
-
-      const questionsHtml = qCount ? m.questions.map((q, qi) => `
-        <div style="margin-top:var(--space-4);padding-top:var(--space-3);border-top:1px solid var(--rule-2);">
-          <div style="font-weight:600;font-size:var(--text-sm);margin-bottom:var(--space-2);">Q${qi + 1}. ${esc(q.question)}</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-            ${(q.options || []).map((opt, oi) => opt ? `
-              <div style="font-size:var(--text-xs);padding:var(--space-2) var(--space-3);border-radius:var(--radius-md);border:1px solid var(--border);${oi === q.correct_index ? 'background:var(--pass-lt);border-color:var(--pass-border);color:var(--pass);font-weight:600;' : 'color:var(--ink-3);'}">
-                <span style="opacity:.5;margin-right:4px">${letters[oi]}</span> ${esc(opt)}
-              </div>` : '').join('')}
-          </div>
-          ${q.explanation ? `<div style="font-size:11px;color:var(--ink-4);margin-top:var(--space-2);padding:8px;background:var(--bg-2);border-radius:4px"><strong>Explanation:</strong> ${esc(q.explanation)}</div>` : ''}
-        </div>`).join('') : '';
-
-      return `<div class="card" style="margin-bottom:var(--space-4);">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-3);">
-          <div style="flex:1;min-width:0;">
-            <div style="font-size:var(--text-xs);font-weight:700;color:var(--ink-4);text-transform:uppercase;letter-spacing:.06em;">Module ${mi + 1}</div>
-            <div style="font-weight:700;margin-top:2px;">${esc(m.title)}</div>
-            ${m.summary ? `<div style="font-size:var(--text-sm);color:var(--ink-2);margin-top:8px;line-height:1.5;padding-left:12px;border-left:2px solid var(--pass)">${esc(m.summary)}</div>` : ''}
-            ${objectivesHtml}
-            ${sourceHtml}
-          </div>
-          <div style="flex-shrink:0;">
-            ${failed
-              ? '<span class="chip chip-red">✗ Failed</span>'
-              : `<span class="chip chip-green" style="font-size:10px">✓ ${qCount} questions</span> <span class="chip" style="background:var(--bg-2);color:var(--brand-1);font-size:9px;">${esc(m._provider || 'AI')}</span>`}
+      const qs = m.questions || [];
+      const words = (m.content || '').trim().split(/\s+/).filter(Boolean).length;
+      return `<section class="card rv-mod">
+        <div class="rv-mod-head">
+          <span class="rv-eyebrow">Module ${mi + 1}</span>
+          <span class="chip ${qs.length ? 'chip-green' : 'chip-red'}">${qs.length ? `${qs.length} question${qs.length !== 1 ? 's' : ''}` : 'No questions yet'}</span>
+          <div class="rv-actions">
+            <button class="btn btn-outline btn-sm" onclick="Importer.copyModulePrompt(${mi})">Redo with Claude</button>
+            <button class="btn btn-danger-ghost btn-sm" onclick="Importer.removeModule(${mi})" aria-label="Remove module ${mi + 1}">Remove</button>
           </div>
         </div>
-        ${questionsHtml}
-      </div>`;
+        <div class="field"><label for="rv-t-${mi}">Title</label>
+          <input id="rv-t-${mi}" type="text" value="${esc(m.title)}" onchange="Importer.setMod(${mi},'title',this.value)"></div>
+        <div class="field"><label for="rv-s-${mi}">Summary</label>
+          <textarea id="rv-s-${mi}" rows="2" onchange="Importer.setMod(${mi},'summary',this.value)">${esc(m.summary || '')}</textarea></div>
+        <div class="field"><label for="rv-o-${mi}">Learning objectives (one per line)</label>
+          <textarea id="rv-o-${mi}" rows="3" onchange="Importer.setObjectives(${mi},this.value)">${esc((m.learning_objectives || []).join('\n'))}</textarea></div>
+        ${m.reference_url ? `<div class="rv-source"><span class="rv-source-icon">${ICON.link}</span><span>Source:</span><a href="${esc(m.reference_url)}" target="_blank" rel="noopener noreferrer">${esc(m.reference_url)}</a></div>` : ''}
+        <details class="rv-lesson"><summary>Lesson content (~${words} words)</summary>
+          <textarea rows="12" aria-label="Lesson content for module ${mi + 1}" onchange="Importer.setMod(${mi},'content',this.value)">${esc(m.content || '')}</textarea></details>
+        ${qs.map((q, qi) => questionHtml(m, mi, q, qi)).join('')}
+        <button class="btn btn-outline btn-sm" onclick="Importer.addQuestion(${mi})">+ Add question</button>
+      </section>`;
     }).join('');
 
     el.innerHTML = header + modulesHtml;
   },
 
+  setMod(mi, key, value) {
+    Importer.generatedCourse.modules[mi][key] = key === 'content' ? value : value.trim();
+    Importer.saveDraft();
+  },
+  setObjectives(mi, text) {
+    Importer.generatedCourse.modules[mi].learning_objectives = text.split('\n').map(s => s.trim()).filter(Boolean);
+    Importer.saveDraft();
+  },
+  setQ(mi, qi, key, value) { Importer.generatedCourse.modules[mi].questions[qi][key] = value.trim(); Importer.saveDraft(); },
+  setOpt(mi, qi, oi, value) { Importer.generatedCourse.modules[mi].questions[qi].options[oi] = value.trim(); Importer.saveDraft(); },
+  setCorrect(mi, qi, oi) { Importer.generatedCourse.modules[mi].questions[qi].correct_index = oi; Importer.saveDraft(); },
+  addQuestion(mi) {
+    Importer.generatedCourse.modules[mi].questions.push({ question: '', options: ['', '', '', ''], correct_index: 0, explanation: '' });
+    Importer.saveDraft(); Importer.renderReview();
+  },
+  removeQuestion(mi, qi) {
+    Importer.generatedCourse.modules[mi].questions.splice(qi, 1);
+    Importer.saveDraft(); Importer.renderReview();
+  },
+  removeModule(mi) {
+    const c = Importer.generatedCourse;
+    if (!confirm(`Remove module "${c.modules[mi].title}" from this course?`)) return;
+    c.modules.splice(mi, 1);
+    Importer.saveDraft(); Importer.renderReview();
+  },
+
+  // Returns a list of problems that must be fixed before the course can be saved.
+  validateCourse(c) {
+    const errors = [];
+    if (!Importer.str(c.title)) errors.push('The course needs a title (go back to Configure).');
+    if (!c.modules.length) errors.push('The course has no modules.');
+    c.modules.forEach((m, mi) => {
+      const label = `Module ${mi + 1}${m.title ? ` "${m.title}"` : ''}`;
+      if (!Importer.str(m.title)) errors.push(`${label}: missing title.`);
+      if (!Importer.str(m.content)) errors.push(`${label}: lesson content is empty.`);
+      if (!(m.questions || []).length) errors.push(`${label}: needs at least one question.`);
+      (m.questions || []).forEach((q, qi) => Importer.normalizeQuestion(q, `${label}, question ${qi + 1}`, errors));
+    });
+    return errors;
+  },
+
+  // ── Draft recovery (survives a refresh or closed tab) ─────────────────────
+  DRAFT_KEY: 'trainflow_import_draft',
+  saveDraft() {
+    if (!Importer.parsedModules.length && !Importer.generatedCourse) return;
+    try {
+      localStorage.setItem(Importer.DRAFT_KEY, JSON.stringify({
+        ts: Date.now(), phase: Importer.phase, parsedModules: Importer.parsedModules,
+        generatedCourse: Importer.generatedCourse, settings: Importer.settings,
+        form: { title: $$('ai-course-title')?.value || '', icon: $$('ai-course-icon')?.value || '', desc: $$('ai-course-desc')?.value || '' }
+      }));
+    } catch { /* storage full or blocked: drafts are a convenience only */ }
+  },
+  loadDraft() {
+    try { return JSON.parse(localStorage.getItem(Importer.DRAFT_KEY) || 'null'); } catch { return null; }
+  },
+  clearDraft() {
+    try { localStorage.removeItem(Importer.DRAFT_KEY); } catch { /* nothing to clear */ }
+    $$('imp-draft-banner')?.classList.add('hidden');
+  },
+  renderDraftBanner() {
+    const el = $$('imp-draft-banner'); if (!el) return;
+    const d = Importer.loadDraft();
+    const fresh = !Importer.fileModules.length && !Importer.parsedModules.length && !Importer.generatedCourse;
+    if (!d || !fresh) { el.classList.add('hidden'); return; }
+    const title = d.form?.title || d.generatedCourse?.title || 'Untitled course';
+    $$('imp-draft-text').textContent = `Unfinished import: "${title}", saved ${new Date(d.ts).toLocaleString()}.`;
+    el.classList.remove('hidden');
+  },
+  resumeDraft() {
+    const d = Importer.loadDraft(); if (!d) return;
+    Importer.parsedModules = d.parsedModules || [];
+    Importer.generatedCourse = d.generatedCourse || null;
+    Importer.settings = { ...Importer.DEFAULT_SETTINGS, ...(d.settings || {}) };
+    $$('ai-course-title').value = d.form?.title || '';
+    $$('ai-course-icon').value = d.form?.icon || '';
+    $$('ai-course-desc').value = d.form?.desc || '';
+    $$('q-per-mod').value = String(Importer.settings.count);
+    $$('q-difficulty').value = Importer.settings.difficulty;
+    $$('q-focus').value = Importer.settings.focus;
+    $$('imp-draft-banner')?.classList.add('hidden');
+    Importer.renderModulePreview();
+    if (d.phase === 4 && Importer.generatedCourse) { Importer.renderReview(); Importer.goPhase(4); }
+    else if (d.phase === 3 && Importer.generatedCourse) { Importer.showClaudePanel(); Importer.goPhase(3); }
+    else Importer.goPhase(2);
+  },
+
   async saveAiCourse() {
     const btn = document.querySelector('[onclick="App.saveAiCourse()"]');
+    const errBox = $$('review-errors');
+    const errors = Importer.validateCourse(Importer.generatedCourse);
+    if (errBox) {
+      errBox.classList.toggle('hidden', !errors.length);
+      errBox.innerHTML = errors.length ? `<strong>Fix these before saving:</strong><ul>${errors.map(e => `<li>${esc(e)}</li>`).join('')}</ul>` : '';
+    }
+    if (errors.length) { errBox?.scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
 
-    const payload = JSON.stringify(Importer.generatedCourse);
+    // Internal bookkeeping (_rid, _provider) and `failed` flags never go to the server.
+    const payload = JSON.stringify(Importer.generatedCourse, (k, v) => (k.startsWith('_') || k === 'failed' ? undefined : v));
     const payloadKB = Math.round(payload.length / 1024);
     if (payloadKB > 500) {
       const ok = confirm(`This course is large (~${payloadKB}KB). Saving may take a moment. Continue?`);
@@ -756,6 +1057,7 @@ RULES:
       await api('/api/courses', { method: 'POST', body: payload, signal: controller.signal });
       Toast.ok('Course saved!');
       Importer.fileModules = []; Importer.parsedModules = []; Importer.generatedCourse = null; Importer.isGenerating = false;
+      Importer.clearDraft();
       Admin.nav('courses');
     } catch(e) {
       const msg = e.name === 'AbortError'
