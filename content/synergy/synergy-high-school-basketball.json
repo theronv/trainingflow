@@ -1,23 +1,202 @@
 {
  "title": "Synergy for High School Basketball",
  "icon": "🏫",
- "description": "",
+ "description": "Learn to manage your team's Synergy users, send rosters and schedules, and review the Upload Schedule. Then upload roster templates and game video in Video Express, meet the logging requirements, and share game video with non-customers.",
  "modules": [
   {
    "title": "Users, Rosters and Schedules",
-   "summary": "",
-   "learning_objectives": [],
+   "summary": "How a Team Admin manages Synergy users, sends rosters and schedules to support, and uses the Upload Schedule to track the status of uploaded games.",
+   "learning_objectives": [
+    "Learners will be able to add Staff and Player users and give a Staff member administrator access.",
+    "Learners will be able to select users to send password resets, reactivate or deactivate accounts, or send emails.",
+    "Learners will be able to submit rosters and schedules, and report mid-season changes, to Synergy support.",
+    "Learners will be able to open the Upload Schedule and filter it by team.",
+    "Learners will be able to interpret the Status and Type columns of the Upload Schedule."
+   ],
    "reference_url": "https://support.synergysports.com/support/solutions/articles/77000573006",
    "content": "## Managing Users\n\nAs the Team Admin, you have access and responsibility to handle your team's Synergy accounts.  You can add new users, send password resets, reactivate or deactivate existing users, and even email from the Users Tab.\n\n###\n\n### Users Tab\n\nSelect the **Users** tab from the Team Site to access all of the users for your team's subscription.\n\n![Screenshot: Managing Users](https://pregame-academy.vickerydigital.com/assets/synergy/77000573006-01.jpg)\n\nOnce the Users Tab is open, on the left of the screen there is a menu that allows you to filter by user status, user type, and name or expiration date.\n\n####\n\n![Screenshot: Managing Users](https://pregame-academy.vickerydigital.com/assets/synergy/77000573006-02.jpg)\n\n####\n\n####\n\n#### Add Users\n\nTo add a new user, select **+Add**.\n\n![Screenshot: Managing Users](https://pregame-academy.vickerydigital.com/assets/synergy/77000573006-03.jpg)\n\nAfter selecting +Add you can create Staff and Player accounts. You can enter the Name, Title, E-Mail, and Phone Number of the new User. If you are adding a Staff member who you wish to have administrator access to your Synergy account, toggle the Administrator button to Yes.\n\n![Screenshot: Managing Users](https://pregame-academy.vickerydigital.com/assets/synergy/77000573006-04.jpg)\n\nOnce all fields have been filled, select Add User, and the account will be created and a welcome email will be automatically generated with instructions for the user on how to set up their password for their Synergy account.\n\n![Screenshot: Managing Users](https://pregame-academy.vickerydigital.com/assets/synergy/77000573006-05.jpg)\n\n#### Manage Users\n\nTo send password resets, reactivate or deactivate accounts, or send emails, you must first select the users you wish to manage. You can select users by marking the checkboxes in the upper right of the user squares.\n\n![Screenshot: Managing Users](https://pregame-academy.vickerydigital.com/assets/synergy/77000573006-06.jpg)\n\nOnce the users have been selected, the send password reset, reactivate users, deactivate users, and email users options will become available.\n\n![Screenshot: Managing Users](https://pregame-academy.vickerydigital.com/assets/synergy/77000573006-07.jpg)\n\nIf you experience any issues or difficulties with your user management, please reach out to our Support Team at [support@synergysports.com](mailto:support@synergysports.com) or call 1-800-411-1627.\n\n## Roster & Schedule Management\n\nAs part of season prep, users will need to send team rosters and schedules. Directions for sending rosters and schedules can be found below.\n\n### **Rosters**\n\nOnce your roster is finalized, fill in the Roster tab of [**THIS FORM**](https://files.constantcontact.com/d860742b301/e0e70f1e-6ec4-4886-9408-3a62fc2477c1.xlsx?_gl=1*1r00jjj*_ga*ZDJkNWVkNmYtNTZiZi00ZjZkLTk3ZjgtNDMzYmQ4NjAwZDYz*_ga_14T5LGLSQ3*MTcyNTY0MTM0Mi41LjEuMTcyNTY0MzQ5MS4zNy4wLjA.) (the file will go to your downloads when you click). Completed roster spreadsheets should be sent via email to [synergy-support@sportradar.com](mailto:synergy-support@sportradar.com).\n\n- Make sure the green column headers of the form are filled out for each player.\n- If your roster changes during the season, email [**synergy-support@sportradar.com**](mailto:synergy-support@sportradar.com) with the changes.\n- Rosters are used to log games. Users will still be responsible for creating player Synergy accounts (see the “Users, Rosters and Schedules” lesson).\n\n**Schedules**\n\nIf your MAXPREPS schedule for the upcoming season is accurate, then you are set. If not, you can either update it on MAXPREPS as soon as possible or you can add your schedule to the Schedule tab of [**THIS FORM**](https://files.constantcontact.com/d860742b301/e0e70f1e-6ec4-4886-9408-3a62fc2477c1.xlsx?_gl=1*1r00jjj*_ga*ZDJkNWVkNmYtNTZiZi00ZjZkLTk3ZjgtNDMzYmQ4NjAwZDYz*_ga_14T5LGLSQ3*MTcyNTY0MTM0Mi41LjEuMTcyNTY0MzQ5MS4zNy4wLjA.). Completed schedule spreadsheets should be sent to [synergy-support@sportradar.com](mailto:synergy-support@sportradar.com).\n\n- If your schedule changes during the season, email [**synergy-support@sportradar.com**](mailto:synergy-support@sportradar.com) with the changes.\n- If a game is missing from your schedule when you go to upload it to Synergy via Video Express (see the “Uploading, Logging and Sharing Games” lesson), contact support to make the addition.\n- Check your schedule in Video Express (see the “Installing Video Express” lesson in Synergy Video Express for Basketball) prior to game day to ensure quicker turnaround times for your breakdowns.\n\n***** Completed schedule and roster spreadsheets should be sent to***[**synergy-support@sportradar.com**](mailto:synergy-support@sportradar.com)***.***\n\n## Reviewing Upload Schedules\n\nThe **Upload Schedule** feature shows the status of uploaded games, and it details which games a team is required to upload. The Upload Schedule also provides information on the competition categories and any additional comments that are associated with the upload.\n\n### Navigating the Upload Schedule\n\nTo get started, click on the **Game** tab. Then click on the **Upload Schedule** tab.\n\n![Screenshot: Reviewing Upload Schedules](https://pregame-academy.vickerydigital.com/assets/synergy/77000573007-01.jpg)\n\nUse the**Games Filters** on the left to narrow down teams, and then select a team from the **Team A** dropdown.\n\n![Screenshot: Reviewing Upload Schedules](https://pregame-academy.vickerydigital.com/assets/synergy/77000573007-02.jpg)\n\nOnce the **Games Filters** have been applied and you have selected a team from the **Team A** dropdown, that team's upload schedule will appear. The upload schedule will have the most recent game listed at the top.\n\n![Screenshot: Reviewing Upload Schedules](https://pregame-academy.vickerydigital.com/assets/synergy/77000573007-03.jpg)\n\nThe Upload Schedule tab includes functionality that provides information on:\n\n- **Game Date**\n- **Game**: Includes the names of the teams playing in the game\n- **Type**: Whether the game footage will be pulled from TV or requires an upload by a team participating in the game.\n- **Status**: *Not Available*, *Complete*, *P1*, *P2*, *Future* (Coming Soon)\n  - Not Available: The game has not been uploaded yet or is a game that is in the future\n  - P1: The game is in the Phase I Logged stage. This is the first step of the logging process and means Full Game Video is available for download in Video Express.\n  - P2: The game is in the Phase 2 Logged stage.  This is the second step of the logging process and means all logging and breakdowns have been completed. All videos and stats are available for this game.\n  - Complete: The game has been fully logged, and all statistics are associated with the video.\n  - Future (Coming Soon): This means a game slot has not been created for this game as it is likely far in the future.  Once the game date nears, a game slow will be created for the game and can be used for upload.\n- **Competition**: The type of game being played.  Typically, this column will detail whether it's an exhibition, regular season, or playoff game.\n- **Comments**: This is where comments can be entered that detail context about the video uploaded or if there's an issue with the upload.\n\nAs an added feature, clicking on **Complete**in the status column will redirect you to that game's breakdown.\n\n![Screenshot: Reviewing Upload Schedules](https://pregame-academy.vickerydigital.com/assets/synergy/77000573007-04.jpg)\n\nYou can also click on a team name in the **Game** column to display that team's upload schedule.\n\n![Screenshot: Reviewing Upload Schedules](https://pregame-academy.vickerydigital.com/assets/synergy/77000573007-05.jpg)",
-   "questions": []
+   "questions": [
+    {
+     "question": "You are adding a Staff member who should be able to manage your team's Synergy account. What do you do on the Add screen?",
+     "options": [
+      "Select the Staff title from the Phone Number field",
+      "Email Synergy support to request administrator access afterward",
+      "Choose the Player account type instead",
+      "Toggle the Administrator button to Yes"
+     ],
+     "correct_index": 3,
+     "explanation": "Toggling the Administrator button to Yes gives the Staff member administrator access to the Synergy account."
+    },
+    {
+     "question": "You need to send password resets to several users at once from the Users tab. What should you do first?",
+     "options": [
+      "Open the filter menu and sort by expiration date",
+      "Mark the checkboxes in the upper right of the user squares",
+      "Select +Add and re-enter their details",
+      "Wait for the welcome email to be regenerated"
+     ],
+     "correct_index": 1,
+     "explanation": "The password reset, reactivate, deactivate and email options become available only after you select the users."
+    },
+    {
+     "question": "You emailed your finalized roster spreadsheet to Synergy support. What is still your responsibility?",
+     "options": [
+      "Creating the player Synergy accounts",
+      "Re-sending the roster before every game",
+      "Logging the games from the roster",
+      "Uploading the roster to MAXPREPS"
+     ],
+     "correct_index": 0,
+     "explanation": "Rosters are used to log games, but users are still responsible for creating player Synergy accounts."
+    },
+    {
+     "question": "Your MAXPREPS schedule for the upcoming season is inaccurate. Which option is described for getting the right schedule to Synergy?",
+     "options": [
+      "Update it on MAXPREPS, or add it to the Schedule tab of the form and email it to support",
+      "Wait for Synergy to correct it when the first game is uploaded",
+      "Enter the games on the Users tab",
+      "Add each missing game yourself in Video Express"
+     ],
+     "correct_index": 0,
+     "explanation": "You can either update MAXPREPS as soon as possible or complete the form's Schedule tab and send it to support."
+    },
+    {
+     "question": "When you go to upload a game through Video Express, the game is missing from your schedule. What should you do?",
+     "options": [
+      "Upload the video under a different game",
+      "Contact support to make the addition",
+      "Add the game on the Users tab",
+      "Wait until the game slot is created automatically"
+     ],
+     "correct_index": 1,
+     "explanation": "If a game is missing from your schedule at upload time, you contact support to add it."
+    },
+    {
+     "question": "You want to review which games your team still has to upload. Where do you go in the Team Site?",
+     "options": [
+      "The Users tab, then the Games Filters",
+      "The Game tab, then the Upload Schedule tab",
+      "The Roster tab, then the Schedule tab",
+      "The Game tab, then the Team A dropdown only"
+     ],
+     "correct_index": 1,
+     "explanation": "Click the Game tab and then the Upload Schedule tab, then use the Games Filters and Team A dropdown to pick a team."
+    },
+    {
+     "question": "On the Upload Schedule a game shows the status P1. What does that tell you?",
+     "options": [
+      "All logging and breakdowns are finished",
+      "The game has not been uploaded yet",
+      "The game is in Phase I Logged and Full Game Video can be downloaded in Video Express",
+      "A game slot has not been created because the game is far in the future"
+     ],
+     "correct_index": 2,
+     "explanation": "P1 is the first step of logging and means Full Game Video is available for download in Video Express."
+    }
+   ]
   },
   {
    "title": "Uploading, Logging and Sharing Games",
-   "summary": "",
-   "learning_objectives": [],
+   "summary": "How to upload roster templates and game video in Video Express, what Synergy needs to log a game, and how to share High School game video with non-customers.",
+   "learning_objectives": [
+    "Learners will be able to explain which rosters must be uploaded for each game.",
+    "Learners will be able to upload a roster template and then a game video in Video Express.",
+    "Learners will be able to list the information requested when uploading a game video.",
+    "Learners will be able to describe what Synergy needs for a game to be logged within the 24-hour window.",
+    "Learners will be able to share full game video with a non-customer from the Team Site."
+   ],
    "reference_url": "https://support.synergysports.com/support/solutions/articles/77000570451",
    "content": "## Game Upload Instructions\n\nHigh School teams will need to upload a [roster template](https://support-materials.synergysportstech.com/High_School_Roster_Template.xlsx) and game video for every game. Here are a few things to note when completing these tasks in Video Express:\n\n- Opponent rosters need to be uploaded for every game.\n- Home rosters only need to be uploaded once, at the beginning of the season, unless there are roster changes throughout the season.\n- Synergy cannot log games correctly if home rosters and opponent rosters are not accurate.\n- Home rosters and opponent rosters can be added to the same Roster Template (i.e. you only need to complete one roster template for both teams).\n\nBelow are step-by-step instructions for uploading roster templates and game videos in Video Express.\n\n#### [** Video Express can be downloaded here **](https://www.synergysportstech.com/apps/videoexpress/)\n\n####\n\n#### Uploading a Roster Template\n\nAfter you log in to Video Express, click the**Start Upload** button.\n\n![Screenshot: Game Upload Instructions](https://pregame-academy.vickerydigital.com/assets/synergy/77000570451-01.jpg)\n\nThen click the **Roster** button.\n\n![Screenshot: Game Upload Instructions](https://pregame-academy.vickerydigital.com/assets/synergy/77000570451-02.jpg)\n\nUse the filters to find the game you are uploading. Then click on the game and select **Upload**.\n\n![Screenshot: Game Upload Instructions](https://pregame-academy.vickerydigital.com/assets/synergy/77000570451-03.jpg)\n\nAfter you click the Upload button, you will be redirected to a set of Video Express instructions and resources. Read the information and then click **Continue**.\n\n![Screenshot: Game Upload Instructions](https://pregame-academy.vickerydigital.com/assets/synergy/77000570451-04.jpg)\n\nYou will then be prompted to upload your roster template. Select your file and then click **Open**.\n\n![Screenshot: Game Upload Instructions](https://pregame-academy.vickerydigital.com/assets/synergy/77000570451-05.jpg)\n\nYou will then be taken to the Upload/Download page, where you can monitor the upload progress. After your roster template is uploaded, start a **New Upload** for your game video.\n\n![Screenshot: Game Upload Instructions](https://pregame-academy.vickerydigital.com/assets/synergy/77000570451-06.jpg)\n\n####\n\n#### Uploading Game Video\n\nAfter you have completed the steps for uploading a roster template, click on **New Game Upload**.\n\n![Screenshot: Game Upload Instructions](https://pregame-academy.vickerydigital.com/assets/synergy/77000570451-07.jpg)\n\nUse the filters to find the game you are uploading. Then click on the game and select **Upload**.\n\n![Screenshot: Game Upload Instructions](https://pregame-academy.vickerydigital.com/assets/synergy/77000570451-08.jpg)\n\nAfter you click the Upload button, you will be redirected to Video Express Reminders and then Video Express Instructions. Read the information on these pages, and then click **Continue**.\n\n> Note: You can select **Do not show this message again**in the bottom, left corner.\n\n![Screenshot: Game Upload Instructions](https://pregame-academy.vickerydigital.com/assets/synergy/77000570451-09.jpg)\n\nNext, you will be prompted to upload your video. Select your file and click **Open**.\n\n![Screenshot: Game Upload Instructions](https://pregame-academy.vickerydigital.com/assets/synergy/77000570451-10.jpg)\n\nThen you will be asked to provide the final score, jersey colors, and game structure, as well as acknowledge that you have already uploaded a roster template. Then you can click **Continue**.\n\n![Screenshot: Game Upload Instructions](https://pregame-academy.vickerydigital.com/assets/synergy/77000570451-11.jpg)\n\nOnce your video has completely uploaded, you will have successfully finished your Video Express tasks.\n\n![Screenshot: Game Upload Instructions](https://pregame-academy.vickerydigital.com/assets/synergy/77000570451-12.jpg)\n\n## Game Logging Checklist\n\nTo ensure games are logged promptly, Synergy relies on coaches and administrators to supply specific information. Please use the checklist and the guidelines below to make sure all necessary details have been provided for accurate game logging.\n\n[** Roster Templates can be downloaded here **](https://support-materials.synergysportstech.com/High_School_Roster_Template.xlsx)\n\n[** Video Express can be downloaded here **](https://www.synergysportstech.com/apps/videoexpress/)\n\n![Screenshot: Game Logging Checklist](https://pregame-academy.vickerydigital.com/assets/synergy/77000585465-01.jpg)\n\n**Team Rosters**\n\n- This is only required once unless there are changes to the team and jersey numbers.\n- First name, last name, and jersey numbers required.\n\n**Opponent Rosters**\n\n- This is required every game, and matches will not be logged without an opponent roster.\n- First name, last name, and jersey numbers are required.\n\n**Accepted Film Formats**\n\n- vob\n- mp4\n- avi\n- wmv\n- mov\n- m4v\n- mpg\n- mod\n- mts\n\n**Clear Film and Jersey Numbers**\n\n- Games cannot be logged if the film is too low in quality or missing large blocks of time.\n\n****24-Hour Logging Window****\n\n- Most games are completed within a 24-hour window if nothing is missing and the film is clear.\n- The 24-hour window starts after a game has been completely uploaded.\n\n## Non-Customer Video Sharing (High School Only)\n\n### Non-Customer Video Sharing\n\n#####\n\n##### 1. Log into [Team Site](https://apps.synergysports.com/basketball) and click on the**Games** tab at the top of the page.\n\n![Screenshot: Non-Customer Video Sharing (High School Only)](https://pregame-academy.vickerydigital.com/assets/synergy/77000565962-01.jpg)\n\n##### 2. Apply the **Games Filters** on the left of the screen. The **League** must be set to High School.\n\n![Screenshot: Non-Customer Video Sharing (High School Only)](https://pregame-academy.vickerydigital.com/assets/synergy/77000565962-02.jpg)\n\n##### 3. Click on the game you wish to share.\n\n![Screenshot: Non-Customer Video Sharing (High School Only)](https://pregame-academy.vickerydigital.com/assets/synergy/77000565962-03.jpg)\n\n##### 4. When you get to the Game Data page, click **Send Full Game Video**.\n\n![Screenshot: Non-Customer Video Sharing (High School Only)](https://pregame-academy.vickerydigital.com/assets/synergy/77000565962-04.jpg)\n\n##### 5. Fill out the information for the recipient, and then click OK to share the video.\n\n![Screenshot: Non-Customer Video Sharing (High School Only)](https://pregame-academy.vickerydigital.com/assets/synergy/77000565962-05.jpg)",
-   "questions": []
+   "questions": [
+    {
+     "question": "It is the second game of the season and your roster has not changed. Which rosters do you need to upload for this game?",
+     "options": [
+      "Only the opponent roster",
+      "Both rosters again, on separate templates",
+      "Only your home roster",
+      "No rosters, since the first game's roster covers it"
+     ],
+     "correct_index": 0,
+     "explanation": "Opponent rosters are needed for every game, while home rosters are uploaded once unless they change."
+    },
+    {
+     "question": "You want to avoid filling out two templates for a game. What does the guidance allow?",
+     "options": [
+      "Uploading the video without a roster",
+      "Adding the home and opponent rosters to the same Roster Template",
+      "Asking the opponent to upload their roster for you",
+      "Using one roster for the whole season"
+     ],
+     "correct_index": 1,
+     "explanation": "Home and opponent rosters can be added to the same Roster Template."
+    },
+    {
+     "question": "You have just finished uploading a roster template in Video Express and are on the Upload/Download page. What is the next step?",
+     "options": [
+      "Click Roster again to upload the video",
+      "Click Start Upload to repeat the roster",
+      "Wait for the 24-hour logging window to finish",
+      "Start a New Upload for your game video"
+     ],
+     "correct_index": 3,
+     "explanation": "After the roster template uploads, you start a new upload for the game video."
+    },
+    {
+     "question": "After selecting your video file, which set of information are you asked to provide?",
+     "options": [
+      "The final score, jersey colors and game structure, plus acknowledging a roster template was uploaded",
+      "The opponent's coach, the arena and the game date",
+      "The roster template, jersey numbers and the film format",
+      "Only the final score and a comment"
+     ],
+     "correct_index": 0,
+     "explanation": "Video Express asks for the final score, jersey colors and game structure, and for confirmation that a roster template was already uploaded."
+    },
+    {
+     "question": "A coach uploaded a game but it was not logged. The film is too low in quality and missing large blocks of time. What does the checklist say?",
+     "options": [
+      "The game will be logged once the 24-hour window passes",
+      "Synergy will log it using the roster alone",
+      "The game cannot be logged",
+      "Only the opponent roster needs to be re-sent"
+     ],
+     "correct_index": 2,
+     "explanation": "Games cannot be logged if the film is too low in quality or missing large blocks of time."
+    },
+    {
+     "question": "When does the 24-hour logging window start?",
+     "options": [
+      "When the roster template is emailed",
+      "After the game has been completely uploaded",
+      "When the game is played",
+      "When the game appears on the Upload Schedule"
+     ],
+     "correct_index": 1,
+     "explanation": "The 24-hour window starts after a game has been completely uploaded, and applies when nothing is missing and the film is clear."
+    },
+    {
+     "question": "You want to share a game video with someone who is not a Synergy customer. How do you set the Games Filters in Team Site?",
+     "options": [
+      "Set the League to High School",
+      "Set Team A to the recipient's team",
+      "Set the Status to Complete",
+      "Set the Competition to playoff"
+     ],
+     "correct_index": 0,
+     "explanation": "The League must be set to High School for non-customer video sharing."
+    },
+    {
+     "question": "You have clicked the game you want to share with a non-customer. Where do you find Send Full Game Video?",
+     "options": [
+      "On the Users tab",
+      "In the Games Filters on the left",
+      "On the Upload Schedule",
+      "On the Game Data page"
+     ],
+     "correct_index": 3,
+     "explanation": "Send Full Game Video appears on the Game Data page, where you then fill out the recipient's information and click OK."
+    }
+   ]
   }
  ]
 }
