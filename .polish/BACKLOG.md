@@ -7,7 +7,7 @@ None found. (No data-loss, auth bypass or crash-on-launch evidence.) Closest: CI
 
 | ID | Phase | Area | Finding | Evidence | Severity | Effort | Fix | Status |
 |---|---|---|---|---|---|---|---|---|
-| CI-01 | 2.4 | CI/CD | Worker auto-deploys to production on push to main with no tests/lint run | `.github/workflows/deploy-worker.yml` (no test step); CONTRIBUTING.md says so | High | S | PR workflow running `npm test`; make deploy `needs` test job | Open |
+| CI-01 | 2.4 | CI/CD | Worker auto-deploys to production on push to main with no tests/lint run | `.github/workflows/deploy-worker.yml` (no test step); CONTRIBUTING.md says so | High | S | PR workflow running `npm test`; make deploy `needs` test job | Fixed (branch polish/phase-2; confirm green run after merge) |
 | TST-01 | 2.2 | Hooks | No lint/format/type tooling or Stop hook; baseline is green (154 pass) so a blocking hook is safe | no eslint/prettier config; `.claude/settings.local.json` only has allow rules | High | M | ESLint (+ a11y plugin) + Prettier, token-literal lint, hooks | Open |
 | SEC-01 | 3.1 | Security | No CSP / security headers on Worker responses or Pages shell | grep: no `secureHeaders`/CSP anywhere | High | M | Hono `secureHeaders` on API; CSP `<meta>` for Pages (needs inline-handler refactor or `unsafe-inline` decision) | Open |
 | OBS-01 | 2.5 | Observability | No error capture; production failures invisible | no Sentry in repo | High | M | Sentry (Worker + browser), env-gated, PII-scrubbed. Needs your OK (new dependency) | Open |

@@ -30,7 +30,7 @@ Worker secrets for local dev go in `worker/.dev.vars` (see `CLAUDE.md`). Never c
 ## Deploys: read this
 
 - **Frontend:** every push to `main` publishes to GitHub Pages.
-- **Worker:** a push to `main` that touches `worker/**` deploys to **production** Cloudflare (`.github/workflows/deploy-worker.yml`). That workflow does not run the tests, so run them yourself before merging.
+- **Worker:** a push to `main` that touches `worker/**` deploys to **production** Cloudflare (`.github/workflows/deploy-worker.yml`). That workflow now runs the worker tests first and only deploys if they pass; a separate CI workflow (`ci.yml`) runs them on every pull request.
 - Don't run `wrangler deploy`, `wrangler secret`, database migrations or destructive `turso` commands without the owner's sign-off.
 
 ## Ask first
