@@ -168,7 +168,7 @@ function makeApi(getTokenFn, on401) {
     if (res.status === 401 && token) { on401(); throw new Error('Session expired'); }
     if (!res.ok) {
       const body = await res.json().catch(() => ({ error: res.statusText }));
-      throw Object.assign(new Error(body.error || res.statusText), { status: res.status, detail: body.detail });
+      throw Object.assign(new Error(body.error || res.statusText), { status: res.status });
     }
     return res.json();
   };

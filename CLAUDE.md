@@ -368,6 +368,8 @@ F1–F12 are fixed and covered by `worker/test/`. **F1/F2 were regressed and are
 - **Unauthenticated catalog closed:** `GET /api/courses` and `GET /api/sections` now require a token (demo mode uses a built-in sample catalog, `DEMO_COURSES` in `js/core.js`).
 - **Known residual risk:** because retakes are allowed and the key is revealed per answered question, a determined learner can probe answers by repeated attempts. This is inherent to retake-friendly quizzes; add attempt limits/cooldowns if certificates need stronger assurance.
 
+- **Hardening (2026-10-20, SEC-01/04/06):** every `/api/*` response carries `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy`, HSTS, a deny-all CSP and `Cache-Control: no-store` (`secureHeaders()` in `worker/index.js`); `hono` 4.13.13 / `ws` 8.22 (runtime audit clean); `/api/ai/generate` rejects prompts over 200k chars and clamps `max_tokens` to 8000; `PUT /api/brand` no longer returns DB error detail. Open: Pages shell headers/CSP, token revocation (SEC-05), durable rate limiting (SEC-07) — see `.polish/BACKLOG.md`.
+
 Verified present:
 - **F3–F8 (HIGH):** Team ownership enforced on manager routes; `requireLearner` checks `role === 'learner'` (`worker/index.js:152`); `team_id` locked to manager's own team
 - **F9–F12 (MEDIUM):** Password min-length enforced; current password required to change admin password; DB error detail removed from 500 responses (`app.onError` returns generic message); tag endpoints team-scoped
