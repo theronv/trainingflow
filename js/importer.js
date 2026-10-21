@@ -309,9 +309,9 @@ ${lessons}`;
     };
   },
 
-  startClaudeFlow() {
+  async startClaudeFlow() {
     const existing = Importer.generatedCourse;
-    if (existing?.modules.some(m => m.questions?.length) && !confirm('Building new prompts discards the questions already added. Continue?')) return;
+    if (existing?.modules.some(m => m.questions?.length) && !await Confirm.ask({ title: 'Build new prompts?', body: 'This discards the questions already added.', confirmLabel: 'Build new prompts', danger: true })) return;
     Importer.settings = Importer.readSettings();
     Importer.generatedCourse = Importer.courseFromParsed();
     Importer.showClaudePanel();
@@ -687,7 +687,7 @@ ${lessons}`;
         Review and edit module titles and source URLs before generating.
       </div>
       <div style="display:flex;align-items:center;gap:var(--space-3);margin-bottom:var(--space-3);">
-        <button class="btn btn-secondary btn-sm" id="btn-merge-modules" onclick="Importer.mergeSelected()" disabled>Merge selected</button>
+        <button class="btn btn-outline btn-sm" id="btn-merge-modules" onclick="Importer.mergeSelected()" disabled>Merge selected</button>
         <span style="font-size:var(--text-xs);color:var(--ink-3);">Tick short modules on the same topic to combine them into one.</span>
       </div>` +
     Importer.parsedModules.map((m, i) => {
@@ -964,9 +964,9 @@ RULES:
     Importer.generatedCourse.modules[mi].questions.splice(qi, 1);
     Importer.saveDraft(); Importer.renderReview();
   },
-  removeModule(mi) {
+  async removeModule(mi) {
     const c = Importer.generatedCourse;
-    if (!confirm(`Remove module "${c.modules[mi].title}" from this course?`)) return;
+    if (!await Confirm.ask({ title: 'Remove module?', body: `"${c.modules[mi].title}" will be removed from this course.`, confirmLabel: 'Remove module', danger: true })) return;
     c.modules.splice(mi, 1);
     Importer.saveDraft(); Importer.renderReview();
   },
@@ -1046,7 +1046,7 @@ RULES:
     const payload = JSON.stringify(Importer.generatedCourse, (k, v) => (k.startsWith('_') || k === 'failed' ? undefined : v));
     const payloadKB = Math.round(payload.length / 1024);
     if (payloadKB > 500) {
-      const ok = confirm(`This course is large (~${payloadKB}KB). Saving may take a moment. Continue?`);
+      const ok = await Confirm.ask({ title: 'Save large course?', body: `This course is large (~${payloadKB}KB). Saving may take a moment.`, confirmLabel: 'Save course' });
       if (!ok) return;
     }
 

@@ -30,8 +30,8 @@ const Builder = {
       }).catch(() => {});
     }
   },
-  closeBuilder(force) {
-    if (!force && Builder._dirty && !confirm('Discard your unsaved changes to this course?')) return;
+  async closeBuilder(force) {
+    if (!force && Builder._dirty && !await Confirm.ask({ title: 'Discard changes?', body: 'Your unsaved changes to this course will be lost.', confirmLabel: 'Discard changes', cancelLabel: 'Keep editing', danger: true })) return;
     Builder._dirty = false;
     $$('builder-overlay').classList.add('hidden');
   },
@@ -45,7 +45,7 @@ const Builder = {
       <div class="card" style="margin-bottom:var(--space-4);">
         <div style="display:flex;justify-content:space-between;margin-bottom:var(--space-3);">
           <div style="font-weight:700;">Module ${i+1}</div>
-          <button class="btn btn-ghost btn-sm" style="color:var(--fail);" onclick="Builder.delMod(${i})">Remove</button>
+          <button class="btn btn-ghost btn-sm btn-danger-ghost" onclick="Builder.delMod(${i})">Remove</button>
         </div>
         <div class="field"><label>Title</label><input type="text" value="${esc(m.title)}" oninput="cbState.mods[${i}].title=this.value" placeholder="e.g. Introduction"></div>
         <div class="field"><label>Content (Markdown)</label><textarea style="min-height:120px;" oninput="cbState.mods[${i}].content=this.value" placeholder="Module text here...">${esc(m.content)}</textarea></div>

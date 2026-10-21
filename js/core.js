@@ -72,6 +72,7 @@ function initDialogA11y() {
     const open = [...document.querySelectorAll('.overlay:not(.hidden)')].filter(o => o.id !== 'first-run-overlay');
     const top = open[open.length - 1];
     if (!top) return;
+    if (top.id === 'confirm-overlay') return Confirm.cancel();
     if (top.id === 'builder-overlay' && typeof Builder !== 'undefined') return Builder.closeBuilder();
     top.classList.add('hidden');
   });

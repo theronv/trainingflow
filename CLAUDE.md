@@ -39,6 +39,7 @@ js/
 ├── importer.js       # AI Importer (555 lines — split out of admin.js)
 ├── manager.js        # Manager portal (460 lines)
 ├── learner.js        # Learner portal (530 lines)
+├── confirm.js        # Confirm.ask({title, body, confirmLabel, danger}) → Promise<boolean>; replaces native confirm()
 ├── builder.js        # Course builder — module/question editor (148 lines)
 ├── demo.js           # Interactive demo sandbox — fixture team + playable course, in-memory fake API (see Demo below)
 └── app.js            # AppProxy — wires onclick attrs to JS modules (477 lines)
@@ -79,7 +80,7 @@ cd worker && npm run test:watch  # watch mode
 
 Lint: `npm install && npm run lint` at the repo root (ESLint + `@html-eslint` for `index.html` + `scripts/check-tokens.mjs`, a ratchet on raw colour literals — lower `scripts/token-baseline.json` as they migrate to tokens). `worker/test/contrast.test.mjs` checks WCAG AA contrast of the CSS text/background tokens in both themes. A project Stop hook (`scripts/stop-check.sh`, wired in `.claude/settings.json`) runs lint + worker tests when code files changed. CI (`.github/workflows/ci.yml`) runs lint and tests on every PR.
 
-Coverage: `worker/test/` — `auth` (login + rate limiting), `rbac` (role gates + manager team scoping), `scoring` (answer-key stripping, server-side grading and score computation), `scrape` (URL import validation). `importer` (the frontend `js/importer.js` loaded with browser globals stubbed: reply parsing, question validation, answer shuffling, prompt building, reply merging, save validation). `learner` (the source-link visibility helper), `assign-bulk` (multi-course bulk assignment) and `assign-ui` (`js/builder.js` course selection + assign counts), `sections-ui` (`js/sections.js`: section move/collapse logic) and `sections` (incl. the order endpoint). The rest of `js/` has no tests yet.
+Coverage: `worker/test/` — `auth` (login + rate limiting), `rbac` (role gates + manager team scoping), `scoring` (answer-key stripping, server-side grading and score computation), `scrape` (URL import validation). `importer` (the frontend `js/importer.js` loaded with browser globals stubbed: reply parsing, question validation, answer shuffling, prompt building, reply merging, save validation). `learner` (the source-link visibility helper), `assign-bulk` (multi-course bulk assignment) and `assign-ui` (`js/builder.js` course selection + assign counts), `sections-ui` (`js/sections.js`: section move/collapse logic), `confirm-ui` (`js/confirm.js`: shared confirm dialog) and `sections` (incl. the order endpoint). The rest of `js/` has no tests yet.
 
 ## Environment Variables
 

@@ -149,7 +149,7 @@ const Manager = {
     } catch (e) { el.innerHTML = `<div style="color:var(--fail);font-size:var(--text-sm);">${esc(e.message)}</div>`; }
   },
   async revokeInvite(id) {
-    if (!confirm('Revoke this invite link? People who have not signed up yet will no longer be able to.')) return;
+    if (!await Confirm.ask({ title: 'Revoke invite link?', body: 'People who have not signed up yet will no longer be able to.', confirmLabel: 'Revoke', danger: true })) return;
     try {
       await managerApi(`/api/invites/${id}`, { method: 'DELETE' });
       Toast.ok('Invite revoked.');
