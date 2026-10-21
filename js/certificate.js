@@ -21,13 +21,13 @@ const Certificate = {
   // Standard PDF fonts only cover Latin-1: fold typographic punctuation, strip what can't be drawn.
   pdfText(s) {
     return String(s ?? '')
-      .replace(/[‘’‚]/g, "'").replace(/[“”„]/g, '"').replace(/[–—]/g, '-').replace(/…/g, '...')
+      .replace(/[\u2018\u2019\u201a]/g, "'").replace(/[\u201c\u201d\u201e]/g, '"').replace(/[\u2013\u2014]/g, '-').replace(/\u2026/g, '...')
       .normalize('NFC')
-      .replace(/[^ -~ -ÿ]/g, '?');
+      .replace(/[^\u0020-\u007e\u00a0-\u00ff]/g, '?');
   },
 
   // True when the standard PDF fonts can't draw this text (so it is rendered as an image instead).
-  needsImage(s) { return /[^\u0020-\u007e\u00a0-\u00ff‘’‚“”„–—…]/.test(String(s ?? '')); },
+  needsImage(s) { return /[^\u0020-\u007e\u00a0-\u00ff\u2018\u2019\u201a\u201c\u201d\u201e\u2013\u2014\u2026]/.test(String(s ?? '')); },
 
   fileName(data) {
     const slug = s => String(s).replace(/[^a-z0-9]+/gi, '_').replace(/^_|_$/g, '');
