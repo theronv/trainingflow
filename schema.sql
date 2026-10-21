@@ -265,3 +265,11 @@ CREATE TABLE IF NOT EXISTS quiz_answers (
   answered_at    INTEGER NOT NULL,
   PRIMARY KEY (learner_id, question_id)
 );
+
+-- Durable rate limiting: per-IP request windows ("ip:…") and per-account failure counters with lockout ("fail:…").
+CREATE TABLE IF NOT EXISTS rate_limits (
+  key          TEXT    PRIMARY KEY,
+  count        INTEGER NOT NULL DEFAULT 0,
+  window_start INTEGER NOT NULL,
+  locked_until INTEGER NOT NULL DEFAULT 0
+);
