@@ -1906,3 +1906,50 @@ button, .nav-btn, .quiz-opt, .course-card, .role-tile, label { touch-action: man
 .icon-choice:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 .icon-group-label { grid-column: 1 / -1; margin-top: var(--space-2); font-size: var(--text-xs); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
 .icon-group-label:first-child { margin-top: 0; }
+
+/* ══════════════════ COURSE RESULT CEREMONY ══════════════════ */
+.celebrate {
+  position: fixed; inset: 0; z-index: 190;
+  display: flex; align-items: center; justify-content: center;
+  padding: var(--space-4); overflow-y: auto;
+  background: var(--scrim-strong); backdrop-filter: blur(6px);
+  animation: fadeIn 0.2s ease-out;
+}
+.cel-card {
+  width: 100%; max-width: 520px; margin: auto; text-align: center;
+  padding: var(--space-8) var(--space-6); background: var(--surface-raised);
+  border: 1px solid var(--border-2); border-radius: var(--radius-xl); box-shadow: var(--shadow-lg);
+}
+.cel-calc { display: flex; flex-direction: column; align-items: center; gap: var(--space-4); padding: var(--space-8) 0; }
+.cel-spinner { width: 48px; height: 48px; border: 4px solid var(--border-2); border-top-color: var(--brand); border-radius: 50%; animation: spin 0.8s linear infinite; }
+.cel-calc-text { color: var(--ink-2); font-size: var(--text-md); font-weight: 600; }
+.cel-ring { position: relative; width: 148px; height: 148px; margin: 0 auto var(--space-5); }
+.cel-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.cel-ring-track, .cel-ring-fill { fill: none; stroke-width: 9; }
+.cel-ring-track { stroke: var(--border); }
+.cel-ring-fill { stroke-linecap: round; transition: stroke-dashoffset 0.9s cubic-bezier(0.22, 1, 0.36, 1); }
+.cel-pass .cel-ring-fill { stroke: var(--success); }
+.cel-fail .cel-ring-fill { stroke: var(--warning); }
+.cel-ring-num { position: absolute; inset: 0; display: grid; place-items: center; font-size: var(--text-3xl); font-weight: 800; color: var(--ink-1); font-variant-numeric: tabular-nums; }
+.cel-eyebrow { font-size: var(--text-xs); font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); }
+.cel-title { margin: var(--space-2) 0; font-size: var(--text-2xl); font-weight: 700; letter-spacing: -0.02em; color: var(--ink-1); }
+.cel-sub { margin: 0 auto var(--space-5); max-width: 40ch; color: var(--ink-2); font-size: var(--text-base); line-height: 1.5; }
+.cel-stats { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-3); margin-bottom: var(--space-6); }
+.cel-stat { flex: 1 1 120px; padding: var(--space-3); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); }
+.cel-stat-val { font-size: var(--text-md); font-weight: 700; color: var(--ink-1); }
+.cel-stat-label { margin-top: var(--space-1); font-size: var(--text-xs); color: var(--ink-3); }
+.cel-actions { display: flex; flex-direction: column; gap: var(--space-3); }
+.cel-actions .btn { width: 100%; white-space: normal; }
+.cel-foot { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-5); }
+.cel-id { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--ink-3); }
+.cel-missed { margin: 0 0 var(--space-6); padding: var(--space-3) var(--space-4); text-align: left; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); }
+.cel-missed-title { margin-bottom: var(--space-2); font-size: var(--text-xs); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+.cel-missed-row { display: flex; justify-content: space-between; gap: var(--space-3); padding: var(--space-2) 0; font-size: var(--text-sm); color: var(--ink-1); }
+.cel-missed-row span:last-child { color: var(--warning-text); white-space: nowrap; }
+.cel-rise { animation: celRise 0.24s ease-out both; animation-delay: calc(var(--i, 0) * 90ms + 200ms); }
+@keyframes celRise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.cert-row-actions { display: flex; flex-shrink: 0; gap: var(--space-2); }
+@media (prefers-reduced-motion: reduce) {
+  .cel-ring-fill { transition: none; }
+  .cel-rise { animation: none; }
+}

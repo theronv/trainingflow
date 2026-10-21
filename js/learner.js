@@ -255,7 +255,10 @@ const Learner = {
               <div style="font-weight:600;">${esc(r.course_title)}</div>
               <div style="font-size:var(--text-xs);color:var(--ink-4);margin-top:4px;">Passed ${r.score}% · ${new Date(r.completed_at*1000).toLocaleDateString()} · ID: <span style="font-family:monospace;">${r.cert_id || '—'}</span></div>
             </div>
-            <button class="btn btn-outline btn-sm" onclick="Learner.viewCert('${r.cert_id}')">↓ Download PDF</button>
+            <div class="cert-row-actions">
+              <button class="btn btn-primary btn-sm" onclick="Learner.viewCert('${r.cert_id}')">View</button>
+              <button class="btn btn-outline btn-sm" onclick="Learner.downloadCert('${r.cert_id}')">↓ PDF</button>
+            </div>
           </div>`).join('')
         : '<div class="empty"><div class="empty-icon">' + ICON.award + '</div><div class="empty-title">No certificates yet</div><div class="empty-hint">Complete a course and pass its quiz to earn your first certificate.</div></div>';
     } catch(e) { $$('l-certs-content').innerHTML = `<div class="card" style="color:var(--fail);">${esc(e.message)}</div>`; }
@@ -274,6 +277,7 @@ const Learner = {
           ]);
       curCourse = normCourse(res);
       quizSt = {};
+      Learner._startedAt = Date.now();
       Learner._prog = progList.find(p => p.course_id === cid) || { course_id: cid, module_idx: 0, modules: [] };
 
       App.show('screen-course');
@@ -544,87 +548,86 @@ const Learner = {
     try {
       res = await learnerApi('/api/completions', { method:'POST', body: JSON.stringify({ course_id: curCourse.id }) });
     } catch (e) { return Toast.err(e.message || 'Could not complete the course.'); }
-    const score = res.score;
+
+    const course = curCourse;
+    // Clear the resume record: a pass is done, and a retake starts from the first module.
+    await learnerApi(`/api/progress/${course.id}`, { method: 'DELETE' }).catch(() => {});
+    Learner._prog = null;
+
     if (!res.passed) {
-      Toast.err(`You scored ${score}% — the pass mark is ${brandCache.pass || 80}%. Review the modules and try again.`);
-      learnerApi(`/api/progress/${curCourse.id}`, { method: 'DELETE' }).catch(() => {});
-      Learner._prog = null;
-      App.exitCourse();
+      Celebrate.showFail({
+        res, course, passMark: brandCache.pass || CONFIG.DEFAULT_PASS,
+        onRetry: () => { Celebrate.close(true); Learner.startCourse(course.id); }
+      });
       return;
     }
 
-    // Clear progress record now that the course is done
-    learnerApi(`/api/progress/${curCourse.id}`, { method: 'DELETE' }).catch(() => {});
-    Learner._prog = null;
+    const data = Learner._certData({
+      org: brandCache.name, name: curLearner ? curLearner.name : 'Learner', course: course.title,
+      at: new Date(), score: res.score, certId: res.cert_id
+    });
+    Celebrate.showPass({
+      res, course, learner: curLearner || { name: 'Learner' },
+      elapsedMs: Learner._startedAt ? Date.now() - Learner._startedAt : 0,
+      onCertificate: () => Learner.showCert(data)
+    });
+  },
 
-    confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
-    
-    // Fully populate certificate
-    const b = typeof brandCache !== 'undefined' ? brandCache : { name: CONFIG.DEFAULT_BRAND_NAME };
-    const l = typeof curLearner !== 'undefined' && curLearner ? curLearner : { name: 'Learner' };
-    const c = typeof curCourse !== 'undefined' && curCourse ? curCourse : { title: 'Course' };
+  // Everything the certificate sheet shows, in one place.
+  _certData({ org, name, course, at, score, certId }) {
+    return {
+      org: org || CONFIG.DEFAULT_BRAND_NAME, name, course, score, certId,
+      date: at.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+    };
+  },
 
-    $$('c-org').textContent    = b.name || CONFIG.DEFAULT_BRAND_NAME;
-    $$('c-name').textContent   = l.name;
-    $$('c-course').textContent = c.title;
-    $$('c-date').textContent   = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-    $$('c-score').textContent  = score + '%';
-    $$('c-id').textContent     = res.cert_id;
-    
-    // Logo and Signature Labels
+  _certDataFor(certId) {
+    const r = Learner._certsCache.find(c => c.cert_id === certId);
+    if (!r) return null;
+    return Learner._certData({
+      org: brandCache.name, name: curLearner ? curLearner.name : (r.learner_name || 'Learner'),
+      course: r.course_title || 'Course', at: new Date(r.completed_at * 1000), score: r.score || 0, certId: r.cert_id
+    });
+  },
+
+  _fillCert(d) {
+    $$('c-org').textContent    = d.org;
+    $$('c-name').textContent   = d.name;
+    $$('c-course').textContent = d.course;
+    $$('c-date').textContent   = d.date;
+    $$('c-score').textContent  = d.score + '%';
+    $$('c-id').textContent     = d.certId;
     const sigLabel = $$('c-sig-dept');
-    if (sigLabel) sigLabel.textContent = (b.name || CONFIG.DEFAULT_BRAND_NAME) + ' Training Department';
+    if (sigLabel) sigLabel.textContent = d.org + ' Training Department';
     const logoImg = $$('c-logo');
     if (logoImg) {
-      if (b.logo) { logoImg.src = b.logo; $$('c-logo-wrap').classList.remove('hidden'); }
+      if (brandCache.logo) { logoImg.src = brandCache.logo; $$('c-logo-wrap').classList.remove('hidden'); }
       else { logoImg.src = ''; $$('c-logo-wrap').classList.add('hidden'); }
     }
-    
-    setTimeout(() => {
-      $$('cert-overlay').classList.remove('hidden');
-    }, 100);
+  },
+
+  showCert(data) {
+    Learner._fillCert(data);
+    $$('cert-overlay').classList.remove('hidden');
   },
 
   viewCert(certId) {
-    const r = Learner._certsCache.find(c => c.cert_id === certId);
-    if (!r) return Toast.err('Certificate data not found locally.');
-    
-    // Fully populate certificate template
-    const b = typeof brandCache !== 'undefined' ? brandCache : { name: CONFIG.DEFAULT_BRAND_NAME };
-    const l = typeof curLearner !== 'undefined' && curLearner ? curLearner : { name: r.learner_name || 'Learner' };
+    const data = Learner._certDataFor(certId);
+    if (!data) return Toast.err('Certificate data not found locally.');
+    Learner.showCert(data);
+  },
 
-    $$('c-org').textContent    = b.name || CONFIG.DEFAULT_BRAND_NAME;
-    $$('c-name').textContent   = l.name;
-    $$('c-course').textContent = r.course_title || 'Course';
-    $$('c-date').textContent   = new Date(r.completed_at * 1000).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-    $$('c-score').textContent  = (r.score || 0) + '%';
-    $$('c-id').textContent     = r.cert_id;
-
-    // Logo and Signature Labels
-    const sigLabel = $$('c-sig-dept');
-    if (sigLabel) sigLabel.textContent = (b.name || CONFIG.DEFAULT_BRAND_NAME) + ' Training Department';
-    const logoImg = $$('c-logo');
-    if (logoImg) {
-      if (b.logo) { logoImg.src = b.logo; $$('c-logo-wrap').classList.remove('hidden'); }
-      else { logoImg.src = ''; $$('c-logo-wrap').classList.add('hidden'); }
-    }
-
-    // Trigger download (without showing overlay necessarily, but we need the elements to be in DOM)
-    // The downloadCertPDF uses html2canvas on #cert-sheet.
-    // If it's hidden, html2canvas might struggle depending on implementation.
-    // Let's ensure it's at least not display:none during the capture.
-    const wasHidden = $$('cert-overlay').classList.contains('hidden');
-    if (wasHidden) {
-       $$('cert-overlay').style.visibility = 'hidden';
-       $$('cert-overlay').classList.remove('hidden');
-    }
-
+  // Download without leaving the list: the sheet must be rendered (not display:none) for the capture.
+  downloadCert(certId) {
+    const data = Learner._certDataFor(certId);
+    if (!data) return Toast.err('Certificate data not found locally.');
+    Learner._fillCert(data);
+    const ov = $$('cert-overlay');
+    const wasHidden = ov.classList.contains('hidden');
+    if (wasHidden) { ov.style.visibility = 'hidden'; ov.classList.remove('hidden'); }
     setTimeout(() => {
       App.downloadCertPDF();
-      if (wasHidden) {
-        $$('cert-overlay').classList.add('hidden');
-        $$('cert-overlay').style.visibility = '';
-      }
+      if (wasHidden) { ov.classList.add('hidden'); ov.style.visibility = ''; }
     }, 150);
   }
 };
