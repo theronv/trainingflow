@@ -20,7 +20,7 @@ function uid() {
 }
 
 function certId() {
-  return 'PG-' + crypto.randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase()
+  return 'PG-' + crypto.randomUUID().replace(/-/g, '').slice(0, 12).toUpperCase()
 }
 
 function getDb(env) {
@@ -1184,16 +1184,17 @@ app.post('/api/completions', requireLearner, async (c) => {
   const passed = score >= passThreshold ? 1 : 0
 
   // Per-module results and the attempt number feed the learner's result screen. Read before the answers are consumed.
-  const breakdown = toObjs(await db.execute({
-    sql: `SELECT m.id AS module_id, m.title, SUM(a.is_correct) AS correct, COUNT(*) AS total
-          FROM quiz_answers a JOIN questions q ON q.id = a.question_id JOIN modules m ON m.id = q.module_id
-          WHERE a.learner_id = ? AND m.course_id = ? GROUP BY m.id ORDER BY m.sort_order`,
-    args: [user.id, courseId]
-  })).map(r => ({ module_id: r.module_id, title: r.title, correct: Number(r.correct), total: Number(r.total) }))
-  const earlier = Number(toObj(await db.execute({
-    sql: 'SELECT COUNT(*) AS n FROM completions WHERE learner_id = ? AND course_id = ?',
-    args: [user.id, courseId]
-  })).n)
+  const [breakdownRes, earlierRes] = await Promise.all([
+    db.execute({
+      sql: `SELECT m.id AS module_id, m.title, SUM(a.is_correct) AS correct, COUNT(*) AS total
+            FROM quiz_answers a JOIN questions q ON q.id = a.question_id JOIN modules m ON m.id = q.module_id
+            WHERE a.learner_id = ? AND m.course_id = ? GROUP BY m.id ORDER BY m.sort_order`,
+      args: [user.id, courseId]
+    }),
+    db.execute({ sql: 'SELECT COUNT(*) AS n FROM completions WHERE learner_id = ? AND course_id = ?', args: [user.id, courseId] })
+  ])
+  const breakdown = toObjs(breakdownRes).map(r => ({ module_id: r.module_id, title: r.title, correct: Number(r.correct), total: Number(r.total) }))
+  const earlier = Number(toObj(earlierRes).n)
 
   const rid = uid()
   const cid = certId()
@@ -1214,7 +1215,7 @@ app.post('/api/completions', requireLearner, async (c) => {
     args: [user.id, courseId]
   })
   await db.batch(stmts, 'write')
-  return c.json({ cert_id: cid, score, passed: !!passed, attempt: earlier + 1, breakdown }, 201)
+  return c.json({ cert_id: cid, score, passed: !!passed, pass_mark: passThreshold, attempt: earlier + 1, breakdown }, 201)
 })
 
 app.get('/api/admin/completions', requireManager, async (c) => {

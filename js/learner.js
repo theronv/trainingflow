@@ -560,13 +560,14 @@ const Learner = {
 
     const course = curCourse;
     // Clear the resume record: a pass is done, and a retake starts from the first module.
-    await learnerApi(`/api/progress/${course.id}`, { method: 'DELETE' }).catch(() => {});
+    const cleared = learnerApi(`/api/progress/${course.id}`, { method: 'DELETE' }).catch(() => {});
     Learner._prog = null;
 
     if (!res.passed) {
       Celebrate.showFail({
-        res, course, passMark: brandCache.pass || CONFIG.DEFAULT_PASS,
-        onRetry: () => { Celebrate.close(true); Learner.startCourse(course.id); }
+        res, course, passMark: res.pass_mark ?? (brandCache.pass || CONFIG.DEFAULT_PASS),
+        // A retake must not resume from the old position, so wait for the clear to land.
+        onRetry: async () => { await cleared; Celebrate.close(true); Learner.startCourse(course.id); }
       });
       return;
     }

@@ -27,6 +27,18 @@ describe('pdfText', () => {
   })
 })
 
+describe('needsImage', () => {
+  it('flags text the standard PDF fonts cannot draw', () => {
+    expect(Certificate.needsImage('Zoë O’Brien')).toBe(false)
+    expect(Certificate.needsImage('Łukasz')).toBe(true)
+    expect(Certificate.needsImage('李雷')).toBe(true)
+    expect(Certificate.needsImage('Nguyễn')).toBe(true)
+  })
+  it('does not let C1 control characters through as printable', () => {
+    expect(Certificate.pdfText('a\u0085b')).toBe('a?b')
+  })
+})
+
 describe('fileName', () => {
   it('slugs the course and learner', () => {
     expect(Certificate.fileName({ course: 'Customer Service: Excellence!', name: 'Jamie Lee' })).toBe('Certificate_Customer_Service_Excellence_Jamie_Lee.pdf')

@@ -22,8 +22,8 @@ describe('completion result details', () => {
     await answerAll([2, 0])
     const res = await finish()
     expect(res.status).toBe(201)
-    expect(res.json).toMatchObject({ passed: true, score: 100, attempt: 1 })
-    expect(res.json.cert_id).toMatch(/^PG-[0-9A-F]{8}$/)
+    expect(res.json).toMatchObject({ passed: true, score: 100, attempt: 1, pass_mark: 80 })
+    expect(res.json.cert_id).toMatch(/^PG-[0-9A-F]{12}$/)
     expect(res.json.breakdown).toEqual([{ module_id: course.module_id, title: 'Module 1', correct: 2, total: 2 }])
   })
 

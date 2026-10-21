@@ -339,7 +339,7 @@ const Demo = {
       }));
       S.completions.push({ id: 'dc-' + (S.completions.length + 1), course_id: body.course_id, learner_id: me, score, passed, completed_at: now, cert_id });
       qs_.forEach(x => { delete S.answers[x.id]; });
-      return { cert_id, score, passed, attempt, breakdown };
+      return { cert_id, score, passed, pass_mark: brandCache.pass || CONFIG.DEFAULT_PASS, attempt, breakdown };
     }
 
     // ── Team management in the manager view: update the sandbox where it is cheap ──

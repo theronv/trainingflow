@@ -194,8 +194,8 @@ const Celebrate = {
   async showPass({ res, course, learner, elapsedMs, onCertificate }) {
     const reduced = Celebrate.reducedMotion();
     const el = Celebrate._open(Celebrate._calcHtml('Checking your answers…'));
-    const { next, badges } = await Celebrate._context(course.id, res.cert_id);
-    if (!reduced) await new Promise(r => Celebrate._later(r, 900));
+    const pause = reduced ? Promise.resolve() : new Promise(r => Celebrate._later(r, 900));
+    const [{ next, badges }] = await Promise.all([Celebrate._context(course.id, res.cert_id), pause]);
     if (Celebrate._el !== el) return; // dismissed while waiting
 
     const stats = Celebrate.stats(res, elapsedMs).map((s, i) =>

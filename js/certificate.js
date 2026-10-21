@@ -7,8 +7,8 @@ const Certificate = {
   _data: null, // what the sheet currently shows (see Learner._certData)
 
   // ─── Pure helpers (unit-tested) ───
-  // The public page a certificate's QR code opens. `base` is the app URL without any hash.
-  verifyUrl(certId, base = location.href.split('#')[0]) {
+  // The public page a certificate's QR code opens. `base` is the app's origin and path, with no query or hash.
+  verifyUrl(certId, base = location.origin + location.pathname) {
     return `${base}#/verify/${encodeURIComponent(certId)}`;
   },
 
@@ -25,6 +25,9 @@ const Certificate = {
       .normalize('NFC')
       .replace(/[^ -ÿ]/g, '?');
   },
+
+  // True when the standard PDF fonts can't draw this text (so it is rendered as an image instead).
+  needsImage(s) { return /[^\u0020-\u007e\u00a0-\u00ff‘’‚“”„–—…]/.test(String(s ?? '')); },
 
   fileName(data) {
     const slug = s => String(s).replace(/[^a-z0-9]+/gi, '_').replace(/^_|_$/g, '');
@@ -128,6 +131,36 @@ const Certificate = {
     });
   },
 
+  // Text the PDF fonts can't draw (CJK, Vietnamese, Polish...) rendered with the system font into a PNG.
+  _textImage(text, { size, font, weight, italic, color, maxW }) {
+    const px = 8, cv = document.createElement('canvas'), ctx = cv.getContext('2d');
+    const face = `${italic ? 'italic ' : ''}${weight} ${size * px}px ${font}`;
+    ctx.font = face;
+    const w = Math.ceil(ctx.measureText(text).width) + 8, h = Math.ceil(size * px * 1.4);
+    cv.width = w; cv.height = h;
+    ctx.font = face; ctx.fillStyle = '#' + color.map(v => v.toString(16).padStart(2, '0')).join(''); ctx.textBaseline = 'middle';
+    ctx.fillText(text, 4, h / 2);
+    const PT = 0.3528; // mm per point: sizes are in pt, drawn at `px` canvas pixels per pt
+    let mmW = w / px * PT, mmH = h / px * PT;
+    if (mmW > maxW) { mmH *= maxW / mmW; mmW = maxW; }
+    return { url: cv.toDataURL('image/png'), w: mmW, h: mmH };
+  },
+
+  // Greedy wrap by measured width (works for scripts without spaces); at most two lines.
+  _wrapImageLines(text, maxMm, size, font) {
+    const ctx = document.createElement('canvas').getContext('2d');
+    ctx.font = `700 ${size * 8}px ${font}`;
+    const fits = t => ctx.measureText(t).width / 8 * 0.3528 <= maxMm;
+    const words = text.split(/(\s+)/), lines = [''];
+    words.forEach(w => {
+      const cur = lines[lines.length - 1];
+      if (fits(cur + w) || !cur) { lines[lines.length - 1] = cur + w; return; }
+      if (lines.length < 2) lines.push(w.trimStart());
+      else lines[1] += w;
+    });
+    return lines.map(l => l.trim()).filter(Boolean);
+  },
+
   async buildPdf(d) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
@@ -137,6 +170,19 @@ const Certificate = {
     const W = 297, CX = W / 2;
     const color = (c) => { doc.setTextColor(...c); };
     const fit = (text, maxW, size, min) => { doc.setFontSize(size); while (size > min && doc.getTextWidth(text) > maxW) { size -= 1; doc.setFontSize(size); } };
+
+    // Centre text at (x, y): native font when it can draw it, else a rendered image of the same size and weight.
+    const sysFont = '-apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif';
+    const drawText = (text, x, y, { size, bold, italic, c, maxW, charSpace }) => {
+      if (!Certificate.needsImage(text)) {
+        doc.setFont(italic ? 'times' : 'helvetica', italic ? 'italic' : (bold ? 'bold' : 'normal')); color(c);
+        fit(T(text), maxW, size, 7);
+        doc.text(T(text), x, y, { align: 'center', charSpace });
+        return;
+      }
+      const img = Certificate._textImage(text, { size, font: italic ? `Georgia, ${sysFont}` : sysFont, weight: bold ? 700 : 400, italic, color: c, maxW });
+      doc.addImage(img.url, 'PNG', x - img.w / 2, y - img.h * 0.7, img.w, img.h);
+    };
 
     doc.setProperties({ title: `${T(d.course)} - Certificate of Completion`, subject: T(d.name), author: T(d.org), keywords: d.certId });
 
@@ -153,33 +199,31 @@ const Certificate = {
 
     // Header: logo, organisation, title
     const logo = await Certificate._loadLogo(d.logo);
+    if (d.logo && !logo) Toast.info('Your organisation logo could not be added to the PDF.');
     let y = 32;
     if (logo) {
       const h = Math.min(19, 71 * logo.h / logo.w), w = h * logo.w / logo.h;
       doc.addImage(logo.url, 'PNG', CX - w / 2, 20, w, h);
       y = 20 + h + 9;
     }
-    doc.setFont('helvetica', 'bold'); color(c1);
-    fit(T(d.org).toUpperCase(), 200, 10, 7);
-    doc.text(T(d.org).toUpperCase(), CX, y, { align: 'center', charSpace: 1.6 });
+    drawText(Certificate.needsImage(d.org) ? d.org : d.org.toUpperCase(), CX, y, { size: 10, bold: true, c: c1, maxW: 200, charSpace: 1.6 });
     doc.setFont('helvetica', 'bold'); color(ink); doc.setFontSize(30);
     doc.text('Certificate of Completion', CX, y + 14, { align: 'center' });
     doc.setFont('helvetica', 'normal'); color(mid); doc.setFontSize(10.5);
     doc.text('This certifies that', CX, y + 27, { align: 'center' });
 
     // Name, with a rule beneath it
-    doc.setFont('times', 'italic'); color(ink);
-    const name = T(d.name);
-    fit(name, 230, 38, 18);
-    doc.text(name, CX, y + 43, { align: 'center' });
-    const half = Math.min(125, doc.getTextWidth(name) / 2 + 10);
+    drawText(d.name, CX, y + 43, { size: 38, italic: true, c: ink, maxW: 230 });
+    const half = Math.min(125, (Certificate.needsImage(d.name) ? 100 : doc.getTextWidth(T(d.name)) / 2) + 10);
     doc.setDrawColor(...rule); doc.line(CX - half, y + 47, CX + half, y + 47);
 
     doc.setFont('helvetica', 'normal'); color(mid); doc.setFontSize(10.5);
     doc.text('has successfully completed', CX, y + 58, { align: 'center' });
-    doc.setFont('helvetica', 'bold'); color(ink); doc.setFontSize(18);
-    const lines = doc.splitTextToSize(T(d.course), 220).slice(0, 2);
-    doc.text(lines, CX, y + 69, { align: 'center', lineHeightFactor: 1.2 });
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(18);
+    const lines = Certificate.needsImage(d.course)
+      ? Certificate._wrapImageLines(d.course, 220, 18, sysFont)
+      : doc.splitTextToSize(T(d.course), 220).slice(0, 2);
+    lines.forEach((line, i) => drawText(line, CX, y + 69 + i * 8, { size: 18, bold: true, c: ink, maxW: 220 }));
 
     // Date, score, id
     const metaY = y + 69 + (lines.length - 1) * 8 + 22;
@@ -193,7 +237,7 @@ const Certificate = {
 
     // Signatory (left)
     const sigX = 51;
-    if (d.signName) { doc.setFont('times', 'italic'); color(ink); fit(T(d.signName), 56, 16, 10); doc.text(T(d.signName), sigX, 183, { align: 'center' }); }
+    if (d.signName) drawText(d.signName, sigX, 183, { size: 16, italic: true, c: ink, maxW: 56 });
     doc.setDrawColor(...mid); doc.setLineWidth(0.3); doc.line(sigX - 30, 185, sigX + 30, 185);
     doc.setFont('helvetica', 'bold'); color(mid); doc.setFontSize(7);
     doc.text(T(d.signTitle || `${d.org} Training Department`).toUpperCase(), sigX, 190, { align: 'center', maxWidth: 62 });

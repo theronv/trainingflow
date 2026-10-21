@@ -521,4 +521,5 @@ document.addEventListener('DOMContentLoaded', () => App.init());
 window.addEventListener('hashchange', () => {
   const id = Certificate.idFromHash(window.location.hash);
   if (id) Certificate.showVerify(id);
+  else if ($$('screen-verify').classList.contains('active')) location.reload(); // e.g. an invite link pasted into this tab
 });
