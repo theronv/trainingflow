@@ -259,7 +259,8 @@ const AppProxy = {
     if (pw.length < 8) return Toast.err('New password must be at least 8 characters.');
     if (pw !== conf) return Toast.err('Passwords do not match.');
     try {
-      await managerApi('/api/managers/me', { method: 'PATCH', body: JSON.stringify({ current_password: cur, password: pw }) });
+      const res = await managerApi('/api/managers/me', { method: 'PATCH', body: JSON.stringify({ current_password: cur, password: pw }) });
+      Auth.refreshSession(res.session);
       $$('mcp-cur').value = ''; $$('mcp-new').value = ''; $$('mcp-confirm').value = '';
       Toast.ok('Password updated.');
     } catch(e) { Toast.err(e.message); }
@@ -285,7 +286,8 @@ const AppProxy = {
     if (pw.length < 8) return Toast.err('New password must be at least 8 characters.');
     if (pw !== conf) return Toast.err('Passwords do not match.');
     try {
-      await learnerApi('/api/learners/me', { method: 'PATCH', body: JSON.stringify({ current_password: cur, password: pw }) });
+      const res = await learnerApi('/api/learners/me', { method: 'PATCH', body: JSON.stringify({ current_password: cur, password: pw }) });
+      Auth.refreshSession(res.session);
       $$('lcp-cur').value = ''; $$('lcp-new').value = ''; $$('lcp-confirm').value = '';
       Toast.ok('Password updated.');
     } catch(e) { Toast.err(e.message); }
