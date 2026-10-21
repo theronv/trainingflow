@@ -6,6 +6,7 @@ import { Hono }           from 'hono'
 import { cors }           from 'hono/cors'
 import { sign, verify }   from 'hono/jwt'
 import { createClient }   from '@libsql/client/web'
+import { notifyCertificateEarned } from './email.js'
 
 const CONSTANTS = {
   PBKDF2_ITERATIONS: 100000,
@@ -21,6 +22,11 @@ function uid() {
 
 function certId() {
   return 'PG-' + crypto.randomUUID().replace(/-/g, '').slice(0, 12).toUpperCase()
+}
+
+// Let work (e.g. email) finish after the response is sent; where there is no execution context (tests), wait for it.
+function runInBackground(c, promise) {
+  try { c.executionCtx.waitUntil(promise); return undefined } catch { return promise }
 }
 
 function getDb(env) {
@@ -99,6 +105,7 @@ async function ensureSetup(db) {
   await setupTags(db)
   await setupClerk(db)
   await setupRoles(db)
+  await setupEmail(db)
   _setupComplete = true
 }
 
@@ -221,6 +228,11 @@ async function setupClerk(db) {
 // users.is_admin adds full administration.
 async function setupRoles(db) {
   try { await db.execute('ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0') } catch {}
+}
+
+// Certificate-earned emails: every user is subscribed until they switch it off in Account.
+async function setupEmail(db) {
+  try { await db.execute('ALTER TABLE users ADD COLUMN email_notifications INTEGER NOT NULL DEFAULT 1') } catch {}
 }
 
 async function setupTags(db) {
@@ -624,7 +636,10 @@ app.post('/api/learners', requireManager, async (c) => {
 // NOTE: the /me routes must be registered before /:id, or 'me' is captured as an id.
 app.get('/api/learners/me', requireLearner, async (c) => {
   const user = c.get('user')
-  return c.json({ id: user.id, name: user.name })
+  const db = getDb(c.env)
+  await ensureSetup(db)
+  const row = toObj(await db.execute({ sql: 'SELECT email, email_notifications FROM users WHERE id = ?', args: [user.id] })) || {}
+  return c.json({ id: user.id, name: user.name, email: row.email || '', email_notifications: Number(row.email_notifications ?? 1) === 1 })
 })
 
 app.patch('/api/learners/me', requireLearner, async (c) => {
@@ -637,6 +652,10 @@ app.patch('/api/learners/me', requireLearner, async (c) => {
     if (!row || !(await pbkdf2Verify(body.current_password || '', row.password_hash))) return c.json({ error: 'Current password is incorrect' }, 400)
     const hash = await pbkdf2Hash(body.password)
     await db.execute({ sql: 'UPDATE users SET password_hash = ? WHERE id = ?', args: [hash, user.id] })
+  }
+  if (typeof body.email_notifications === 'boolean') {
+    await ensureSetup(db)
+    await db.execute({ sql: 'UPDATE users SET email_notifications = ? WHERE id = ?', args: [body.email_notifications ? 1 : 0, user.id] })
   }
   if (body.name && body.name.trim()) {
     await db.execute({ sql: 'UPDATE users SET name = ? WHERE id = ?', args: [body.name.trim(), user.id] })
@@ -1215,6 +1234,12 @@ app.post('/api/completions', requireLearner, async (c) => {
     args: [user.id, courseId]
   })
   await db.batch(stmts, 'write')
+  if (passed) {
+    await runInBackground(c, notifyCertificateEarned({
+      env: c.env, db, ensure: () => ensureSetup(db), learnerId: user.id, learnerName: user.name,
+      courseId, score, completedAt: now, certId: cid,
+    }))
+  }
   return c.json({ cert_id: cid, score, passed: !!passed, pass_mark: passThreshold, attempt: earlier + 1, breakdown }, 201)
 })
 

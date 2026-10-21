@@ -64,7 +64,7 @@ const Learner = {
     if(p==='courses') Learner.renderCourses();
     if(p==='progress') Learner.renderProgress();
     if(p==='certs') Learner.renderCerts();
-    if(p==='account' && curLearner) { const n = $$('lcp-name'); if(n) n.value = curLearner.name || ''; }
+    if(p==='account' && curLearner) { const n = $$('lcp-name'); if(n) n.value = curLearner.name || ''; EmailPref.load('l', learnerApi); }
   },
 
   // ─── COURSES ───

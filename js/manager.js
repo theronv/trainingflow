@@ -22,7 +22,7 @@ const Manager = {
     if(p==='courses')   Manager.renderCourses();
     if(p==='team')      { Manager.renderTeam(); Manager.renderInvites(); }
     if(p==='completions') Manager.renderComps();
-    if(p==='account' && curManager) { const n = $$('mcp-name'); if(n) n.value = curManager.name || ''; }
+    if(p==='account' && curManager) { const n = $$('mcp-name'); if(n) n.value = curManager.name || ''; EmailPref.load('m', managerApi); }
   },
 
   // ─── DASHBOARD ───

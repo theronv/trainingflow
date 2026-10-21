@@ -338,6 +338,34 @@ function normCourse(c) {
     }))
   };
 }
+// "Email me about certificates" switch on the Account pages. `prefix` is 'l' (learner) or 'm' (manager).
+const EmailPref = {
+  _api: {}, // per Account page, so a multi-role user's two pages never share a token slot
+  async load(prefix, apiFn) {
+    const box = $$(`${prefix}-email-pref`), hint = $$(`${prefix}-email-hint`);
+    if (!box || !hint) return;
+    EmailPref._api[prefix] = apiFn;
+    box.disabled = true;
+    if (isDemo) { box.checked = true; hint.textContent = 'Preview only: the demo never sends email.'; return; }
+    try {
+      const me = await apiFn('/api/learners/me');
+      if (!me.email) { box.checked = false; hint.textContent = 'There is no email address on your account yet. Ask an administrator to add one.'; return; }
+      box.checked = me.email_notifications !== false;
+      box.disabled = false;
+      hint.textContent = `Sent to ${me.email} the first time you pass a course${prefix === 'm' ? ', or when someone on your team does' : ''}.`;
+    } catch { hint.textContent = 'Could not load this setting. Reload to try again.'; }
+  },
+  async toggle(box) {
+    const want = box.checked;
+    box.disabled = true;
+    try {
+      await EmailPref._api[box.id.charAt(0)]('/api/learners/me', { method: 'PATCH', body: JSON.stringify({ email_notifications: want }) });
+      Toast.ok(want ? 'Certificate emails turned on.' : 'Certificate emails turned off.');
+    } catch (e) { box.checked = !want; Toast.err(e.message); }
+    box.disabled = false;
+  }
+};
+
 // Recent completions as a feed: a pass reads as a certificate earned, a miss as an attempt.
 function activityListHtml(items) {
   return `<div class="activity-list">${items.map(c => {
