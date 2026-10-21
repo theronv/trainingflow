@@ -20,8 +20,27 @@ describe('API security headers', () => {
       expect(res.headers.get('strict-transport-security')).toMatch(/max-age=\d{7,}/)
       expect(res.headers.get('content-security-policy')).toContain("default-src 'none'")
       expect(res.headers.get('content-security-policy')).toContain("frame-ancestors 'none'")
-      expect(res.headers.get('cache-control')).toBe('no-store')
     }
+  })
+
+  it('never caches signed-in or write responses, but lets anonymous public reads be cached', async () => {
+    const authed = await headersOf('/api/courses', { headers: { Authorization: 'Bearer x' } })
+    expect(authed.headers.get('cache-control')).toBe('no-store')
+    const write = await headersOf('/api/auth/login', { method: 'POST' })
+    expect(write.headers.get('cache-control')).toBe('no-store')
+    expect((await headersOf('/api/brand')).headers.get('cache-control')).not.toBe('no-store')
+  })
+
+  it('keeps the headers on responses produced by the error handler', async () => {
+    await h.db.execute('DROP TABLE modules')
+    const res = await (await import('../index.js')).default.request('/api/courses', {
+      method: 'POST', headers: { Authorization: `Bearer ${await h.adminToken()}`, 'Content-Type': 'application/json', Origin: 'http://localhost' },
+      body: JSON.stringify({ title: 'X', modules: [{ title: 'M', questions: [] }] }),
+    }, h.env)
+    expect(res.status).toBe(500)
+    expect(res.headers.get('x-content-type-options')).toBe('nosniff')
+    expect(res.headers.get('cache-control')).toBe('no-store')
+    expect(JSON.stringify(await res.json())).not.toMatch(/no such table|SQLITE/i)
   })
 
   it('keeps cross-origin reads working for the SPA', async () => {
@@ -37,6 +56,7 @@ describe('API security headers', () => {
     }, h.env)
     expect(res.status).toBeLessThan(300)
     expect(res.headers.get('access-control-allow-headers')).toMatch(/authorization/i)
+    expect(res.headers.get('x-content-type-options')).toBe('nosniff')
   })
 })
 
@@ -47,6 +67,13 @@ describe('AI proxy input bounds', () => {
   it('rejects an oversized prompt before calling any provider', async () => {
     const res = await h.request('/api/ai/generate', { method: 'POST', token: h.adminToken(), body: { prompt: 'x'.repeat(200_001) } })
     expect(res.status).toBe(413)
+  })
+
+  it('rejects non-text prompts instead of stringifying them past the size check', async () => {
+    for (const prompt of [['x'], { a: 'x'.repeat(10) }, 42]) {
+      expect((await h.request('/api/ai/generate', { method: 'POST', token: h.adminToken(), body: { prompt } })).status).toBe(400)
+    }
+    expect((await h.request('/api/ai/generate', { method: 'POST', token: h.adminToken(), body: { prompt: 'ok', system_prompt: { a: 1 } } })).status).toBe(400)
   })
 
   it('clamps max_tokens before forwarding', async () => {
