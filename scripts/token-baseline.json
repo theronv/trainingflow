@@ -1,10 +1,12 @@
 {
-  "css/style.css": 68,
+  "css/style.css": 66,
   "index.html": 44,
   "js/admin.js": 0,
   "js/app.js": 1,
   "js/auth.js": 1,
   "js/builder.js": 0,
+  "js/celebrate.js": 0,
+  "js/certificate.js": 0,
   "js/confirm.js": 0,
   "js/core.js": 13,
   "js/demo.js": 0,

@@ -937,47 +937,59 @@ tbody tr:hover td { background: var(--surface); }
   backdrop-filter: blur(4px);
 }
 .cert-controls { display: flex; gap: var(--space-3); margin-bottom: var(--space-5); justify-content: center; }
-.cert-sheet, #cert-sheet {
-  background: var(--surface);
-  border: 1px solid var(--border-2);
-  border-radius: var(--radius-xl);
-  padding: 60px 80px;
-  max-width: 760px;
-  width: 100%;
-  text-align: center;
-  box-shadow: var(--shadow-lg);
-  font-family: var(--font-body);
-}
-.cert-accent-bar { height: 6px; background: linear-gradient(to right, var(--brand), var(--brand-secondary)); border-radius: var(--radius-xl) var(--radius-xl) 0 0; }
 .course-header-logo { height: 32px; width: auto; max-width: 100px; object-fit: contain; flex-shrink: 0; }
-.cert-body { padding: 52px 64px 48px; text-align: center; }
-.cert-org-name {
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  text-transform: uppercase; color: var(--ink-3); margin-bottom: 32px;
+/* Certificate sheet: always a light A4-landscape page (so it matches the PDF in dark mode); type scales with the sheet via container units. */
+#cert-sheet {
+  --surface: #ffffff;
+  --ink-1: #0b1220;
+  --ink-2: #3b4559;
+  --ink-3: #5a6478;
+  --border: #e3e8f2;
+  --border-2: #cdd5e4;
+  position: relative; container-type: inline-size;
+  width: 100%; max-width: 900px; aspect-ratio: 297 / 210;
+  background: var(--surface); color: var(--ink-1);
+  border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-lg);
+  font-family: var(--font-body); text-align: center;
 }
-.cert-heading {
-  font-size: 52px;
-  color: var(--ink-1); line-height: 1; margin-bottom: 28px;
-}
-.cert-of { font-family: var(--font-mono); font-size: var(--text-xs); font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 28px; }
-.cert-presents { font-size: 13px; color: var(--ink-3); margin-bottom: 8px; }
-.cert-name {
-  font-size: 42px; font-weight: 700; color: var(--ink-1);
-  letter-spacing: -0.02em; margin-bottom: 28px;
-  display: inline-block;
-}
-.cert-completed { font-size: 13px; color: var(--ink-3); margin-bottom: 8px; }
-.cert-course { font-size: 20px; font-weight: 700; color: var(--ink-1); margin-bottom: 36px; }
-.cert-rule { width: 60px; height: 1px; background: var(--border); margin: 0 auto 32px; }
-.cert-meta-row { display: flex; justify-content: center; gap: 64px; margin-bottom: 36px; }
-.cert-meta-item { text-align: center; }
-.cert-meta-label { font-family: var(--font-mono); font-size: var(--text-xs); font-weight: 500; text-transform: uppercase; letter-spacing: 0.14em; color: var(--ink-3); margin-bottom: 4px; }
-.cert-meta-val { font-size: 14px; font-weight: 700; color: var(--ink-1); }
-.cert-sig-row { display: flex; justify-content: center; gap: 80px; padding-top: 28px; border-top: 1px solid var(--border); }
-.cert-sig-item { text-align: center; }
-.cert-sig-line { width: 120px; height: 1px; background: var(--border-2); margin: 0 auto 6px; }
-.cert-sig-label { font-family: var(--font-mono); font-size: var(--text-xs); font-weight: 500; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-3); }
+.cert-band { position: absolute; inset: 0 0 auto 0; height: 2.6cqw; background: var(--hero); }
+.cert-frame { position: absolute; inset: 4.4cqw 3.4cqw 3.4cqw; border: 1px solid var(--border-2); pointer-events: none; }
+.cert-body { position: absolute; inset: 6.6cqw 7cqw 5.4cqw; display: flex; flex-direction: column; align-items: center; }
+.cert-logo-wrap { margin-bottom: 1.4cqw; }
+.cert-logo-wrap img { display: block; max-height: 6.4cqw; max-width: 24cqw; }
+.cert-org-name { font-size: 1.5cqw; font-weight: 800; letter-spacing: 0.22em; text-transform: uppercase; color: var(--brand); }
+.cert-heading { margin-top: 1cqw; font-size: 5.2cqw; font-weight: 700; letter-spacing: -0.02em; line-height: 1.05; }
+.cert-presents, .cert-completed { margin-top: 1.8cqw; font-size: 1.5cqw; color: var(--ink-3); }
+.cert-name { margin-top: 0.6cqw; padding: 0 3cqw 0.8cqw; font-family: Georgia, 'Times New Roman', serif; font-style: italic; font-size: 5.4cqw; line-height: 1.15; border-bottom: 1px solid var(--border-2); max-width: 100%; overflow-wrap: anywhere; }
+.cert-course { margin-top: 0.6cqw; max-width: 80%; font-size: 2.6cqw; font-weight: 700; line-height: 1.2; }
+.cert-meta-row { display: flex; justify-content: center; gap: 6cqw; margin-top: 2.4cqw; }
+.cert-meta-label { font-size: 1.1cqw; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); }
+.cert-meta-val { margin-top: 0.3cqw; font-size: 1.7cqw; font-weight: 700; }
+.cert-meta-id { font-family: var(--font-mono); font-size: 1.4cqw; }
+.cert-foot { position: absolute; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: 1fr auto 1fr; align-items: end; }
+.cert-sig { justify-self: start; text-align: center; min-width: 20cqw; }
+.cert-sig-name { min-height: 3cqw; font-family: Georgia, 'Times New Roman', serif; font-style: italic; font-size: 2.2cqw; }
+.cert-sig-line { height: 1px; background: var(--ink-3); margin: 0.2cqw 0 0.5cqw; }
+.cert-sig-label { font-size: 1.1cqw; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); }
+.cert-seal { width: 9cqw; height: 9cqw; color: var(--brand); }
+.cert-verify { justify-self: end; display: flex; flex-direction: column; align-items: center; gap: 0.4cqw; }
+.cert-qr { width: 8.4cqw; height: 8.4cqw; color: var(--ink-1); }
+.cert-qr svg { display: block; width: 100%; height: 100%; }
+.cert-verify-label { font-size: 1cqw; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); }
+.cert-share { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-3); margin-top: var(--space-4); }
+
+/* Public verification page (the QR code on a certificate opens this) */
+.verify-wrap { width: 100%; max-width: 460px; margin: auto; padding: var(--space-6) var(--space-4); text-align: center; }
+.verify-card { padding: var(--space-8) var(--space-6); }
+.verify-badge { display: grid; place-items: center; width: 64px; height: 64px; margin: 0 auto var(--space-4); border-radius: 50%; font-size: var(--text-2xl); font-weight: 800; }
+.verify-ok .verify-badge { background: var(--pass-bg); color: var(--success-text); }
+.verify-bad .verify-badge { background: var(--fail-bg); color: var(--danger-text); }
+.verify-title { margin: 0 0 var(--space-2); font-size: var(--text-xl); font-weight: 700; color: var(--ink-1); }
+.verify-sub { margin: 0 0 var(--space-5); color: var(--ink-2); }
+.verify-facts { margin: 0 0 var(--space-5); text-align: left; }
+.verify-facts div { display: flex; justify-content: space-between; gap: var(--space-4); padding: var(--space-3) 0; border-top: 1px solid var(--border); }
+.verify-facts dt { color: var(--ink-3); font-size: var(--text-sm); }
+.verify-facts dd { margin: 0; font-weight: 600; color: var(--ink-1); text-align: right; overflow-wrap: anywhere; }
 
 /* ══════════════════ CODE / FORMAT ══════════════════ */
 code {
@@ -1570,26 +1582,6 @@ a { color: var(--accent); }
 
 /* Landing: value strip + footer anchored to the bottom */
 .landing-foot { text-align: left; margin-top: auto; padding-top: var(--space-8); max-width: 62ch; }
-/* Certificate: always a light sheet (so PDFs are consistent in dark mode), Pregame typography */
-.cert-org-name { letter-spacing: .16em; font-weight: 800; }
-.cert-heading { font-weight: 560; letter-spacing: -.03em; }
-.cert-of, .cert-meta-label { font-family: var(--font-body); font-weight: 700; letter-spacing: .14em; }
-#c-name { color: var(--ink-1) !important; }
-#c-org { color: var(--brand) !important; }
-#cert-sheet {
-  --surface: #ffffff;
-  --ink-1: #0b1220;
-  --ink-2: #3b4559;
-  --ink-3: #5a6478;
-  --border: #e3e8f2;
-  --border-2: #cdd5e4;
-  background: #fff;
-  color: #0b1220;
-  padding: 0;
-  overflow: hidden;
-}
-#cert-sheet .cert-accent-bar { height: 10px; background: var(--hero); border-radius: 0; }
-.cert-org-name, .cert-sig-label { font-family: var(--font-body); }
 
 /* ══════════════════ MOBILE: TOUCH, SAFE AREAS AND SHEET MODALS ══════════════════
    Builds on RESPONSIVE SHELL: touch behaviour, safe areas,
@@ -1651,10 +1643,9 @@ button, .nav-btn, .quiz-opt, .course-card, .role-tile, label { touch-action: man
   .modal-foot { flex-direction: column-reverse; }
   .modal-foot .btn { width: 100%; }
 
-  /* certificate overlay pans instead of clipping; the sheet keeps its fixed width so the A4 PDF export isn't distorted */
-  #cert-overlay { justify-content: flex-start; align-items: flex-start; overflow: auto; -webkit-overflow-scrolling: touch; padding: var(--space-4); padding-top: calc(var(--space-4) + env(safe-area-inset-top)); }
-  .cert-controls { flex-wrap: wrap; position: sticky; left: 0; }
-  .cert-sheet, #cert-sheet { min-width: 760px; flex-shrink: 0; }
+  /* certificate overlay scrolls; the sheet scales to the screen, so nothing pans sideways */
+  #cert-overlay { justify-content: flex-start; overflow: auto; -webkit-overflow-scrolling: touch; padding: var(--space-4); padding-top: calc(var(--space-4) + env(safe-area-inset-top)); }
+  .cert-controls { flex-wrap: wrap; }
 
   /* hero bands */
   .page-head .page-title { font-size: clamp(26px, 8vw, 34px); }

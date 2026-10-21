@@ -730,6 +730,8 @@ const Admin = {
     if($$('br-name'))     $$('br-name').value     = b.name || '';
     if($$('br-tag'))      $$('br-tag').value       = b.tagline || '';
     if($$('br-pass'))     $$('br-pass').value      = b.pass || 80;
+    if($$('br-sign-name'))  $$('br-sign-name').value  = b.signName || '';
+    if($$('br-sign-title')) $$('br-sign-title').value = b.signTitle || '';
     if($$('br-logo-url')) $$('br-logo-url').value  = b.logo && !b.logo.startsWith('data:') ? b.logo : '';
     // Color pickers + hex inputs
     const hex = b.c1 || CONFIG.DEFAULT_C1;
@@ -781,10 +783,12 @@ const Admin = {
         logo_url: logoVal,
         font_family: fontFamily,
         font_url: fontUrl,
+        signatory_name: $$('br-sign-name')?.value.trim() || '',
+        signatory_title: $$('br-sign-title')?.value.trim() || '',
       };
       await api('/api/brand', { method:'PUT', body:JSON.stringify(body) });
       if (/^#[0-9a-fA-F]{6}$/.test(hex)) localStorage.setItem('trainflow_brand_color', hex);
-      brandCache = { ...brandCache, name: body.org_name, tagline: body.tagline, c1: hex, c2: hex2, c3: hex3, logo: logoVal, pass: body.pass_threshold, font: fontFamily, fontUrl };
+      brandCache = { ...brandCache, name: body.org_name, tagline: body.tagline, c1: hex, c2: hex2, c3: hex3, logo: logoVal, pass: body.pass_threshold, font: fontFamily, fontUrl, signName: body.signatory_name, signTitle: body.signatory_title };
       applyBrand();
       Toast.ok('Brand saved.');
     } catch(e) { Toast.err(e.message); }

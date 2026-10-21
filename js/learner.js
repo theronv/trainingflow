@@ -573,10 +573,12 @@ const Learner = {
     });
   },
 
-  // Everything the certificate sheet shows, in one place.
+  // Everything the certificate shows, in one place.
   _certData({ org, name, course, at, score, certId }) {
+    const orgName = org || CONFIG.DEFAULT_BRAND_NAME;
     return {
-      org: org || CONFIG.DEFAULT_BRAND_NAME, name, course, score, certId,
+      org: orgName, name, course, score, certId, at: at.getTime(), logo: brandCache.logo,
+      signName: brandCache.signName, signTitle: brandCache.signTitle,
       date: at.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
     };
   },
@@ -590,24 +592,8 @@ const Learner = {
     });
   },
 
-  _fillCert(d) {
-    $$('c-org').textContent    = d.org;
-    $$('c-name').textContent   = d.name;
-    $$('c-course').textContent = d.course;
-    $$('c-date').textContent   = d.date;
-    $$('c-score').textContent  = d.score + '%';
-    $$('c-id').textContent     = d.certId;
-    const sigLabel = $$('c-sig-dept');
-    if (sigLabel) sigLabel.textContent = d.org + ' Training Department';
-    const logoImg = $$('c-logo');
-    if (logoImg) {
-      if (brandCache.logo) { logoImg.src = brandCache.logo; $$('c-logo-wrap').classList.remove('hidden'); }
-      else { logoImg.src = ''; $$('c-logo-wrap').classList.add('hidden'); }
-    }
-  },
-
   showCert(data) {
-    Learner._fillCert(data);
+    Certificate.render(data);
     $$('cert-overlay').classList.remove('hidden');
   },
 
@@ -617,18 +603,12 @@ const Learner = {
     Learner.showCert(data);
   },
 
-  // Download without leaving the list: the sheet must be rendered (not display:none) for the capture.
+  // Download straight from the list; the PDF is drawn from data, so the sheet needn't be on screen.
   downloadCert(certId) {
     const data = Learner._certDataFor(certId);
     if (!data) return Toast.err('Certificate data not found locally.');
-    Learner._fillCert(data);
-    const ov = $$('cert-overlay');
-    const wasHidden = ov.classList.contains('hidden');
-    if (wasHidden) { ov.style.visibility = 'hidden'; ov.classList.remove('hidden'); }
-    setTimeout(() => {
-      App.downloadCertPDF();
-      if (wasHidden) { ov.classList.add('hidden'); ov.style.visibility = ''; }
-    }, 150);
+    Certificate.render(data);
+    Certificate.downloadPdf();
   }
 };
 
@@ -645,17 +625,4 @@ const Learner = {
     document.body.appendChild(z);
   });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
-})();
-
-
-// Phone: scale the fixed-width certificate preview to the screen instead of panning (PDF export resets the zoom).
-(function () {
-  const ov = document.getElementById('cert-overlay'), sheet = document.getElementById('cert-sheet');
-  if (!ov || !sheet) return;
-  const fit = () => {
-    const avail = ov.clientWidth - 32;
-    sheet.style.zoom = innerWidth <= 860 && avail < 760 && avail > 0 ? String(avail / 760) : '';
-  };
-  new MutationObserver(fit).observe(ov, { attributes: true, attributeFilter: ['class'] });
-  addEventListener('resize', fit);
 })();

@@ -205,6 +205,8 @@ async function setupBrand(db) {
   try { await db.execute("ALTER TABLE brand ADD COLUMN accent_color TEXT DEFAULT '#d99100'") } catch {}
   try { await db.execute("ALTER TABLE brand ADD COLUMN font_family TEXT DEFAULT 'Inter'") } catch {}
   try { await db.execute("ALTER TABLE brand ADD COLUMN font_url TEXT DEFAULT ''") } catch {}
+  try { await db.execute("ALTER TABLE brand ADD COLUMN signatory_name TEXT DEFAULT ''") } catch {}
+  try { await db.execute("ALTER TABLE brand ADD COLUMN signatory_title TEXT DEFAULT ''") } catch {}
 }
 
 // Email sign-in (Clerk): users may link an email and a Clerk user id. Both nullable.
@@ -240,13 +242,13 @@ app.get('/api/brand', async (c) => {
 
 // ── Simple in-process rate limiter (resets per isolate restart; best-effort) ──
 const _loginAttempts = new Map()
-function _rateCheck(key) {
+function _rateCheck(key, limit = 10) {
   const now = Date.now()
   const entry = _loginAttempts.get(key) || { count: 0, reset: now + 60_000 }
   if (now > entry.reset) { entry.count = 0; entry.reset = now + 60_000 }
   entry.count++
   _loginAttempts.set(key, entry)
-  return entry.count > 10 // block after 10 attempts per minute per IP
+  return entry.count > limit // default: block after 10 attempts per minute per IP
 }
 
 app.post('/api/auth/login', async (c) => {
@@ -474,8 +476,8 @@ app.put('/api/brand', requireAdmin, async (c) => {
   try {
     await ensureSetup(db)
     await db.execute({
-      sql: `INSERT INTO brand (id, org_name, tagline, primary_color, secondary_color, accent_color, logo_url, pass_threshold, font_family, font_url)
-            VALUES ('default', ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      sql: `INSERT INTO brand (id, org_name, tagline, primary_color, secondary_color, accent_color, logo_url, pass_threshold, font_family, font_url, signatory_name, signatory_title)
+            VALUES ('default', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
               org_name        = excluded.org_name,
               tagline         = excluded.tagline,
@@ -485,8 +487,10 @@ app.put('/api/brand', requireAdmin, async (c) => {
               logo_url        = excluded.logo_url,
               pass_threshold  = excluded.pass_threshold,
               font_family     = excluded.font_family,
-              font_url        = excluded.font_url`,
-      args: [body.org_name, body.tagline || '', body.primary_color || '#2563eb', body.secondary_color || '#7c3aed', body.accent_color || '#0891b2', body.logo_url || '', body.pass_threshold ?? 80, body.font_family || 'Inter', body.font_url || '']
+              font_url        = excluded.font_url,
+              signatory_name  = excluded.signatory_name,
+              signatory_title = excluded.signatory_title`,
+      args: [body.org_name, body.tagline || '', body.primary_color || '#2563eb', body.secondary_color || '#7c3aed', body.accent_color || '#0891b2', body.logo_url || '', body.pass_threshold ?? 80, body.font_family || 'Inter', body.font_url || '', String(body.signatory_name || '').slice(0, 80), String(body.signatory_title || '').slice(0, 80)]
     })
     return c.json({ ok: true })
   } catch (e) {
@@ -1288,6 +1292,31 @@ app.delete('/api/progress/:course_id', requireLearner, async (c) => {
     await db.execute({ sql: 'DELETE FROM course_progress WHERE learner_id = ? AND course_id = ?', args: [user.id, c.req.param('course_id')] })
   } catch {}
   return c.json({ ok: true })
+})
+
+// Public certificate check (the QR code on every certificate points here). Reveals only what is printed on the
+// certificate itself: name, course, organisation and date. Failed attempts and unknown ids are indistinguishable.
+app.get('/api/verify/:certId', async (c) => {
+  const ip = c.req.header('CF-Connecting-IP') || 'unknown'
+  if (_rateCheck(`verify:${ip}`, 30)) return c.json({ error: 'Too many lookups. Try again in a minute.' }, 429)
+  const certId = String(c.req.param('certId') || '').trim().toUpperCase()
+  const db = getDb(c.env)
+  const row = toObj(await db.execute({
+    sql: `SELECT c.cert_id, c.learner_name, c.completed_at, co.title AS course_title
+          FROM completions c LEFT JOIN courses co ON co.id = c.course_id
+          WHERE c.cert_id = ? AND c.passed = 1`,
+    args: [certId]
+  }))
+  if (!row) return c.json({ valid: false }, 404)
+  let org = 'Pregame Academy'
+  try {
+    const brand = toObj(await db.execute({ sql: 'SELECT org_name FROM brand WHERE id = ?', args: ['default'] }))
+    if (brand?.org_name) org = brand.org_name
+  } catch {}
+  return c.json({
+    valid: true, cert_id: row.cert_id, name: row.learner_name,
+    course: row.course_title || 'Course no longer available', org, completed_at: Number(row.completed_at)
+  })
 })
 
 app.get('/api/completions/me', requireLearner, async (c) => {

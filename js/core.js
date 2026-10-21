@@ -203,7 +203,7 @@ let coursesCache = [];
 let assignCache  = [];
 let sectionsCache = [];
 let isDemo       = false;
-let brandCache   = { name: CONFIG.DEFAULT_BRAND_NAME, tagline: CONFIG.DEFAULT_TAGLINE, logo: '', c1: CONFIG.DEFAULT_C1, c2: CONFIG.DEFAULT_C2, c3: CONFIG.DEFAULT_C3, pass: CONFIG.DEFAULT_PASS, font: CONFIG.DEFAULT_FONT, fontUrl: '' };
+let brandCache   = { name: CONFIG.DEFAULT_BRAND_NAME, tagline: CONFIG.DEFAULT_TAGLINE, logo: '', c1: CONFIG.DEFAULT_C1, c2: CONFIG.DEFAULT_C2, c3: CONFIG.DEFAULT_C3, pass: CONFIG.DEFAULT_PASS, font: CONFIG.DEFAULT_FONT, fontUrl: '', signName: '', signTitle: '' };
 
 // Parents first, each followed by its sub-sections. Adds `label` ("Parent › Child") and `depth`.
 function orderSections(sections) {
@@ -360,6 +360,8 @@ function normBrand(b) {
     pass:    b.pass_threshold ?? CONFIG.DEFAULT_PASS,
     font:    legacy(b.font_family, LEGACY_BRAND.fonts) ? CONFIG.DEFAULT_FONT : b.font_family,
     fontUrl: b.font_url || '',
+    signName:  b.signatory_name || '',
+    signTitle: b.signatory_title || '',
   };
 }
 
@@ -408,8 +410,6 @@ function applyBrand() {
 
   // Org name across all surfaces
   ['ldg-brand', 'l-brand', 'a-brand', 'm-brand'].forEach(id => { const el = $$(id); if(el) el.textContent = b.name; });
-  const certSig = $$('c-sig-dept');
-  if(certSig) certSig.textContent = b.name + ' Training Department';
 
   // Tagline (dynamic)
   const taglineEl = $$('ldg-tagline');

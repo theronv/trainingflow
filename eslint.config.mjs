@@ -21,7 +21,7 @@ export default [
     ...js.configs.recommended,
     languageOptions: {
       sourceType: 'script',
-      globals: { ...globals.browser, ...appGlobals, html2canvas: 'readonly', jspdf: 'readonly', confetti: 'readonly', marked: 'readonly', Clerk: 'readonly' },
+      globals: { ...globals.browser, ...appGlobals, qrcode: 'readonly', jspdf: 'readonly', confetti: 'readonly', marked: 'readonly', Clerk: 'readonly' },
     },
     rules: {
       ...js.configs.recommended.rules,
