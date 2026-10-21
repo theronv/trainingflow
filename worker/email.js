@@ -3,7 +3,7 @@
  * Inert until RESEND_API_KEY is set. A failed send is logged (never the address) and never throws.
  */
 
-const RESEND_URL = 'https://api.resend.com/emails'
+const RESEND_BATCH_URL = 'https://api.resend.com/emails/batch'
 const DEFAULT_APP_URL = 'https://pregame-academy.vickerydigital.com'
 const DEFAULT_FROM = 'Pregame Academy <academy@vickerydigital.com>'
 const MAX_MANAGER_RECIPIENTS = 20
@@ -16,18 +16,23 @@ export function appUrl(env) {
   return String(env.APP_URL || DEFAULT_APP_URL).replace(/\/+$/, '')
 }
 
-/** Send one message. Resolves true on success, false on any failure. */
-export async function sendEmail(env, { to, subject, html, text, idempotencyKey, label = '' }) {
-  if (!env.RESEND_API_KEY) return false
+/**
+ * Send messages in one Resend batch call (https://resend.com/docs/api-reference/emails/send-batch-emails):
+ * a single request per certificate, so a team with many managers cannot hit Resend's per-second limit.
+ * Resolves true on success, false on any failure.
+ */
+export async function sendEmails(env, messages, { idempotencyKey, label = '' } = {}) {
+  if (!env.RESEND_API_KEY || !messages.length) return false
   try {
-    const res = await fetch(RESEND_URL, {
+    const from = env.EMAIL_FROM || DEFAULT_FROM
+    const res = await fetch(RESEND_BATCH_URL, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${String(env.RESEND_API_KEY).trim()}`,
         'Content-Type': 'application/json',
         ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}),
       },
-      body: JSON.stringify({ from: env.EMAIL_FROM || DEFAULT_FROM, to: [to], subject, html, text }),
+      body: JSON.stringify(messages.map(({ to, subject, html, text }) => ({ from, to: [to], subject, html, text }))),
     })
     if (!res.ok) console.error(`Resend send failed: HTTP ${res.status} ${label}`.trim())
     return res.ok
@@ -117,14 +122,10 @@ export async function notifyCertificateEarned({ env, db, ensure, learnerId, lear
       env, org: brand.org_name || 'Pregame Academy', color: brand.primary_color, learnerName,
       course: courseRow.title, score, completedAt, certId,
     })
-    const jobs = []
-    if (learner && learner.email && Number(learner.email_notifications) === 1) {
-      jobs.push(sendEmail(env, { to: learner.email, ...toLearner, idempotencyKey: `cert-${certId}-${learnerId}`, label: `cert=${certId} to=learner` }))
-    }
-    for (const m of managers) {
-      jobs.push(sendEmail(env, { to: m.email, ...toManager, idempotencyKey: `cert-${certId}-${m.id}`, label: `cert=${certId} to=manager` }))
-    }
-    await Promise.all(jobs)
+    const messages = []
+    if (learner && learner.email && Number(learner.email_notifications) === 1) messages.push({ to: learner.email, ...toLearner })
+    for (const m of managers) messages.push({ to: m.email, ...toManager })
+    await sendEmails(env, messages, { idempotencyKey: `cert-${certId}`, label: `cert=${certId}` })
   } catch (e) {
     console.error(`Certificate email failed: ${e.message} cert=${certId}`)
   }

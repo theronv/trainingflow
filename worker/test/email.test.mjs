@@ -13,7 +13,8 @@ describe('certificate emails', () => {
     }
   }
   const finish = () => h.request('/api/completions', { method: 'POST', token, body: { course_id: course.id } })
-  const sent = () => calls.map(c => ({ url: c.url, headers: c.init.headers, body: JSON.parse(c.init.body) }))
+  // Each call is one batch request: flatten to one entry per message, keeping the request's url and headers.
+  const sent = () => calls.flatMap(c => JSON.parse(c.init.body).map(body => ({ url: c.url, headers: c.init.headers, body })))
 
   beforeEach(async () => {
     h = await setupHarness()
@@ -35,9 +36,10 @@ describe('certificate emails', () => {
     const res = await finish()
     expect(res.status).toBe(201)
     const mails = sent()
+    expect(calls).toHaveLength(1) // one batch request, however many recipients
     expect(mails).toHaveLength(2)
     mails.forEach(m => {
-      expect(m.url).toBe('https://api.resend.com/emails')
+      expect(m.url).toBe('https://api.resend.com/emails/batch')
       expect(m.headers.Authorization).toBe('Bearer re_test')
       expect(m.body.from).toBe('Pregame Academy <academy@example.test>')
     })
@@ -45,7 +47,7 @@ describe('certificate emails', () => {
     expect(toLearner.body.subject).toBe('You earned a certificate: Safety 101')
     expect(toLearner.body.html).toContain(`https://app.example.test/#/verify/${res.json.cert_id}`)
     expect(toLearner.body.text).toContain('100%')
-    expect(toLearner.headers['Idempotency-Key']).toBe(`cert-${res.json.cert_id}-${learner.id}`)
+    expect(toLearner.headers['Idempotency-Key']).toBe(`cert-${res.json.cert_id}`)
     const toManager = mails.find(m => m.body.to[0] === 'sam@example.test')
     expect(toManager.body.subject).toBe('Alex Rivera earned a certificate: Safety 101')
   })
@@ -64,7 +66,7 @@ describe('certificate emails', () => {
   it('only emails for the first pass of a course, not retakes', async () => {
     await answerAll([2, 0])
     await finish()
-    expect(calls).toHaveLength(2)
+    expect(sent()).toHaveLength(2)
     calls.length = 0
     await answerAll([2, 0])
     expect((await finish()).json.passed).toBe(true)
@@ -76,7 +78,7 @@ describe('certificate emails', () => {
     await finish()
     await answerAll([2, 0])
     await finish()
-    expect(calls).toHaveLength(2)
+    expect(sent()).toHaveLength(2)
   })
 
   it('sends nothing for a failed attempt', async () => {
