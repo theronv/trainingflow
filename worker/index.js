@@ -110,6 +110,7 @@ async function ensureSetup(db) {
   await setupClerk(db)
   await setupRoles(db)
   await setupEmail(db)
+  await setupRateLimits(db)
   if (injected) _setupDbs.add(db)
   else _setupComplete = true
 }
@@ -302,22 +303,107 @@ app.get('/api/brand', async (c) => {
   }
 })
 
-// ── Simple in-process rate limiter (resets per isolate restart; best-effort) ──
-const _loginAttempts = new Map()
-function _rateCheck(key, limit = 10) {
-  const now = Date.now()
-  const entry = _loginAttempts.get(key) || { count: 0, reset: now + 60_000 }
-  if (now > entry.reset) { entry.count = 0; entry.reset = now + 60_000 }
-  entry.count++
-  _loginAttempts.set(key, entry)
-  return entry.count > limit // default: block after 10 attempts per minute per IP
+// ── Durable rate limiting (Turso `rate_limits`, shared by every Worker isolate) ──
+// Two kinds of row share the table: per-IP request windows ("ip:…") and per-account failure counters ("fail:…").
+// A limiter error never blocks a sign-in: it is logged and the request goes ahead.
+const FAIL_FREE = 5            // wrong passwords allowed before an account backs off
+const FAIL_BASE_SEC = 30       // first lockout; doubles with every further failure
+const FAIL_MAX_SEC = 900       // lockout cap (15 min); also how long a quiet account takes to forget failures
+
+async function setupRateLimits(db) {
+  await db.execute('CREATE TABLE IF NOT EXISTS rate_limits (key TEXT PRIMARY KEY, count INTEGER NOT NULL DEFAULT 0, window_start INTEGER NOT NULL, locked_until INTEGER NOT NULL DEFAULT 0)')
 }
+
+const nowSec = () => Math.floor(Date.now() / 1000)
+
+/** Counts one hit for `key` in a fixed window and returns true once it is over `limit`. */
+async function rateLimited(db, key, limit = 10, windowSec = 60) {
+  try {
+    await ensureSetup(db)
+    const now = nowSec()
+    const res = await db.execute({
+      sql: `INSERT INTO rate_limits (key, count, window_start) VALUES (?, 1, ?)
+            ON CONFLICT(key) DO UPDATE SET
+              count = CASE WHEN window_start <= ? THEN 1 ELSE count + 1 END,
+              window_start = CASE WHEN window_start <= ? THEN ? ELSE window_start END
+            RETURNING count`,
+      args: [key, now, now - windowSec, now - windowSec, now],
+    })
+    if (Math.random() < 0.02) await db.execute({ sql: 'DELETE FROM rate_limits WHERE window_start < ? AND locked_until < ?', args: [now - FAIL_MAX_SEC - 60, now] })
+    return Number(res.rows[0].count) > limit
+  } catch (e) {
+    console.error('rate limiter unavailable:', e.message)
+    return false
+  }
+}
+
+/** Seconds until the account may try again (0 = not locked). */
+async function lockedFor(db, key) {
+  try {
+    await ensureSetup(db)
+    const row = toObj(await db.execute({ sql: 'SELECT locked_until FROM rate_limits WHERE key = ?', args: [key] }))
+    return Math.max(0, Number(row?.locked_until || 0) - nowSec())
+  } catch (e) {
+    console.error('rate limiter unavailable:', e.message)
+    return 0
+  }
+}
+
+/** Records a wrong password; after FAIL_FREE failures the account locks for an exponentially growing time. */
+async function recordFailure(db, key) {
+  try {
+    const now = nowSec()
+    const res = await db.execute({
+      sql: `INSERT INTO rate_limits (key, count, window_start) VALUES (?, 1, ?)
+            ON CONFLICT(key) DO UPDATE SET
+              count = CASE WHEN window_start <= ? THEN 1 ELSE count + 1 END,
+              window_start = ?
+            RETURNING count`,
+      args: [key, now, now - FAIL_MAX_SEC, now],
+    })
+    const failures = Number(res.rows[0].count)
+    if (failures >= FAIL_FREE) {
+      const wait = Math.min(FAIL_MAX_SEC, FAIL_BASE_SEC * 2 ** (failures - FAIL_FREE))
+      await db.execute({ sql: 'UPDATE rate_limits SET locked_until = ? WHERE key = ?', args: [now + wait, key] })
+    }
+  } catch (e) {
+    console.error('rate limiter unavailable:', e.message)
+  }
+}
+
+async function clearFailures(db, key) {
+  try { await db.execute({ sql: 'DELETE FROM rate_limits WHERE key = ?', args: [key] }) } catch (e) { console.error('rate limiter unavailable:', e.message) }
+}
+
+const accountKey = (name) => `fail:${String(name ?? '').trim().toLowerCase().slice(0, 100)}`
+
+/** 429 for a locked account, with Retry-After. Returns null when the account may try. */
+async function lockoutResponse(c, db, key) {
+  const wait = await lockedFor(db, key)
+  if (!wait) return null
+  c.header('Retry-After', String(wait))
+  return c.json({ error: `Too many failed attempts. Try again in ${wait > 60 ? `${Math.ceil(wait / 60)} minutes` : 'a minute'}.` }, 429)
+}
+
+app.get('/api/health', async (c) => {
+  c.header('Cache-Control', 'no-store')
+  try {
+    await getDb(c.env).execute('SELECT 1')
+    return c.json({ ok: true })
+  } catch (e) {
+    console.error('health check failed:', e.message)
+    return c.json({ ok: false }, 503)
+  }
+})
 
 app.post('/api/auth/login', async (c) => {
   const body = await c.req.json().catch(() => ({}))
   const ip = c.req.header('CF-Connecting-IP') || 'unknown'
-  if (_rateCheck(`admin:${ip}`)) return c.json({ error: 'Too many attempts. Try again in a minute.' }, 429)
+  if (await rateLimited(getDb(c.env), `ip:admin:${ip}`)) return c.json({ error: 'Too many attempts. Try again in a minute.' }, 429)
   const db = getDb(c.env)
+  const lockKey = accountKey('__shared-admin')
+  const locked = await lockoutResponse(c, db, lockKey)
+  if (locked) return locked
 
   const hashes = await getStoredHashes(db, c.env)
   if (!hashes.length) return c.json({ error: 'Admin not initialised' }, 503)
@@ -330,7 +416,8 @@ app.post('/api/auth/login', async (c) => {
     }
   }
 
-  if (!ok) return c.json({ error: 'Unauthorized' }, 401)
+  if (!ok) { await recordFailure(db, lockKey); return c.json({ error: 'Unauthorized' }, 401) }
+  await clearFailures(db, lockKey)
 
   const now = Math.floor(Date.now() / 1000)
   const token = await sign({ role: 'admin', iat: now, exp: now + CONSTANTS.ADMIN_JWT_EXP_SEC }, c.env.JWT_SECRET, 'HS256')
@@ -494,7 +581,7 @@ app.delete('/api/invites/:id', requireManager, async (c) => {
 // Public: lets the join page say "You're joining <team> as <role>" before the form is filled in.
 app.get('/api/auth/invite/:code', async (c) => {
   const ip = c.req.header('CF-Connecting-IP') || 'unknown'
-  if (_rateCheck(`invite-preview:${ip}`)) return c.json({ error: 'Too many attempts. Try again in a minute.' }, 429)
+  if (await rateLimited(getDb(c.env), `ip:invite-preview:${ip}`)) return c.json({ error: 'Too many attempts. Try again in a minute.' }, 429)
   const db = getDb(c.env)
   await ensureInviteSchema(db)
   const inv = toObj(await db.execute({
@@ -934,7 +1021,7 @@ async function verifyClerkToken(env, token, why = {}) {
 app.post('/api/auth/clerk/login', async (c) => {
   const body = await c.req.json().catch(() => ({}))
   const ip = c.req.header('CF-Connecting-IP') || 'unknown'
-  if (_rateCheck(`clerk:${ip}`)) return c.json({ error: 'Too many attempts. Try again in a minute.' }, 429)
+  if (await rateLimited(getDb(c.env), `ip:clerk:${ip}`)) return c.json({ error: 'Too many attempts. Try again in a minute.' }, 429)
   const why = {}
   const clerk = await verifyClerkToken(c.env, body.token, why)
   if (!clerk) return c.json({ error: `Email sign-in could not be verified (${why.reason || 'unknown'}).` }, 401)
@@ -975,7 +1062,7 @@ app.post('/api/auth/clerk/login', async (c) => {
 async function registerWithInvite(c, requiredRole) {
   const body = await c.req.json().catch(() => ({}))
   const ip = c.req.header('CF-Connecting-IP') || 'unknown'
-  if (_rateCheck(`register:${ip}`)) return c.json({ error: 'Too many attempts. Try again in a minute.' }, 429)
+  if (await rateLimited(getDb(c.env), `ip:register:${ip}`)) return c.json({ error: 'Too many attempts. Try again in a minute.' }, 429)
   const name = typeof body.name === 'string' ? body.name.trim() : ''
   const code = typeof body.code === 'string' ? body.code.trim().toUpperCase() : ''
   if (!name) return c.json({ error: 'Please enter your full name.' }, 400)
@@ -1379,7 +1466,7 @@ app.delete('/api/progress/:course_id', requireLearner, async (c) => {
 // certificate itself: name, course, organisation and date. Failed attempts and unknown ids are indistinguishable.
 app.get('/api/verify/:certId', async (c) => {
   const ip = c.req.header('CF-Connecting-IP') || 'unknown'
-  if (_rateCheck(`verify:${ip}`, 30)) return c.json({ error: 'Too many lookups. Try again in a minute.' }, 429)
+  if (await rateLimited(getDb(c.env), `ip:verify:${ip}`, 30)) return c.json({ error: 'Too many lookups. Try again in a minute.' }, 429)
   const certId = String(c.req.param('certId') || '').trim().toUpperCase()
   const db = getDb(c.env)
   const row = toObj(await db.execute({
@@ -1851,15 +1938,19 @@ app.delete('/api/assignments', requireManager, async (c) => {
 app.post('/api/auth/manager/login', async (c) => {
   const body = await c.req.json()
   const ip = c.req.header('CF-Connecting-IP') || 'unknown'
-  if (_rateCheck(`manager:${ip}`)) return c.json({ error: 'Too many attempts. Try again in a minute.' }, 429)
+  if (await rateLimited(getDb(c.env), `ip:manager:${ip}`)) return c.json({ error: 'Too many attempts. Try again in a minute.' }, 429)
   const db = getDb(c.env)
   await ensureSetup(db)
+  const lockKey = accountKey(body.name)
+  const locked = await lockoutResponse(c, db, lockKey)
+  if (locked) return locked
   const res = await db.execute({
     sql: "SELECT u.*, t.name AS team_name FROM users u LEFT JOIN teams t ON u.team_id = t.id WHERE u.name = ? AND (u.role = 'manager' OR u.is_admin = 1)",
     args: [body.name]
   })
   const user = toObj(res)
-  if (!user || !(await pbkdf2Verify(body.password, user.password_hash))) return c.json({ error: 'Unauthorized' }, 401)
+  if (!user || !(await pbkdf2Verify(body.password, user.password_hash))) { await recordFailure(db, lockKey); return c.json({ error: 'Unauthorized' }, 401) }
+  await clearFailures(db, lockKey)
   await db.execute({ sql: 'UPDATE users SET last_login_at = ? WHERE id = ?', args: [Math.floor(Date.now() / 1000), user.id] })
   return c.json(await issueSession(c.env, user))
 })
@@ -1868,12 +1959,16 @@ app.post('/api/auth/manager/login', async (c) => {
 app.post('/api/learners/login', async (c) => {
   const body = await c.req.json()
   const ip = c.req.header('CF-Connecting-IP') || 'unknown'
-  if (_rateCheck(`learner:${ip}`)) return c.json({ error: 'Too many attempts. Try again in a minute.' }, 429)
+  if (await rateLimited(getDb(c.env), `ip:learner:${ip}`)) return c.json({ error: 'Too many attempts. Try again in a minute.' }, 429)
   const db = getDb(c.env)
   await ensureSetup(db)
+  const lockKey = accountKey(body.name)
+  const locked = await lockoutResponse(c, db, lockKey)
+  if (locked) return locked
   const res = await db.execute({ sql: 'SELECT u.*, t.name AS team_name FROM users u LEFT JOIN teams t ON u.team_id = t.id WHERE u.name = ?', args: [body.name] })
   const user = toObj(res)
-  if (!user || !(await pbkdf2Verify(body.password, user.password_hash))) return c.json({ error: 'Unauthorized' }, 401)
+  if (!user || !(await pbkdf2Verify(body.password, user.password_hash))) { await recordFailure(db, lockKey); return c.json({ error: 'Unauthorized' }, 401) }
+  await clearFailures(db, lockKey)
   return c.json(await issueSession(c.env, user))
 })
 
