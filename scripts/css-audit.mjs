@@ -245,13 +245,26 @@ export function specificity(member) {
 const specKey = (member) => specificity(member).join(',')
 
 // Properties that can interact: same name, or the same family (margin / margin-top, border / border-color…).
-const propFamily = (prop) => (prop.startsWith('--') ? prop : prop.replace(/^-(?:webkit|moz|ms)-/, '').split('-')[0])
+const FAMILY_OVERRIDES = {
+  top: 'inset', right: 'inset', bottom: 'inset', left: 'inset',
+  'row-gap': 'gap', 'column-gap': 'gap', 'grid-gap': 'gap',
+  width: 'size', height: 'size', 'inline-size': 'size', 'block-size': 'size',
+  'line-height': 'font', columns: 'column',
+  'place-items': 'items', 'align-items': 'items', 'justify-items': 'items',
+  'place-content': 'content', 'align-content': 'content', 'justify-content': 'content',
+  'place-self': 'self', 'align-self': 'self', 'justify-self': 'self',
+}
+const propFamily = (prop) => {
+  if (prop.startsWith('--')) return prop
+  const bare = prop.replace(/^-(?:webkit|moz|ms)-/, '')
+  return FAMILY_OVERRIDES[bare] ?? bare.split('-')[0]
+}
 
 /**
  * Every pair of declarations whose relative order can change the result: related properties in two
  * rules whose selectors can tie on specificity (same importance). Returned as sortable position pairs.
  */
-function orderPairs(src) {
+export function orderPairs(src) {
   const rules = parseCss(src).filter((r) => !r.atomic)
   const seen = new Map()
   const decls = []

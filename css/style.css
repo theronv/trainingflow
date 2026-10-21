@@ -1,9 +1,11 @@
 /* ══════════════════════════════════════════
-   DESIGN SYSTEM — Dark Enterprise SaaS
+   PREGAME ACADEMY — design system
+   Layers, in cascade order: tokens, base, components, app shell, screens, then refinements
+   (shell, learner, brand skin, mobile) that deliberately override earlier rules on equal
+   specificity, so moving a rule can change which one wins. Check any move with
+   `node scripts/css-audit.mjs` and worker/test/css-audit.test.mjs.
    ══════════════════════════════════════════ */
 :root {
-  /* ── Layout ── */
-
   /* ── Brandable tokens (overridden at runtime by Admin Branding panel) ── */
 
   /* ── Status ── */
@@ -22,8 +24,6 @@
   --fail-border:  rgba(239,68,68,0.20);
   --warn-lt:      rgba(245,158,11,0.10);
   --warn-border:  rgba(245,158,11,0.20);
-
-  /* ── Text ── */
 
   /* ── Typography ── */
   --font-mono:    'JetBrains Mono', 'Fira Code', monospace;
@@ -49,10 +49,6 @@
   --space-10: 40px;
   --space-12: 48px;
   --space-16: 64px;
-
-  /* ── Radius ── */
-
-  /* ── Shadows ── */
 
   /* ── Elevation surfaces ── (depth ladder: bg < bg-2 < surface < surface-raised) */
 
@@ -1052,8 +1048,8 @@ pre code { display: block; padding: var(--space-4); line-height: 1.7; }
   #cert-sheet { box-shadow: none; max-width: none; border-radius: 0; }
 }
 
-/* ══════════════════ ENTERPRISE POLISH ══════════════════
-   App shell (topbar, sidebar, page header) + course library. Presentation only. */
+/* ══════════════════ SHELL AND COURSE LIBRARY ══════════════════
+   Topbar, sidebar, page header and the course library cards. */
 .topbar {
   padding: 0 var(--space-6);
   justify-content: flex-start;
@@ -1182,7 +1178,7 @@ pre code { display: block; padding: var(--space-4); line-height: 1.7; }
 .btn-danger-ghost:hover { background: var(--fail-lt); color: var(--danger); }
 @media (max-width: 900px) { .main { padding: var(--space-6) var(--space-4); } }
 
-/* ══════════════════ ENTERPRISE POLISH II — data, learner, course player ══════════════════ */
+/* ══════════════════ DATA TABLES, LEARNER CARDS AND COURSE PLAYER ══════════════════ */
 /* Type: retire terminal-style mono labels */
 .stat-label { font-family: var(--font-body); font-size: var(--text-sm); font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--ink-3); }
 .stat-value { font-size: 30px; font-weight: 700; letter-spacing: -0.02em; }
@@ -1339,7 +1335,7 @@ input[type=file]::file-selector-button:hover { background: var(--bg-2); }
   .modal-foot { flex-wrap: wrap; }
 }
 
-/* ══════════════════ ENTERPRISE POLISH III — icons, empty states, global interaction ══════════════════ */
+/* ══════════════════ ICONS, EMPTY STATES AND INTERACTION ══════════════════ */
 .theme-toggle svg, .upload-icon svg, .empty-icon svg, .source-banner-icon svg { display: block; }
 .theme-toggle { width: 40px; height: 40px; border-radius: 999px; background: var(--surface); border-color: var(--border); }
 .theme-toggle svg { width: 18px; height: 18px; }
@@ -1392,7 +1388,7 @@ input[type=checkbox], input[type=radio] { accent-color: var(--brand); width: 16p
 .page-sub + .upload-zone, .page-sub + .card { margin-top: var(--space-4); }
 .qr-score { font-family: var(--font-body); font-weight: 700; letter-spacing: -0.03em; }
 
-/* ══════════════════ PREGAME ACADEMY SKIN ══════════════════
+/* ══════════════════ BRAND SKIN ══════════════════
    Matches the Pregame site (pregame.vickerydigital.com): brand black + electric blue,
    aurora hero, uppercase tracked labels, 6px buttons, 16px cards, system font stack. */
 :root {
@@ -1529,7 +1525,7 @@ a { color: var(--accent); }
 #screen-join::before { content: ''; position: absolute; inset: 0 0 auto 0; height: 340px; background: var(--hero); }
 #screen-join .login-wrap { position: relative; z-index: 1; }
 
-/* ══════════════════ POLISH IV — loading, sorting, landing, a11y, certificate ══════════════════ */
+/* ══════════════════ LOADING, SORTING, LANDING, ACCESSIBILITY AND CERTIFICATE ══════════════════ */
 /* Skeleton loaders */
 .skeleton {
   display: block; border-radius: var(--radius-sm);
@@ -1595,8 +1591,8 @@ a { color: var(--accent); }
 #cert-sheet .cert-accent-bar { height: 10px; background: var(--hero); border-radius: 0; }
 .cert-org-name, .cert-sig-label { font-family: var(--font-body); }
 
-/* ══════════════════ MOBILE OPTIMIZATION — 2026-10-15 ══════════════════
-   Presentation-only. Builds on RESPONSIVE SHELL: touch behaviour, safe areas,
+/* ══════════════════ MOBILE: TOUCH, SAFE AREAS AND SHEET MODALS ══════════════════
+   Builds on RESPONSIVE SHELL: touch behaviour, safe areas,
    dynamic viewport units, bottom-sheet modals, sticky course chrome. */
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 body { font-family: var(--font-body); -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; }
@@ -1709,14 +1705,7 @@ button, .nav-btn, .quiz-opt, .course-card, .role-tile, label { touch-action: man
 .ldg-link:hover { text-decoration:underline; }
 .ldg-link:focus-visible { outline:2px solid var(--brand); outline-offset:2px; }
 .role-grid.hidden { display:none; }
-/* ── Landing (enterprise layout): full-bleed hero band, brand left / sign-in right ── */
-/* value strip: raised cards that overlap the hero edge */
-/* Landing: highlights */
-
-/* Landing: simplified — brand left, branded sign-in panel right */
-/* Landing: hero fills the screen, footer sits under it */
-
-/* ── Landing v3: one centred column, one primary action ── */
+/* ── Landing: one centred column, one primary action ── */
 #screen-landing { gap: var(--space-10); justify-content: flex-start; flex-direction:column; align-items:center; min-height:100vh; padding:0 var(--space-4); background:var(--hero); }
 #screen-landing::before { z-index: 0; content:none; }
 .ldg-stage { flex:1; width:100%; max-width:640px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:var(--space-12) 0; }
@@ -1739,8 +1728,8 @@ button, .nav-btn, .quiz-opt, .course-card, .role-tile, label { touch-action: man
 
 .ldg-notice { max-width:46ch; padding:var(--space-3) var(--space-4); border-radius:var(--radius-md); background:rgba(255,90,90,.12); border:1px solid rgba(255,120,120,.45); color:#ffd0d0; font-size:var(--text-sm); line-height:1.5; }
 
-/* ══════════════════ MOBILE / iOS PASS II — 2026-10-16 ══════════════════
-   Presentation-only. Fixes found by auditing at 320/390/768px: later 100vh rules beat the dvh fix,
+/* ══════════════════ MOBILE: iOS FIXES AND PHONE LAYOUTS ══════════════════
+   Fixes found by auditing at 320/390/768px: later 100vh rules beat the dvh fix,
    the floating theme button covered content, sub-44px tap targets, tall stacked module list. */
 @supports (height: 100dvh) {
   #app, .screen, .screen.active, #screen-landing { min-height: 100dvh; }
