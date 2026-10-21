@@ -17,7 +17,7 @@ export function appUrl(env) {
 }
 
 /** Send one message. Resolves true on success, false on any failure. */
-export async function sendEmail(env, { to, subject, html, text, idempotencyKey }) {
+export async function sendEmail(env, { to, subject, html, text, idempotencyKey, label = '' }) {
   if (!env.RESEND_API_KEY) return false
   try {
     const res = await fetch(RESEND_URL, {
@@ -29,16 +29,19 @@ export async function sendEmail(env, { to, subject, html, text, idempotencyKey }
       },
       body: JSON.stringify({ from: env.EMAIL_FROM || DEFAULT_FROM, to: [to], subject, html, text }),
     })
-    if (!res.ok) console.error(`Resend send failed: HTTP ${res.status}`)
+    if (!res.ok) console.error(`Resend send failed: HTTP ${res.status} ${label}`.trim())
     return res.ok
   } catch (e) {
-    console.error('Resend send failed:', e.message)
+    console.error(`Resend send failed: ${e.message} ${label}`.trim())
     return false
   }
 }
 
+const DEFAULT_ACCENT = '#1565ff'
+const accentOf = (color) => (/^#[0-9a-f]{6}$/i.test(color || '') ? color : DEFAULT_ACCENT)
+
 function layout({ org, color, heading, intro, rows, buttonLabel, buttonUrl, footer }) {
-  const accent = /^#[0-9a-f]{6}$/i.test(color || '') ? color : '#1565ff'
+  const accent = accentOf(color)
   const facts = rows.map(([k, v]) => `<tr><td style="padding:8px 0;color:#5a6478;font-size:14px;">${escapeHtml(k)}</td><td style="padding:8px 0;text-align:right;font-weight:600;font-size:14px;color:#0b1220;">${escapeHtml(v)}</td></tr>`).join('')
   return `<!doctype html><html><body style="margin:0;background:#f3f5fa;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:24px 12px;"><tr><td align="center">
@@ -69,7 +72,7 @@ export function certificateMessages({ env, org, color, learnerName, course, scor
       org, color, heading: `Congratulations, ${learnerName}!`,
       intro: `You passed ${course}. Your certificate is ready to view, download and share.`,
       rows: rows('Awarded to'), buttonLabel: 'Open your certificates', buttonUrl: base,
-      footer: `Anyone can confirm this certificate at <a href="${escapeHtml(verifyUrl)}" style="color:${/^#[0-9a-f]{6}$/i.test(color || '') ? color : '#1565ff'};">${escapeHtml(verifyUrl)}</a>.<br>${settings}`,
+      footer: `Anyone can confirm this certificate at <a href="${escapeHtml(verifyUrl)}" style="color:${accentOf(color)};">${escapeHtml(verifyUrl)}</a>.<br>${settings}`,
     }),
     text: `Congratulations, ${learnerName}!\n\nYou passed ${course} with ${score}% on ${date}.\nSign in to view, download and share your certificate: ${base}\n\nCertificate ID: ${certId}\nVerify: ${verifyUrl}\n\n${settings}`,
   }
@@ -79,7 +82,7 @@ export function certificateMessages({ env, org, color, learnerName, course, scor
       org, color, heading: `${learnerName} earned a certificate`,
       intro: `A member of your team passed ${course}.`,
       rows: rows('Learner'), buttonLabel: 'View team progress', buttonUrl: base,
-      footer: `Certificate check: <a href="${escapeHtml(verifyUrl)}" style="color:${/^#[0-9a-f]{6}$/i.test(color || '') ? color : '#1565ff'};">${escapeHtml(verifyUrl)}</a>.<br>${settings}`,
+      footer: `Certificate check: <a href="${escapeHtml(verifyUrl)}" style="color:${accentOf(color)};">${escapeHtml(verifyUrl)}</a>.<br>${settings}`,
     }),
     text: `${learnerName} passed ${course} with ${score}% on ${date}.\nView team progress: ${base}\n\nCertificate ID: ${certId}\nVerify: ${verifyUrl}\n\n${settings}`,
   }
@@ -88,36 +91,41 @@ export function certificateMessages({ env, org, color, learnerName, course, scor
 
 /**
  * Notify the learner and their team's managers about a passed course. Runs after the response is sent.
- * `db` is the libSQL client; reads only. Never throws.
+ * `ensure` makes sure the schema is current. Only a course's first pass sends email: retakes (each of which
+ * mints a new certificate) would otherwise repeat the same message. Never throws.
  */
-export async function notifyCertificateEarned({ env, db, learnerId, learnerName, teamId, courseId, score, completedAt, certId }) {
+export async function notifyCertificateEarned({ env, db, ensure, learnerId, learnerName, courseId, score, completedAt, certId }) {
   if (!env.RESEND_API_KEY) return
   try {
-    const [learnerRes, courseRes, brandRes, managersRes] = await Promise.all([
-      db.execute({ sql: 'SELECT email, email_notifications FROM users WHERE id = ?', args: [learnerId] }),
+    await ensure()
+    const [learnerRes, courseRes, brandRes, earlierRes] = await Promise.all([
+      db.execute({ sql: 'SELECT email, email_notifications, team_id FROM users WHERE id = ?', args: [learnerId] }),
       db.execute({ sql: 'SELECT title FROM courses WHERE id = ?', args: [courseId] }),
       db.execute({ sql: "SELECT org_name, primary_color FROM brand WHERE id = 'default'", args: [] }).catch(() => ({ rows: [] })),
-      teamId == null ? { rows: [] } : db.execute({
-        sql: `SELECT id, email FROM users WHERE role = 'manager' AND team_id = ? AND id != ?
-              AND email IS NOT NULL AND email != '' AND email_notifications = 1 LIMIT ?`,
-        args: [teamId, learnerId, MAX_MANAGER_RECIPIENTS],
-      }),
+      db.execute({ sql: 'SELECT COUNT(*) AS n FROM completions WHERE learner_id = ? AND course_id = ? AND passed = 1 AND cert_id != ?', args: [learnerId, courseId, certId] }),
     ])
     const learner = learnerRes.rows[0], courseRow = courseRes.rows[0], brand = brandRes.rows[0] || {}
-    if (!courseRow) return
+    if (!courseRow || Number(earlierRes.rows[0].n) > 0) return
+    const managers = learner && learner.team_id != null
+      ? (await db.execute({
+          sql: `SELECT id, email FROM users WHERE role = 'manager' AND team_id = ? AND id != ?
+                AND email IS NOT NULL AND email != '' AND email_notifications = 1 LIMIT ?`,
+          args: [learner.team_id, learnerId, MAX_MANAGER_RECIPIENTS],
+        })).rows
+      : []
     const { learner: toLearner, manager: toManager } = certificateMessages({
       env, org: brand.org_name || 'Pregame Academy', color: brand.primary_color, learnerName,
       course: courseRow.title, score, completedAt, certId,
     })
     const jobs = []
     if (learner && learner.email && Number(learner.email_notifications) === 1) {
-      jobs.push(sendEmail(env, { to: learner.email, ...toLearner, idempotencyKey: `cert-${certId}-${learnerId}` }))
+      jobs.push(sendEmail(env, { to: learner.email, ...toLearner, idempotencyKey: `cert-${certId}-${learnerId}`, label: `cert=${certId} to=learner` }))
     }
-    for (const m of managersRes.rows) {
-      jobs.push(sendEmail(env, { to: m.email, ...toManager, idempotencyKey: `cert-${certId}-${m.id}` }))
+    for (const m of managers) {
+      jobs.push(sendEmail(env, { to: m.email, ...toManager, idempotencyKey: `cert-${certId}-${m.id}`, label: `cert=${certId} to=manager` }))
     }
     await Promise.all(jobs)
   } catch (e) {
-    console.error('Certificate email failed:', e.message)
+    console.error(`Certificate email failed: ${e.message} cert=${certId}`)
   }
 }

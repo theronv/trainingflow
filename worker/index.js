@@ -1235,10 +1235,8 @@ app.post('/api/completions', requireLearner, async (c) => {
   })
   await db.batch(stmts, 'write')
   if (passed) {
-    await ensureSetup(db)
-    const teamRow = toObj(await db.execute({ sql: 'SELECT team_id FROM users WHERE id = ?', args: [user.id] }))
     await runInBackground(c, notifyCertificateEarned({
-      env: c.env, db, learnerId: user.id, learnerName: user.name, teamId: teamRow ? teamRow.team_id : null,
+      env: c.env, db, ensure: () => ensureSetup(db), learnerId: user.id, learnerName: user.name,
       courseId, score, completedAt: now, certId: cid,
     }))
   }

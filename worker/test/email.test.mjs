@@ -61,6 +61,24 @@ describe('certificate emails', () => {
     }
   })
 
+  it('only emails for the first pass of a course, not retakes', async () => {
+    await answerAll([2, 0])
+    await finish()
+    expect(calls).toHaveLength(2)
+    calls.length = 0
+    await answerAll([2, 0])
+    expect((await finish()).json.passed).toBe(true)
+    expect(calls).toHaveLength(0)
+  })
+
+  it('still emails after an earlier failed attempt', async () => {
+    await answerAll([0, 1])
+    await finish()
+    await answerAll([2, 0])
+    await finish()
+    expect(calls).toHaveLength(2)
+  })
+
   it('sends nothing for a failed attempt', async () => {
     await answerAll([0, 1])
     expect((await finish()).json.passed).toBe(false)
