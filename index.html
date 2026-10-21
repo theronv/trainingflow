@@ -1232,8 +1232,12 @@ if (typeof marked !== 'undefined') {
         <button type="button" class="btn btn-primary" onclick="App.saveCourse(this)">Save Course</button>
       </div>
       <div class="field-row">
-        <div class="field"><label>Title</label><input type="text" id="cb-title" placeholder="e.g. Q2 Compliance Training"></div>
-        <div class="field"><label>Icon</label><input type="text" id="cb-icon" placeholder="📋" maxlength="4"></div>
+        <div class="field"><label for="cb-title">Title</label><input type="text" id="cb-title" placeholder="e.g. Q2 Compliance Training"></div>
+      </div>
+      <div class="field">
+        <span class="field-label" id="cb-icon-label">Icon</span>
+        <input type="hidden" id="cb-icon">
+        <div class="icon-grid" id="cb-icon-grid" role="radiogroup" aria-labelledby="cb-icon-label"></div>
       </div>
       <div class="field"><label>Description</label><input type="text" id="cb-desc" placeholder="Brief description for learners…"></div>
       <div class="field">

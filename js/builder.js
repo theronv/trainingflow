@@ -4,10 +4,21 @@
 
 const Builder = {
   // ─── COURSE BUILDER ───
+  // The icon is stored as an emoji; the picker shows the line icon each emoji maps to.
+  setIcon(emoji) {
+    $$('cb-icon').value = emoji;
+    const selected = courseIconName(emoji);
+    $$('cb-icon-grid').innerHTML = COURSE_ICON_CHOICES.map(({ name, emoji: e }) =>
+      `<button type="button" class="icon-choice" role="radio" aria-checked="${name === selected}" aria-label="${name}" title="${name}" onclick="Builder.pickIcon('${e}')">${courseIcon(e)}</button>`).join('');
+  },
+  pickIcon(emoji) {
+    Builder.setIcon(emoji);
+    Builder._dirty = true;
+  },
   openBuilder(editId = null) {
     cbState = { editId, mods: [] };
     $$('cb-title').value = '';
-    $$('cb-icon').value = '';
+    Builder.setIcon(COURSE_ICON_CHOICES.find(i => i.name === 'cap').emoji);
     $$('cb-desc').value = '';
     $$('cb-ref-url').value = '';
     $$('mods-builder').innerHTML = '';
@@ -22,7 +33,7 @@ const Builder = {
       api(`/api/courses/${editId}`).then(c => {
         const nc = normCourse(c);
         $$('cb-title').value = nc.title;
-        $$('cb-icon').value = nc.icon;
+        Builder.setIcon(nc.icon);
         $$('cb-desc').value = nc.desc;
         $$('cb-ref-url').value = nc.refUrl;
         cbState.mods = nc.mods.map(m => ({ id: m.id, title: m.title, content: m.content, summary: m.summary || '', reference_url: m.refUrl || '', learning_objectives: m.objectives || [], questions: m.questions }));

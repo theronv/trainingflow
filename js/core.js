@@ -257,9 +257,14 @@ const _courseIconLookup = (() => {
   for (const [name, chars] of Object.entries(COURSE_ICON_MAP)) for (const ch of Array.from(chars)) m[ch] = name;
   return m;
 })();
-function courseIcon(emoji) {
+// One representative emoji per icon, in picker order. The emoji is what the API stores.
+const COURSE_ICON_CHOICES = Object.entries(COURSE_ICON_MAP).map(([name, chars]) => ({ name, emoji: Array.from(chars)[0] }));
+function courseIconName(emoji) {
   const first = Array.from(String(emoji || '').replace(/[︎️‍]/g, ''))[0];
-  const body = COURSE_ICONS[_courseIconLookup[first]] || COURSE_ICONS.cap;
+  return _courseIconLookup[first] || 'cap';
+}
+function courseIcon(emoji) {
+  const body = COURSE_ICONS[courseIconName(emoji)];
   return `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
 }
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
