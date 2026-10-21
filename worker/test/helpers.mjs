@@ -64,14 +64,14 @@ export async function setupHarness({ adminPassword = 'admin-pass-123' } = {}) {
     return Number(res.lastInsertRowid)
   }
 
-  async function createUser({ name, role = 'learner', team_id = null, password = 'learner-pass-1' }) {
+  async function createUser({ name, role = 'learner', team_id = null, password = 'learner-pass-1', is_admin = 0 }) {
     const uid = id('u')
     const hash = await hashPassword(password)
     await db.execute({
-      sql: 'INSERT INTO users (id, name, password_hash, role, team_id) VALUES (?, ?, ?, ?, ?)',
-      args: [uid, name, hash, role, team_id],
+      sql: 'INSERT INTO users (id, name, password_hash, role, team_id, is_admin) VALUES (?, ?, ?, ?, ?, ?)',
+      args: [uid, name, hash, role, team_id, is_admin],
     })
-    return { id: uid, name, role, team_id, password }
+    return { id: uid, name, role, team_id, password, is_admin }
   }
 
   /** Course with one module and `answers` length questions. correct_index per answers[]. */
@@ -115,6 +115,11 @@ export async function setupHarness({ adminPassword = 'admin-pass-123' } = {}) {
   return {
     db, env, request, mint, adminPassword,
     createTeam, createUser, createCourse, assign,
+    /** A token for the user's current session_version, as a real sign-in would issue. */
+    sessionToken: async (u) => {
+      const row = (await db.execute({ sql: 'SELECT session_version FROM users WHERE id = ?', args: [u.id] })).rows[0]
+      return mint({ id: u.id, name: u.name, role: u.role, team_id: u.team_id, sv: Number(row.session_version) })
+    },
     adminToken: () => mint({ role: 'admin' }),
     managerToken: (u) => mint({ id: u.id, name: u.name, role: 'manager', team_id: u.team_id }),
     learnerToken: (u) => mint({ id: u.id, name: u.name, role: 'learner' }),

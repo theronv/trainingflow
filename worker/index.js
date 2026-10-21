@@ -30,10 +30,11 @@ function runInBackground(c, promise) {
   try { c.executionCtx.waitUntil(promise); return undefined } catch { return promise }
 }
 
+const _injectedDbs = new WeakSet() // test clients: each is a fresh database, so setup is tracked per client
 function getDb(env) {
   // Test hook: tests inject an in-memory libSQL client as env.DB_CLIENT.
   // Never set in production (Wrangler env has no DB_CLIENT), so this is a no-op there.
-  if (env.DB_CLIENT) return env.DB_CLIENT
+  if (env.DB_CLIENT) { _injectedDbs.add(env.DB_CLIENT); return env.DB_CLIENT }
   return createClient({ url: env.TURSO_URL, authToken: env.TURSO_TOKEN })
 }
 
@@ -99,15 +100,18 @@ async function getStoredHashes(db, env) {
 // ── One-time setup (runs once per isolate) ────────────────────────────────────
 
 let _setupComplete = false
+const _setupDbs = new WeakSet()
 async function ensureSetup(db) {
-  if (_setupComplete) return
+  const injected = _injectedDbs.has(db)
+  if (injected ? _setupDbs.has(db) : _setupComplete) return
   await setupBrand(db)
   await setupSections(db)
   await setupTags(db)
   await setupClerk(db)
   await setupRoles(db)
   await setupEmail(db)
-  _setupComplete = true
+  if (injected) _setupDbs.add(db)
+  else _setupComplete = true
 }
 
 // ── App & Middleware ──────────────────────────────────────────────────────────
@@ -164,22 +168,52 @@ function rolesOf(p) {
   return r
 }
 
-/** Build the app JWT + public user object for a users row (optionally with team_name). */
-async function issueSession(env, user) {
+/** Capabilities a users row grants, highest first as `primary`. */
+function rolesForRow(user) {
   const roles = ['learner']
   if (user.role === 'manager') roles.push('manager')
   if (Number(user.is_admin) === 1) roles.push('admin')
   const primary = roles.includes('admin') ? 'admin' : roles.includes('manager') ? 'manager' : 'learner'
+  return { roles, primary }
+}
+
+/**
+ * Build the app JWT + public user object for a users row (optionally with team_name).
+ * `sv` pins the token to the row's session_version; bumping the version (revokeSessions) kills every older token.
+ */
+async function issueSession(env, user) {
+  const { roles, primary } = rolesForRow(user)
   const now = Math.floor(Date.now() / 1000)
   const exp = now + (primary === 'learner' ? CONSTANTS.LEARNER_JWT_EXP_SEC : CONSTANTS.ADMIN_JWT_EXP_SEC)
-  const token = await sign({ id: user.id, name: user.name, role: primary, roles, team_id: user.team_id ?? null, iat: now, exp }, env.JWT_SECRET, 'HS256')
+  const token = await sign({ id: user.id, name: user.name, role: primary, roles, team_id: user.team_id ?? null, sv: Number(user.session_version) || 0, iat: now, exp }, env.JWT_SECRET, 'HS256')
   return { token, user: { id: user.id, name: user.name, role: primary, roles, team_id: user.team_id ?? null, team_name: user.team_name || '' } }
 }
 
+/**
+ * Verified token claims. For an account token (has `id`) the users row is the source of truth:
+ * the account must still exist, the token's `sv` must match its session_version, and name, role, roles
+ * and team_id come from the row, so a demotion or team move applies immediately. The id-less shared-password admin is unchanged.
+ */
 async function bearer(c) {
   const auth = c.req.header('Authorization')
   if (!auth?.startsWith('Bearer ')) return null
-  try { return await verify(auth.slice(7), c.env.JWT_SECRET, 'HS256') } catch { return null }
+  let payload
+  try { payload = await verify(auth.slice(7), c.env.JWT_SECRET, 'HS256') } catch { return null }
+  if (!payload.id) return payload
+  const db = getDb(c.env)
+  await ensureSetup(db)
+  const row = toObj(await db.execute({ sql: 'SELECT id, name, role, is_admin, team_id, session_version FROM users WHERE id = ?', args: [payload.id] }))
+  if (!row || (Number(payload.sv) || 0) !== Number(row.session_version)) return null
+  const { roles, primary } = rolesForRow(row)
+  return { ...payload, name: row.name, role: primary, roles, team_id: row.team_id ?? null }
+}
+
+/** A fresh session for someone who just changed their own password (their other devices are signed out). */
+async function sessionFor(c, db, id) {
+  const row = toObj(await db.execute({
+    sql: 'SELECT u.*, t.name AS team_name FROM users u LEFT JOIN teams t ON u.team_id = t.id WHERE u.id = ?', args: [id],
+  }))
+  return row ? issueSession(c.env, row) : null
 }
 
 async function requireAdmin(c, next) {
@@ -243,6 +277,7 @@ async function setupClerk(db) {
 // users.is_admin adds full administration.
 async function setupRoles(db) {
   try { await db.execute('ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0') } catch {}
+  try { await db.execute('ALTER TABLE users ADD COLUMN session_version INTEGER NOT NULL DEFAULT 0') } catch {}
 }
 
 // Certificate-earned emails: every user is subscribed until they switch it off in Account.
@@ -481,7 +516,7 @@ app.delete('/api/admin/teams/:id', requireAdmin, async (c) => {
   const db = getDb(c.env)
   const tid = c.req.param('id')
   try {
-    await db.execute({ sql: 'UPDATE users SET team_id = NULL WHERE team_id = ?', args: [tid] })
+    await db.execute({ sql: 'UPDATE users SET team_id = NULL, session_version = session_version + 1 WHERE team_id = ?', args: [tid] })
     await db.execute({ sql: 'DELETE FROM invite_codes WHERE team_id = ?', args: [tid] })
     await db.execute({ sql: 'DELETE FROM teams WHERE id = ?', args: [tid] })
     return c.json({ ok: true })
@@ -494,7 +529,7 @@ app.delete('/api/admin/teams/:id', requireAdmin, async (c) => {
 app.patch('/api/admin/learners/:lid/team', requireAdmin, async (c) => {
   const body = await c.req.json()
   const db = getDb(c.env)
-  await db.execute({ sql: 'UPDATE users SET team_id = ? WHERE id = ?', args: [body.team_id, c.req.param('lid')] })
+  await db.execute({ sql: 'UPDATE users SET team_id = ?, session_version = session_version + 1 WHERE id = ?', args: [body.team_id, c.req.param('lid')] })
   return c.json({ ok: true })
 })
 
@@ -556,7 +591,7 @@ app.put('/api/learners/:id/password', requireManager, async (c) => {
     if (!check.rows.length) return c.json({ error: 'Not found' }, 404)
   }
   const hash = await pbkdf2Hash(body.password)
-  await db.execute({ sql: 'UPDATE users SET password_hash = ? WHERE id = ?', args: [hash, c.req.param('id')] })
+  await db.execute({ sql: 'UPDATE users SET password_hash = ?, session_version = session_version + 1 WHERE id = ?', args: [hash, c.req.param('id')] })
   return c.json({ ok: true })
 })
 
@@ -601,6 +636,7 @@ app.patch('/api/learners/bulk', requireAdmin, async (c) => {
     fields.push('is_admin = ?'); args.push(body.is_admin ? 1 : 0)
   }
   if (!fields.length) return c.json({ error: 'Nothing to update' }, 400)
+  fields.push('session_version = session_version + 1')
   args.push(...ids)
   await db.execute({
     sql: `UPDATE users SET ${fields.join(', ')} WHERE id IN (${ids.map(() => '?').join(',')})`,
@@ -662,12 +698,14 @@ app.patch('/api/learners/me', requireLearner, async (c) => {
   const user = c.get('user')
   const body = await c.req.json().catch(() => ({}))
   const db = getDb(c.env)
+  let session = null
   if (body.password) {
     if (body.password.length < 8) return c.json({ error: 'Password must be at least 8 characters' }, 400)
     const row = toObj(await db.execute({ sql: 'SELECT password_hash FROM users WHERE id = ?', args: [user.id] }))
     if (!row || !(await pbkdf2Verify(body.current_password || '', row.password_hash))) return c.json({ error: 'Current password is incorrect' }, 400)
     const hash = await pbkdf2Hash(body.password)
-    await db.execute({ sql: 'UPDATE users SET password_hash = ? WHERE id = ?', args: [hash, user.id] })
+    await db.execute({ sql: 'UPDATE users SET password_hash = ?, session_version = session_version + 1 WHERE id = ?', args: [hash, user.id] })
+    session = await sessionFor(c, db, user.id)
   }
   if (typeof body.email_notifications === 'boolean') {
     await ensureSetup(db)
@@ -675,9 +713,9 @@ app.patch('/api/learners/me', requireLearner, async (c) => {
   }
   if (body.name && body.name.trim()) {
     await db.execute({ sql: 'UPDATE users SET name = ? WHERE id = ?', args: [body.name.trim(), user.id] })
-    return c.json({ ok: true, name: body.name.trim() })
+    return c.json({ ok: true, name: body.name.trim(), ...(session && { session }) })
   }
-  return c.json({ ok: true })
+  return c.json({ ok: true, ...(session && { session }) })
 })
 
 app.get('/api/learners/:id', requireManager, async (c) => {
@@ -715,6 +753,7 @@ app.patch('/api/learners/:id', requireAdmin, async (c) => {
     fields.push('clerk_id = NULL')
   }
   if (!fields.length) return c.json({ error: 'Nothing to update' }, 400)
+  if (body.is_admin !== undefined || body.team_id !== undefined || body.role !== undefined) fields.push('session_version = session_version + 1')
   args.push(c.req.param('id'))
   try {
     await db.execute({ sql: `UPDATE users SET ${fields.join(', ')} WHERE id = ?`, args })
@@ -1842,17 +1881,19 @@ app.patch('/api/managers/me', requireManager, async (c) => {
   const user = c.get('user')
   const body = await c.req.json().catch(() => ({}))
   const db = getDb(c.env)
+  let session = null
   if (body.password) {
     if (body.password.length < 8) return c.json({ error: 'Password must be at least 8 characters' }, 400)
     const row = toObj(await db.execute({ sql: 'SELECT password_hash FROM users WHERE id = ?', args: [user.id] }))
     if (!row || !(await pbkdf2Verify(body.current_password || '', row.password_hash))) return c.json({ error: 'Current password is incorrect' }, 400)
     const hash = await pbkdf2Hash(body.password)
-    await db.execute({ sql: 'UPDATE users SET password_hash = ? WHERE id = ?', args: [hash, user.id] })
+    await db.execute({ sql: 'UPDATE users SET password_hash = ?, session_version = session_version + 1 WHERE id = ?', args: [hash, user.id] })
+    session = await sessionFor(c, db, user.id)
   }
   if (body.name && body.name.trim()) {
     await db.execute({ sql: 'UPDATE users SET name = ? WHERE id = ?', args: [body.name.trim(), user.id] })
   }
-  return c.json({ ok: true })
+  return c.json({ ok: true, ...(session && { session }) })
 })
 
 

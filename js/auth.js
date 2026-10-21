@@ -189,6 +189,14 @@ const Auth = {
     const views = Auth.views();
     Auth.openView(views.includes(preferred) ? preferred : views[0]);
   },
+  // A password change signs out every other device; the server returns a fresh session for this one.
+  refreshSession(session) {
+    if (!session || !session.token) return;
+    scheduleExpiryWarning(session.token);
+    if (getToken()) setToken(session.token);
+    if (getManagerToken()) setManagerToken(session.token);
+    setLearnerToken(session.token);
+  },
   _signOut() {
     ClerkAuth.signOut(); clearAllSessions();
     curLearner = null; curManager = null; curCourse = null; curModIdx = 0; quizSt = {};

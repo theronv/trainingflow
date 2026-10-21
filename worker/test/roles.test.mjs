@@ -37,7 +37,7 @@ describe('multi-role accounts', () => {
     })
 
     it('an admin token with an id can learn, but the id-less shared-password admin cannot', async () => {
-      const boss = await h.createUser({ name: 'boss' })
+      const boss = await h.createUser({ name: 'boss', is_admin: 1 })
       const withId = await h.mint({ id: boss.id, name: boss.name, role: 'admin', roles: ['learner', 'admin'] })
       expect((await h.request('/api/assignments/me', { token: withId })).status).toBe(200)
       expect((await h.request('/api/admin/teams', { method: 'POST', token: withId, body: { name: 'N' } })).status).toBeLessThan(300)
@@ -53,7 +53,7 @@ describe('multi-role accounts', () => {
     it('admin wins over manager: an admin who is also a manager is not team-scoped', async () => {
       const other = await h.createTeam('Other')
       await h.createUser({ name: 'inOther', team_id: other })
-      const both = await h.createUser({ name: 'both', role: 'manager', team_id: team })
+      const both = await h.createUser({ name: 'both', role: 'manager', team_id: team, is_admin: 1 })
       const t = await h.mint({ id: both.id, name: both.name, role: 'admin', roles: ['learner', 'manager', 'admin'], team_id: team })
       const res = await h.request('/api/learners', { token: t })
       expect(res.json.map(u => u.name)).toContain('inOther')
@@ -109,7 +109,7 @@ describe('multi-role accounts', () => {
   describe('managing roles', () => {
     it('an admin can grant and revoke admin, but not revoke their own', async () => {
       const u = await h.createUser({ name: 'ada' })
-      const me = await h.createUser({ name: 'boss' })
+      const me = await h.createUser({ name: 'boss', is_admin: 1 })
       const boss = await h.mint({ id: me.id, name: me.name, role: 'admin', roles: ['learner', 'admin'] })
       expect((await h.request(`/api/learners/${u.id}`, { method: 'PATCH', token: boss, body: { is_admin: true } })).status).toBe(200)
       const list = await h.request('/api/learners', { token: boss })
@@ -129,7 +129,7 @@ describe('multi-role accounts', () => {
 
   it('bulk: grant/revoke admin, reject bad roles, never self-revoke', async () => {
     const a = await h.createUser({ name: 'a' }), b = await h.createUser({ name: 'b' })
-    const me = await h.createUser({ name: 'boss' })
+    const me = await h.createUser({ name: 'boss', is_admin: 1 })
     const boss = await h.mint({ id: me.id, name: me.name, role: 'admin', roles: ['learner', 'admin'] })
     const patch = (body) => h.request('/api/learners/bulk', { method: 'PATCH', token: boss, body })
     expect((await patch({ ids: [a.id, b.id], is_admin: true })).status).toBe(200)
