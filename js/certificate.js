@@ -23,7 +23,7 @@ const Certificate = {
     return String(s ?? '')
       .replace(/[‘’‚]/g, "'").replace(/[“”„]/g, '"').replace(/[–—]/g, '-').replace(/…/g, '...')
       .normalize('NFC')
-      .replace(/[^ -ÿ]/g, '?');
+      .replace(/[^ -~ -ÿ]/g, '?');
   },
 
   // True when the standard PDF fonts can't draw this text (so it is rendered as an image instead).
