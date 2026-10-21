@@ -125,7 +125,7 @@ const Admin = {
       }
 
       listEl.innerHTML = teams.map(t => `
-        <div class="team-list-item" id="tli-${t.id}" onclick="Admin.selectTeam('${escJs(t.id)}')">
+        <div class="team-list-item" id="tli-${esc(t.id)}" onclick="Admin.selectTeam('${escJs(t.id)}')">
           <div class="team-list-name">${esc(t.name)}</div>
           <div class="team-list-meta">${t.learner_count || 0} member${t.learner_count !== 1 ? 's' : ''} · ${t.manager_count || 0} manager${t.manager_count !== 1 ? 's' : ''}</div>
         </div>`).join('');
@@ -274,7 +274,7 @@ const Admin = {
   openAddManager(teamId, teamName) {
     App._editLearnerId = null;
     $$('al-modal-title').textContent = 'Add Manager';
-    $$('al-modal-sub').textContent = `Create a manager account for team: ${esc(teamName)}`;
+    $$('al-modal-sub').textContent = `Create a manager account for team: ${teamName}`;
     $$('al-name').value = ''; $$('al-email').value = ''; $$('al-pw1').value = ''; $$('al-pw2').value = '';
     $$('al-role').value = 'manager';
     const sel = $$('al-team');
@@ -405,7 +405,7 @@ const Admin = {
       }
       list.innerHTML = allTags.map(t => `
         <div style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-2) 0;border-bottom:1px solid var(--rule);">
-          <input type="checkbox" id="lt-${t.id}" ${assigned.has(t.id) ? 'checked' : ''}
+          <input type="checkbox" id="lt-${esc(t.id)}" ${assigned.has(t.id) ? 'checked' : ''}
             onchange="Admin.toggleLearnerTag('${escJs(learnerId)}','${escJs(t.id)}',this.checked)">
           <label for="lt-${t.id}" style="margin:0;">${esc(t.name)}</label>
         </div>`).join('');
@@ -522,7 +522,7 @@ const Admin = {
           <div style="font-weight:600;color:var(--ink-1);">${esc(r.name)}</div>
           <div style="font-size:var(--text-sm);color:var(--ink-3);">${esc(r.email)}${r.message ? ' · ' + esc(r.message) : ''}</div>
         </div>
-        <select id="ar-team-${r.id}" class="btn btn-outline btn-sm" style="width:auto;" aria-label="Team for ${esc(r.name)}">${opts}</select>
+        <select id="ar-team-${esc(r.id)}" class="btn btn-outline btn-sm" style="width:auto;" aria-label="Team for ${esc(r.name)}">${opts}</select>
         <button class="btn btn-primary btn-sm" onclick="App.approveAccess('${escJs(r.id)}')">Approve</button>
         <button class="btn btn-ghost btn-sm" onclick="App.dismissAccess('${escJs(r.id)}')">Dismiss</button>
       </div>`).join('');
@@ -609,7 +609,7 @@ const Admin = {
         : '<span class="chip chip-success">User</span>') + (Number(l.is_admin) === 1 ? ' <span class="chip chip-warning">Admin</span>' : '');
       const isChecked = Admin._selectedUsers.has(l.id);
       return `<tr>
-        <td style="width:36px;"><input type="checkbox" data-id="${l.id}" ${isChecked ? 'checked' : ''} onchange="Admin.toggleUserSelect('${escJs(l.id)}', this.checked)"></td>
+        <td style="width:36px;"><input type="checkbox" data-id="${esc(l.id)}" ${isChecked ? 'checked' : ''} onchange="Admin.toggleUserSelect('${escJs(l.id)}', this.checked)"></td>
         <td>${esc(l.name || 'Unnamed')} ${l.overdue_count ? `<span class="chip chip-danger">${l.overdue_count} overdue</span>` : ''}</td>
         <td>${roleChip}</td>
         <td><button class="btn btn-ghost btn-sm" onclick="App.openEditLearner('${escJs(l.id)}','${escJs(l.name)}','${escJs(l.team_id||'')}','${escJs(l.role||'learner')}')">${teamHtml}</button></td>

@@ -221,7 +221,7 @@ function orderSections(sections) {
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 // For a value inside a JS string literal in an inline handler (onclick="f('${escJs(x)}')"). esc() is not enough there: the browser
 // decodes &#39; back to ' before the handler runs. Every character that could end the string or the attribute becomes \uXXXX.
-function escJs(s) { return String(s == null ? '' : s).replace(/[^A-Za-z0-9 _.,:@/()-]/g, c => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0')); }
+function escJs(s) { return String(s == null ? '' : s).replace(/[^A-Za-z0-9 _.-]/g, c => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0')); }
 
 // Course icons are stored as emoji; render them as a consistent line-icon set instead.
 // Unmapped emoji fall back to the graduation cap so tiles never mix styles.

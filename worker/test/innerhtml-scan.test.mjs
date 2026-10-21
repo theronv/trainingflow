@@ -12,12 +12,12 @@ const dir = fileURLToPath(new URL('../../js/', import.meta.url))
 // Reviewed expressions that are HTML fragments built elsewhere in js/ (those templates are scanned too),
 // numbers, or constants from code. Keyed by file. Add an entry only after checking where the value comes from.
 const REVIEWED = {
-  'admin.js': ['teamName', 'icon', 'value', 'label', 'unassigned', 'role', 'expires', 'created', 'statusChip', 'learnerId', 'opts', 'attrs', 'dir', 'enrollBadge', 'secOpts', 'teamHtml', 'roleChip', 'inv.role', 'l.team_id||\'\'', 'l.role||\'learner\''],
+  'admin.js': ['teamName', 'icon', 'value', 'label', 'unassigned', 'role', 'expires', 'created', 'statusChip', 'opts', 'attrs', 'dir', 'enrollBadge', 'secOpts', 'teamHtml', 'roleChip'],
   'app.js': ['qCount'],
   'builder.js': ['g.label', 'name', 'label', 'meta', 'letter', 'courseIcon(e)', 't'],
   'celebrate.js': ['on', 'html', 'cls', 'Celebrate.RING_LEN', 'stats', 'm.correct', 'm.total', 'passMark', 'gap', 'list'],
   'certificate.js': ['size', 'd'],
-  'core.js': ['body', 'chip', 'date'],
+  'core.js': ['fontUrl', 'body', 'chip', 'date'],
   'demo.js': ['other'],
   'importer.js': ['done', 'words', 'wc', 'oi', 'letters[oi]'],
   'learner.js': ['modCount', 'n', 'pct', 'attrs', 'desc', 'bar', 'chip', 'cta', 'dueStr', 'readMin', 'sourceBanner', 'overviewCard', 'letters[i]', 'nextFn', 'nextLabel', 'correct', 'a.course_id', 'iconOf(r.course_id)'],
@@ -54,6 +54,12 @@ function scan(file) {
 
   const check = (node) => {
     if (!node || typeof node.type !== 'string') return
+    if (node.type === 'TemplateLiteral' && !node.quasis.some((q) => q.value.raw.includes('<'))) {
+      // Handler code built outside markup (onclick="${handler}"): a quoted argument must still go through escJs().
+      node.expressions.forEach((e, i) => {
+        if (/[(,]\s*'$/.test(node.quasis[i].value.raw) && !/^escJs\(/.test(text(e)) && !isLiteral(e) && !reviewed.has(text(e))) bad.push(`${file}:${lineOf(e)} [handler argument] \${${text(e).slice(0, 80)}}`)
+      })
+    }
     if (node.type === 'TemplateLiteral' && node.quasis.some((q) => q.value.raw.includes('<'))) {
       let before = ''
       node.expressions.forEach((e, i) => {
