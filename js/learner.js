@@ -117,9 +117,9 @@ const Learner = {
           ? `Due ${new Date(dueTs).toLocaleDateString()}`
           : '';
         let chip = '';
-        if (passed) chip = '<span class="chip chip-green">Passed</span>';
-        else if (overdue) chip = `<span class="chip chip-red">Overdue</span>`;
-        else if (prog) chip = `<span class="chip chip-blue">In progress${totalMods ? ` · ${modsDone}/${totalMods}` : ''}</span>`;
+        if (passed) chip = '<span class="chip chip-success">Passed</span>';
+        else if (overdue) chip = `<span class="chip chip-danger">Overdue</span>`;
+        else if (prog) chip = `<span class="chip chip-info">In progress${totalMods ? ` · ${modsDone}/${totalMods}` : ''}</span>`;
         else if (assigned) chip = `<span class="chip chip-brand-secondary">Mandatory</span>`;
         const modCount = totalMods ? `${totalMods} module${totalMods!==1?'s':''}` : '';
         const desc = nc.desc ? `<div class="lc-desc">${esc(nc.desc)}</div>` : '';
@@ -220,7 +220,7 @@ const Learner = {
           return `<div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);margin-bottom:var(--space-3);">
             <div>
               <div style="font-weight:600;">${esc(a.course_title)}</div>
-              ${progOf(a.course_id) ? '<span class="chip chip-blue">In progress</span> ' : ''}${dueStr}
+              ${progOf(a.course_id) ? '<span class="chip chip-info">In progress</span> ' : ''}${dueStr}
             </div>
             <button class="btn btn-primary btn-sm" onclick="Learner.startCourse('${a.course_id}')">${progOf(a.course_id) ? 'Continue' : 'Start'} →</button>
           </div>`;
@@ -230,7 +230,7 @@ const Learner = {
         html += `<div style="font-weight:700;margin-bottom:var(--space-3);margin-top:var(--space-6);">Completed (${done.length})</div>`;
         html += done.map(a => `<div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);margin-bottom:var(--space-3);opacity:0.75;">
           <div style="font-weight:600;">${esc(a.course_title)}</div>
-          <span class="chip chip-green">✓ Done</span>
+          <span class="chip chip-success">✓ Done</span>
         </div>`).join('');
       }
       el.innerHTML = html;

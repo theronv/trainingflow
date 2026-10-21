@@ -252,7 +252,7 @@ const Builder = {
       const done = pending(l.id) === 0;
       const team = st.teams_.find(t => t.id === l.team_id);
       return row(`Builder._assignToggleLearner('${l.id}', this.checked)`, esc(l.name),
-        done ? `<span class="chip chip-green">Assigned</span>`
+        done ? `<span class="chip chip-success">Assigned</span>`
              : chip(team ? esc(team.name) : 'No team'),
         done || st.learners.has(l.id) || st.teams.has(l.team_id), done, l.name);
     }).join('') || '<p style="color:var(--ink-3);">No learners yet.</p>';
@@ -262,7 +262,7 @@ const Builder = {
         const done = pending(l.id) === 0;
         const team = st.teams_.find(t => t.id === l.team_id);
         return row(`Builder._assignToggleLearner('${l.id}', this.checked)`, esc(l.name),
-          done ? `<span class="chip chip-green">Assigned</span>` : chip(team ? esc(team.name) : 'Manager'),
+          done ? `<span class="chip chip-success">Assigned</span>` : chip(team ? esc(team.name) : 'Manager'),
           done || st.learners.has(l.id), done, l.name);
       }).join('');
     }

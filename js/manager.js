@@ -132,7 +132,7 @@ const Manager = {
     try {
       const invites = (await managerApi('/api/invites')).filter(i => inviteState(i) === 'active');
       if (!invites.length) {
-        el.innerHTML = '<div class="empty-state-sm">No active invite links. Use "Invite link" to create one — learners choose their own password.</div>';
+        el.innerHTML = '<div class="empty empty-compact">No active invite links. Use "Invite link" to create one — learners choose their own password.</div>';
         return;
       }
       el.innerHTML = `<div class="table-wrap"><table>
@@ -169,7 +169,7 @@ const Manager = {
         return;
       }
       tbody.innerHTML = rows.map(l => `<tr>
-        <td>${esc(l.name)} ${l.overdue_count ? `<span class="chip chip-red">${l.overdue_count} overdue</span>` : ''}</td>
+        <td>${esc(l.name)} ${l.overdue_count ? `<span class="chip chip-danger">${l.overdue_count} overdue</span>` : ''}</td>
         <td>${l.assignment_count || 0}</td>
         <td>${l.completion_count || 0}</td>
         <td>${l.pass_rate != null ? l.pass_rate + '%' : '—'}</td>
@@ -315,8 +315,8 @@ const Manager = {
       previewEl.classList.remove('hidden');
       previewEl.innerHTML = `
         <div style="margin-bottom:var(--space-3);font-size:var(--text-sm);">
-          <span class="chip chip-green">${valid.length} ready</span>
-          ${invalid.length ? `<span class="chip chip-red" style="margin-left:4px;">${invalid.length} error${invalid.length > 1 ? 's' : ''}</span>` : ''}
+          <span class="chip chip-success">${valid.length} ready</span>
+          ${invalid.length ? `<span class="chip chip-danger" style="margin-left:4px;">${invalid.length} error${invalid.length > 1 ? 's' : ''}</span>` : ''}
         </div>
         <div class="table-wrap" style="max-height:240px;overflow-y:auto;">
           <table>
@@ -327,7 +327,7 @@ const Manager = {
                 return `<tr>
                   <td>${esc(r.name || '—')}</td>
                   <td style="font-family:monospace;font-size:12px;color:${autogen ? 'var(--brand)' : 'var(--ink-4)'};">${r.password || '—'}</td>
-                  <td>${err ? `<span class="chip chip-red">${esc(err)}</span>` : '<span class="chip chip-green">✓ OK</span>'}</td>
+                  <td>${err ? `<span class="chip chip-danger">${esc(err)}</span>` : '<span class="chip chip-success">✓ OK</span>'}</td>
                 </tr>`;
               }).join('')}
             </tbody>
@@ -486,7 +486,7 @@ const Manager = {
         tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--ink-4);">No completions yet.</td></tr>';
         return;
       }
-      tbody.innerHTML = res.map(r => `<tr><td>${esc(r.user_name)}</td><td>${esc(r.course_title)}</td><td>${r.score}%</td><td>${r.passed?'<span class="chip chip-green">Passed</span>':'<span class="chip chip-red">Failed</span>'}</td><td>${new Date(r.completed_at*1000).toLocaleDateString()}</td></tr>`).join('');
+      tbody.innerHTML = res.map(r => `<tr><td>${esc(r.user_name)}</td><td>${esc(r.course_title)}</td><td>${r.score}%</td><td>${r.passed?'<span class="chip chip-success">Passed</span>':'<span class="chip chip-danger">Failed</span>'}</td><td>${new Date(r.completed_at*1000).toLocaleDateString()}</td></tr>`).join('');
     } catch(e) { tbody.innerHTML = `<tr><td colspan="5" style="color:var(--fail);padding:16px;">${esc(e.message)}</td></tr>`; }
   }
 };

@@ -333,7 +333,7 @@ ${lessons}`;
       const names = b.slice(0, 3).map(m => m.title).join(', ') + (b.length > 3 ? ', …' : '');
       return `<div class="gen-batch">
         <div class="gen-batch-info"><strong>Prompt ${i + 1} of ${batches.length}</strong><span>${b.length} lesson${b.length !== 1 ? 's' : ''}: ${esc(names)}</span></div>
-        <span class="chip ${done === b.length ? 'chip-green' : 'chip-gray'}">${done} of ${b.length} done</span>
+        <span class="chip ${done === b.length ? 'chip-success' : 'chip-neutral'}">${done} of ${b.length} done</span>
         <button class="btn btn-outline btn-sm" onclick="Importer.copyBatch(${i})">Copy prompt</button>
       </div>`;
     }).join('');
@@ -922,7 +922,7 @@ RULES:
       return `<section class="card rv-mod">
         <div class="rv-mod-head">
           <span class="rv-eyebrow">Module ${mi + 1}</span>
-          <span class="chip ${qs.length ? 'chip-green' : 'chip-red'}">${qs.length ? `${qs.length} question${qs.length !== 1 ? 's' : ''}` : 'No questions yet'}</span>
+          <span class="chip ${qs.length ? 'chip-success' : 'chip-danger'}">${qs.length ? `${qs.length} question${qs.length !== 1 ? 's' : ''}` : 'No questions yet'}</span>
           <div class="rv-actions">
             <button class="btn btn-outline btn-sm" onclick="Importer.copyModulePrompt(${mi})">Redo with Claude</button>
             <button class="btn btn-danger-ghost btn-sm" onclick="Importer.removeModule(${mi})" aria-label="Remove module ${mi + 1}">Remove</button>

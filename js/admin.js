@@ -65,14 +65,14 @@ const Admin = {
       if (recentEl) {
         const items = (Array.isArray(recent) ? recent : []).slice(0, 6);
         if (!items.length) {
-          recentEl.innerHTML = `<div class="dash-section-label">Recent Activity</div><div class="empty-state-sm">No completions recorded yet.</div>`;
+          recentEl.innerHTML = `<div class="dash-section-label">Recent Activity</div><div class="empty empty-compact">No completions recorded yet.</div>`;
         } else {
           recentEl.innerHTML = `<div class="dash-section-label">Recent Activity</div>
             <div class="activity-list">${items.map(c => {
               const date = new Date(c.completed_at * 1000).toLocaleDateString(undefined, { month:'short', day:'numeric' });
               const chip = c.passed
-                ? '<span class="chip chip-green">Pass</span>'
-                : '<span class="chip chip-red">Fail</span>';
+                ? '<span class="chip chip-success">Pass</span>'
+                : '<span class="chip chip-danger">Fail</span>';
               return `<div class="activity-item">
                 <div class="activity-info">
                   <div class="activity-name">${esc(c.user_name)}</div>
@@ -88,7 +88,7 @@ const Admin = {
       const unassigned = (learners||[]).filter(l => !l.team_id).length;
       let teamHtml = '<div class="dash-section-label">Team Compliance</div>';
       if (!teamsCache.length) {
-        teamHtml += '<div class="empty-state-sm">No teams established yet.</div>';
+        teamHtml += '<div class="empty empty-compact">No teams established yet.</div>';
       } else {
         teamHtml += `<div class="table-wrap"><table>
           <thead><tr><th>Team</th><th>Members</th><th>Managers</th></tr></thead>
@@ -115,7 +115,7 @@ const Admin = {
       if(!spots || !spots.length) { el.innerHTML = ''; return; }
       el.innerHTML = `<div class="dash-section-label" style="color:var(--fail);">Trouble Spots</div>
         <div class="table-wrap"><table><thead><tr><th>Question</th><th>Fail Rate</th></tr></thead>
-        <tbody>${spots.map(s=>`<tr><td>${esc(s.question)}</td><td><span class="chip chip-red">${s.failure_rate}%</span></td></tr>`).join('')}</tbody></table></div>`;
+        <tbody>${spots.map(s=>`<tr><td>${esc(s.question)}</td><td><span class="chip chip-danger">${s.failure_rate}%</span></td></tr>`).join('')}</tbody></table></div>`;
     } catch(e) { console.warn('renderTroubleSpots:', e.message); }
   },
 
@@ -131,7 +131,7 @@ const Admin = {
       const listEl = $$('teams-list'); if (!listEl) return;
 
       if (!teams.length) {
-        listEl.innerHTML = '<div class="empty-state-sm">No teams yet.</div>';
+        listEl.innerHTML = '<div class="empty empty-compact">No teams yet.</div>';
         const detail = $$('team-detail');
         if (detail) detail.innerHTML = '<div class="team-detail-empty">Create your first team to get started.</div>';
         return;
@@ -147,7 +147,7 @@ const Admin = {
         ? Admin._selectedTeamId
         : teams[0].id;
       Admin.selectTeam(toSelect);
-    } catch(e) { const el = $$('teams-list'); if(el) el.innerHTML = `<div class="empty-state-sm" style="color:var(--fail);">${esc(e.message)}</div>`; }
+    } catch(e) { const el = $$('teams-list'); if(el) el.innerHTML = `<div class="empty empty-compact" style="color:var(--fail);">${esc(e.message)}</div>`; }
   },
 
   async selectTeam(tid) {
@@ -182,14 +182,14 @@ const Admin = {
       const rows = Array.isArray(res) ? res : (res.rows || []);
       const membersEl = $$('team-members-detail'); if (!membersEl) return;
       if (!rows.length) {
-        membersEl.innerHTML = '<div class="empty-state-sm">No members yet. Generate an invite code to add learners.</div>';
+        membersEl.innerHTML = '<div class="empty empty-compact">No members yet. Generate an invite code to add learners.</div>';
       } else {
         membersEl.innerHTML = `<div class="table-wrap"><table>
           <thead><tr><th>Name</th><th>Role</th><th>Actions</th></tr></thead>
           <tbody>${rows.map(l => {
             const roleChip = l.role === 'manager'
-              ? '<span class="chip chip-blue">Manager</span>'
-              : '<span class="chip chip-green">Learner</span>';
+              ? '<span class="chip chip-info">Manager</span>'
+              : '<span class="chip chip-success">Learner</span>';
             return `<tr>
               <td>${esc(l.name)}</td>
               <td>${roleChip}</td>
@@ -209,14 +209,14 @@ const Admin = {
       const teamInvites = (invites || []).filter(inv => String(inv.team_id) === String(tid));
       const invEl = $$('team-invites-detail'); if (!invEl) return;
       if (!teamInvites.length) {
-        invEl.innerHTML = '<div class="empty-state-sm">No invites yet. Use "+ Invite" above to create a sign-up link.</div>';
+        invEl.innerHTML = '<div class="empty empty-compact">No invites yet. Use "+ Invite" above to create a sign-up link.</div>';
       } else {
         invEl.innerHTML = `<div class="table-wrap"><table>
           <thead><tr><th>Code</th><th>For</th><th>Used</th><th>Status</th><th>Expires</th><th>Actions</th></tr></thead>
           <tbody>${teamInvites.map(inv => {
             const state = inviteState(inv);
-            const statusChip = state === 'active' ? '<span class="chip chip-blue">Active</span>'
-              : state === 'used' ? '<span class="chip chip-green">Full</span>' : '<span class="chip chip-amber">Expired</span>';
+            const statusChip = state === 'active' ? '<span class="chip chip-info">Active</span>'
+              : state === 'used' ? '<span class="chip chip-success">Full</span>' : '<span class="chip chip-warning">Expired</span>';
             const role = inv.role === 'learner' ? 'Learners' : 'Manager';
             const expires = inv.expires_at ? new Date(inv.expires_at).toLocaleDateString() : 'Never';
             return `<tr>
@@ -321,8 +321,8 @@ const Admin = {
       }
       tbody.innerHTML = invites.map(inv => {
         const statusChip = inv.used
-          ? `<span class="chip chip-amber">Used</span>`
-          : `<span class="chip chip-blue" >Active</span>`;
+          ? `<span class="chip chip-warning">Used</span>`
+          : `<span class="chip chip-info" >Active</span>`;
         const created = inv.created_at ? new Date(inv.created_at).toLocaleDateString() : '—';
         const expires = inv.expires_at  ? new Date(inv.expires_at).toLocaleDateString()  : '—';
         const teamName = inv.team_name ? esc(inv.team_name) : '';
@@ -378,7 +378,7 @@ const Admin = {
       }
       el.innerHTML = tags.map(t => `
         <div style="display:flex;align-items:center;justify-content:space-between;padding:var(--space-2) 0;border-bottom:1px solid var(--rule);">
-          <span class="chip chip-blue">${esc(t.name)}</span>
+          <span class="chip chip-info">${esc(t.name)}</span>
           <button class="btn btn-ghost btn-sm" style="color:var(--fail);" onclick="Admin.deleteTag('${t.id}')">✕</button>
         </div>`).join('');
     } catch(e) { Toast.err(e.message); }
@@ -528,7 +528,7 @@ const Admin = {
     const teams = teamsCache || [];
     const opts = '<option value="">No team</option>' + teams.map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join('');
     card.classList.remove('hidden');
-    card.innerHTML = `<div class="card-title">Access requests <span class="chip chip-amber">${list.length}</span></div>` +
+    card.innerHTML = `<div class="card-title">Access requests <span class="chip chip-warning">${list.length}</span></div>` +
       list.map(r => `
       <div style="display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap;padding:var(--space-3) 0;border-top:1px solid var(--border);">
         <div style="flex:1;min-width:200px;">
@@ -615,15 +615,15 @@ const Admin = {
     if(!filtered.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:32px;">No matches.</td></tr>'; return; }
     tbody.innerHTML = filtered.map(l => {
       const team = (teamsCache||[]).find(t => String(t.id) === String(l.team_id));
-      const teamHtml = team ? esc(team.name) : '<span class="chip chip-amber">Unassigned</span>';
+      const teamHtml = team ? esc(team.name) : '<span class="chip chip-warning">Unassigned</span>';
       const isManager = l.role === 'manager';
       const roleChip = (isManager
-        ? '<span class="chip chip-blue">Manager</span>'
-        : '<span class="chip chip-green">User</span>') + (Number(l.is_admin) === 1 ? ' <span class="chip chip-amber">Admin</span>' : '');
+        ? '<span class="chip chip-info">Manager</span>'
+        : '<span class="chip chip-success">User</span>') + (Number(l.is_admin) === 1 ? ' <span class="chip chip-warning">Admin</span>' : '');
       const isChecked = Admin._selectedUsers.has(l.id);
       return `<tr>
         <td style="width:36px;"><input type="checkbox" data-id="${l.id}" ${isChecked ? 'checked' : ''} onchange="Admin.toggleUserSelect('${l.id}', this.checked)"></td>
-        <td>${esc(l.name || 'Unnamed')} ${l.overdue_count ? `<span class="chip chip-red">${l.overdue_count} overdue</span>` : ''}</td>
+        <td>${esc(l.name || 'Unnamed')} ${l.overdue_count ? `<span class="chip chip-danger">${l.overdue_count} overdue</span>` : ''}</td>
         <td>${roleChip}</td>
         <td><button class="btn btn-ghost btn-sm" onclick="App.openEditLearner('${l.id}','${esc(l.name)}','${l.team_id||''}','${l.role||'learner'}')">${teamHtml}</button></td>
         <td>${l.last_login_at ? new Date(l.last_login_at*1000).toLocaleDateString() : '—'}</td>
@@ -830,7 +830,7 @@ const Admin = {
         <td>${esc(r.user_name)}</td>
         <td>${esc(r.course_title)}</td>
         <td>${r.score}%</td>
-        <td>${r.passed ? '<span class="chip chip-green">Passed</span>' : '<span class="chip chip-red">Failed</span>'}</td>
+        <td>${r.passed ? '<span class="chip chip-success">Passed</span>' : '<span class="chip chip-danger">Failed</span>'}</td>
         <td>${new Date(r.completed_at * 1000).toLocaleDateString()}</td>
         <td style="font-family:monospace;font-size:11px;">${r.cert_id || '—'}</td>
       </tr>`).join('');
@@ -958,7 +958,7 @@ const Admin = {
     const secOpts = sections.map(s => `<option value="${s.id}" ${c.section_id===s.id?'selected':''}>${esc(s.label || s.name)}</option>`).join('');
     const count = enrolled[c.id] || 0;
     const enrollBadge = count > 0
-      ? `<span class="chip chip-green">${count} assigned</span>`
+      ? `<span class="chip chip-success">${count} assigned</span>`
       : `<span class="chip">Unassigned</span>`;
     return `<div class="card cc" ${attrs}>
       <div class="cc-top">

@@ -88,3 +88,21 @@ describe.each(['dark', 'light'])('%s theme contrast (WCAG AA 4.5:1)', (theme) =>
     }
   }
 })
+
+// Chip and status text sits on a translucent tint of its own colour over a surface, so the surface is the worst case.
+const STATUS_TEXT = ['--success-text', '--danger-text', '--warning-text']
+
+describe.each(['dark', 'light'])('%s theme status text contrast (WCAG AA 4.5:1)', (theme) => {
+  const merged = theme === 'light' ? { ...THEMES.dark, ...THEMES.light } : THEMES.dark
+  for (const fg of STATUS_TEXT) {
+    for (const bg of SURFACES) {
+      it(`${fg} on ${bg}`, () => {
+        const f = parseColor(resolve(merged, fg) ?? '')
+        const b = parseColor(resolve(merged, bg) ?? '')
+        expect(f, `${fg} must resolve to a hex colour`).not.toBeNull()
+        expect(b, `${bg} must resolve to a hex colour`).not.toBeNull()
+        expect(ratio(f, b)).toBeGreaterThanOrEqual(4.5)
+      })
+    }
+  }
+})
