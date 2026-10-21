@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { parseCss, audit, applyFixes, cascadeDrift, resolveCascade, loadCorpus } from '../../scripts/css-audit.mjs'
+import { parseCss, audit, applyFixes, cascadeDrift, resolveCascade, loadCorpus, specificity, findMerges, applyMerges, orderDrift } from '../../scripts/css-audit.mjs'
 
 const live = (...classes) => classes.map((c) => `class="${c}"`).join(' ')
 
@@ -52,6 +52,36 @@ describe('css-audit on synthetic CSS', () => {
   })
 })
 
+describe('css-audit merging of duplicate selectors', () => {
+  const merge = (src) => applyMerges(src, findMerges(parseCss(src), src).merges)
+  it('computes specificity', () => {
+    expect(specificity('#a .b:hover')).toEqual([1, 2, 0])
+    expect(specificity('ul li::before')).toEqual([0, 0, 3])
+    expect(specificity('.a:not(.b, #c)')).toEqual([1, 1, 0])
+    expect(specificity('[data-theme="light"] .x')).toEqual([0, 2, 0])
+  })
+  it('folds a duplicate into the last definition when nothing between can tie it', () => {
+    const src = '.a { margin: 0; }\n.b { color: red; }\n.a { padding: 4px; }\n'
+    const out = merge(src)
+    expect(out).toBe('.b { color: red; }\n.a { margin: 0; padding: 4px; }\n')
+    expect(orderDrift(src, out)).toEqual([])
+  })
+  it('leaves a declaration alone when an equal-specificity rule between sets a related property', () => {
+    const src = '.a { color: red; }\n.b { color: blue; }\n.a { margin: 0; }\n'
+    const { merges, manual } = findMerges(parseCss(src), src)
+    expect(merges).toEqual([])
+    expect(manual.map((m) => m.decl.prop)).toEqual(['color'])
+  })
+  it('detects a tie that changes order', () => {
+    const before = '.a { color: red; }\n.b { color: blue; }\n'
+    expect(orderDrift(before, '.b { color: blue; }\n.a { color: red; }\n')).not.toEqual([])
+  })
+  it('does not move rules that carry comments', () => {
+    const src = '.a { /* keep */ margin: 0; }\n.a { padding: 4px; }\n'
+    expect(findMerges(parseCss(src), src).merges).toEqual([])
+  })
+})
+
 describe('css/style.css', () => {
   const src = readFileSync(fileURLToPath(new URL('../../css/style.css', import.meta.url)), 'utf8')
   const found = audit(src, loadCorpus())
@@ -64,5 +94,9 @@ describe('css/style.css', () => {
     expect(found.trims).toEqual([])
     expect(found.keyframes.map((k) => k.selector)).toEqual([])
     expect(found.tokens).toEqual([])
+  })
+  it('has nothing left to merge safely (run: node scripts/css-audit.mjs --merge)', () => {
+    const { merges } = findMerges(found.rules, src)
+    expect(merges.map((m) => `${m.from.line} ${m.from.selector} ${m.decl.prop}`)).toEqual([])
   })
 })

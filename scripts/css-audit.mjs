@@ -2,6 +2,7 @@
 //
 //   node scripts/css-audit.mjs            report dead declarations, dead rules, unused tokens/keyframes
 //   node scripts/css-audit.mjs --fix      remove them in place, then verify the cascade is unchanged
+//   node scripts/css-audit.mjs --merge    fold duplicate selectors into their last definition where provably safe
 //
 // "Dead" means provably unreachable:
 //   - a declaration overridden by a later rule with the identical selector and media context
@@ -222,6 +223,140 @@ export function applyFixes(src, { rules, deadDecls, deadRules, trims, keyframes,
   return out.replace(/[ \t]+$/gm, '').replace(/\n{3,}/g, '\n\n')
 }
 
+// ---- Batch 3: merge duplicate rules in place -------------------------------------------------
+// Specificity as [ids, classes/attributes/pseudo-classes, elements/pseudo-elements].
+export function specificity(member) {
+  let s = member.replace(/\[[^\]]*\]/g, '.a')
+  const spec = [0, 0, 0]
+  const add = (x) => x.forEach((n, i) => { spec[i] += n })
+  s = s.replace(/:(not|is|has)\(([^)]*)\)/g, (_, _fn, args) => {
+    const inner = args.split(',').map((m) => specificity(m.trim()))
+    add(inner.sort((a, b) => b[0] - a[0] || b[1] - a[1] || b[2] - a[2])[0])
+    return ''
+  })
+  s = s.replace(/:where\([^)]*\)/g, '')
+  s = s.replace(/::[\w-]+|:(?:before|after|first-line|first-letter)\b/g, () => { spec[2]++; return '' })
+  s = s.replace(/#[\w-]+/g, () => { spec[0]++; return '' })
+  s = s.replace(/\.[\w-]+|:[\w-]+(?:\([^)]*\))?/g, () => { spec[1]++; return '' })
+  s = s.replace(/[>+~*]/g, ' ')
+  spec[2] += s.split(/\s+/).filter((t) => /^[a-zA-Z][\w-]*$/.test(t)).length
+  return spec
+}
+const specKey = (member) => specificity(member).join(',')
+
+// Properties that can interact: same name, or the same family (margin / margin-top, border / border-color…).
+const propFamily = (prop) => (prop.startsWith('--') ? prop : prop.replace(/^-(?:webkit|moz|ms)-/, '').split('-')[0])
+
+/**
+ * Every pair of declarations whose relative order can change the result: related properties in two
+ * rules whose selectors can tie on specificity (same importance). Returned as sortable position pairs.
+ */
+function orderPairs(src) {
+  const rules = parseCss(src).filter((r) => !r.atomic)
+  const seen = new Map()
+  const decls = []
+  rules.forEach((r, ri) => {
+    const members = selectorMembers(r.selector).map(specKey)
+    r.decls.forEach((d, di) => {
+      const base = `${r.ctx}||${r.selector}||${d.prop}`
+      const n = seen.get(base) ?? 0
+      seen.set(base, n + 1)
+      decls.push({ id: `${base}||${n}`, pos: ri * 1e4 + di, rule: ri, important: d.important, family: propFamily(d.prop), specs: new Set(members) })
+    })
+  })
+  const buckets = new Map()
+  for (const d of decls) for (const sp of d.specs) {
+    const key = `${d.family}|${d.important}|${sp}`
+    ;(buckets.get(key) || buckets.set(key, []).get(key)).push(d)
+  }
+  const pairs = new Map()
+  for (const list of buckets.values()) {
+    for (let a = 0; a < list.length; a++) for (let b = a + 1; b < list.length; b++) {
+      const [x, y] = list[a].pos < list[b].pos ? [list[a], list[b]] : [list[b], list[a]]
+      if (x.rule !== y.rule || x.id !== y.id) pairs.set(`${x.id} < ${y.id}`, true)
+    }
+  }
+  return { pairs, decls }
+}
+
+/** Order-sensitive pairs (equal specificity, related properties) whose relative order differs between two stylesheets. */
+export function orderDrift(before, after) {
+  const pos = (src) => new Map(orderPairs(src).decls.map((d) => [d.id, d.pos]))
+  const posAfter = pos(after)
+  const posBefore = pos(before)
+  const drift = []
+  for (const key of orderPairs(before).pairs.keys()) {
+    const [x, y] = key.split(' < ')
+    if (!posAfter.has(x) || !posAfter.has(y)) continue
+    if (posAfter.get(x) >= posAfter.get(y) && posBefore.get(x) < posBefore.get(y)) drift.push(key)
+  }
+  return drift
+}
+
+/**
+ * Duplicate selectors (same media context) whose earlier rules can be folded into the last one.
+ * A declaration moves only if no rule in between could tie it on specificity for a related property.
+ */
+export function findMerges(rules, src) {
+  // Rules carrying comments stay put so no explanatory comment is orphaned or dropped.
+  const indexed = rules.map((r, i) => ({ r, i })).filter(({ r }) => !r.atomic)
+  const groups = new Map()
+  for (const e of indexed) (groups.get(groupKey(e.r)) || groups.set(groupKey(e.r), []).get(groupKey(e.r))).push(e)
+  const merges = [], manual = []
+  for (const group of groups.values()) {
+    if (group.length < 2) continue
+    const last = group[group.length - 1]
+    const specs = new Set(selectorMembers(last.r.selector).map(specKey))
+    for (const from of group.slice(0, -1)) {
+      if (src.slice(from.r.ruleStart, from.r.ruleEnd).includes('/*')) continue
+      for (const decl of from.r.decls) {
+        const family = propFamily(decl.prop)
+        const blockers = indexed.filter(({ r, i }) => i > from.i && i < last.i && r !== from.r && r.decls.some((x) =>
+          propFamily(x.prop) === family && x.important === decl.important
+          && selectorMembers(r.selector).some((m) => specs.has(specKey(m)))))
+        const lastClash = last.r.decls.some((x) => x.prop === decl.prop)
+        if (decl.important || lastClash || blockers.length) {
+          manual.push({ rule: from.r, decl, reason: decl.important ? 'important' : lastClash ? 'same property in last rule' : `ordering vs line ${blockers[0].r.line}` })
+        } else merges.push({ from: from.r, to: last.r, decl })
+      }
+    }
+  }
+  return { merges, manual }
+}
+
+/** Fold merged declarations into the start of the last rule's body and drop rules left empty. */
+export function applyMerges(src, merges) {
+  const byTarget = new Map(), byFrom = new Map(), claimed = new Set()
+  for (const m of merges) {
+    byTarget.set(m.to, [...(byTarget.get(m.to) || []), m])
+    byFrom.set(m.from, [...(byFrom.get(m.from) || []), m])
+    claimed.add(m.decl)
+  }
+  const edits = []
+  for (const [rule, list] of byFrom) {
+    if (list.length === rule.decls.length) edits.push(lineSpan(src, rule.ruleStart, rule.ruleEnd))
+    else list.forEach((m) => edits.push(lineSpan(src, m.decl.start, m.decl.end)))
+  }
+  for (const [rule, list] of byTarget) {
+    const open = src.indexOf('{', rule.selEnd) + 1
+    const oneLine = !src.slice(rule.ruleStart, rule.ruleEnd).includes('\n')
+    const declText = (d) => src.slice(d.start, d.end).replace(/;?$/, ';')
+    // Token definitions stay one per line (the token lint exempts only lines that start with `--`)
+    if (oneLine && list.some((m) => m.decl.prop.startsWith('--'))) {
+      const close = rule.ruleEnd - 1
+      const body = [...list.map((m) => m.decl), ...rule.decls].map((d) => `\n  ${declText(d)}`).join('')
+      edits.push([open, close, `${body}\n`])
+      continue
+    }
+    const text = list.map((m) => `${oneLine ? ' ' : '\n  '}${declText(m.decl)}`).join('')
+    edits.push([open, open, text])
+  }
+  let out = src
+  for (const [start, end, text = ''] of edits.sort((a, b) => b[0] - a[0] || b[1] - a[1])) out = out.slice(0, start) + text + out.slice(end)
+  for (let prev = ''; prev !== out;) { prev = out; out = out.replace(/@(?:media|supports)[^{}]*\{\s*\}\s*\n?/g, '') }
+  return out.replace(/[ \t]+$/gm, '').replace(/\n{3,}/g, '\n\n')
+}
+
 export function audit(src, corpus) {
   const rules = parseCss(src)
   const { dead, trim, deadMembers } = findDeadRules(rules, makeClassLiveness(corpus))
@@ -265,6 +400,19 @@ function main() {
   console.log(`selector lists to trim: ${found.trims.length}`)
   console.log(`unused keyframes:  ${found.keyframes.map((k) => k.selector).join(', ') || 'none'}`)
   console.log(`unused tokens:     ${found.tokens.join(' ') || 'none'}`)
+  const { merges, manual } = findMerges(found.rules, src)
+  console.log(`mergeable declarations: ${merges.length}; left for manual review: ${manual.length}`)
+  if (process.argv.includes('--merge')) {
+    const merged = applyMerges(src, merges)
+    const drift = [...cascadeDrift(src, merged, { deadMembers: new Set(), keyframes: [], tokens: [] }), ...orderDrift(src, merged)]
+    if (drift.length) {
+      console.error(`Refusing to write: ${drift.length} resolved value(s) or tie orderings would change:\n  ${drift.slice(0, 10).join('\n  ')}`)
+      process.exit(1)
+    }
+    writeFileSync(cssPath, merged)
+    console.log(`css/style.css: ${src.split('\n').length} -> ${merged.split('\n').length} lines, cascade and tie order verified unchanged.`)
+    return
+  }
   if (!process.argv.includes('--fix')) return
   const fixed = applyFixes(src, found)
   const drift = cascadeDrift(src, fixed, found)
