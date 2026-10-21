@@ -362,8 +362,7 @@ const Learner = {
         </div>
       </div>` : '';
 
-    // Render content with markdown parser
-    const contentHtml = typeof marked !== 'undefined' ? marked.parse(mod.content || '') : (mod.content || '');
+    const contentHtml = Markdown.render(mod.content);
 
     $$('mod-main').innerHTML = `<div class="module-prose">
       ${sourceBanner}
