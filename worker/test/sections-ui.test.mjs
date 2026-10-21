@@ -9,8 +9,9 @@ const localStorage = { getItem: k => (store.has(k) ? store.get(k) : null), setIt
 const foldAll = { disabled: false, textContent: '' }
 const document = { getElementById: id => (id === 'a-fold-all' ? foldAll : null) }
 const esc = s => String(s)
-const { moveSectionOrder, SectionFold } = new Function('localStorage', 'document', 'esc',
-  `${src}\nreturn { moveSectionOrder, SectionFold };`)(localStorage, document, esc)
+const escJs = s => String(s)
+const { moveSectionOrder, SectionFold } = new Function('localStorage', 'document', 'esc', 'escJs',
+  `${src}\nreturn { moveSectionOrder, SectionFold };`)(localStorage, document, esc, escJs)
 
 // orderSections() output: parents first, each followed by its sub-sections.
 const sec = (id, parent_id = null) => ({ id, parent_id, depth: parent_id ? 1 : 0 })

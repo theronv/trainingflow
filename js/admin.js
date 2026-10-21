@@ -125,7 +125,7 @@ const Admin = {
       }
 
       listEl.innerHTML = teams.map(t => `
-        <div class="team-list-item" id="tli-${t.id}" onclick="Admin.selectTeam('${t.id}')">
+        <div class="team-list-item" id="tli-${esc(t.id)}" onclick="Admin.selectTeam('${escJs(t.id)}')">
           <div class="team-list-name">${esc(t.name)}</div>
           <div class="team-list-meta">${t.learner_count || 0} member${t.learner_count !== 1 ? 's' : ''} · ${t.manager_count || 0} manager${t.manager_count !== 1 ? 's' : ''}</div>
         </div>`).join('');
@@ -152,10 +152,10 @@ const Admin = {
           <div class="team-detail-meta">${team.learner_count || 0} learner${team.learner_count !== 1 ? 's' : ''} · ${team.manager_count || 0} manager${team.manager_count !== 1 ? 's' : ''}</div>
         </div>
         <div class="team-detail-actions">
-          <button class="btn btn-outline btn-sm" onclick="Admin.openAddManager('${tid}','${esc(team.name)}')">+ Manager</button>
-          <button class="btn btn-outline btn-sm" onclick="Admin.openGenerateInvite('${tid}','${esc(team.name)}')">+ Invite</button>
-          <button class="btn btn-outline btn-sm" onclick="Admin.openRenameTeam('${tid}','${esc(team.name)}')">Rename</button>
-          <button class="btn btn-ghost btn-sm btn-danger-ghost" onclick="Admin.deleteTeam('${tid}')">Delete</button>
+          <button class="btn btn-outline btn-sm" onclick="Admin.openAddManager('${escJs(tid)}','${escJs(team.name)}')">+ Manager</button>
+          <button class="btn btn-outline btn-sm" onclick="Admin.openGenerateInvite('${escJs(tid)}','${escJs(team.name)}')">+ Invite</button>
+          <button class="btn btn-outline btn-sm" onclick="Admin.openRenameTeam('${escJs(tid)}','${escJs(team.name)}')">Rename</button>
+          <button class="btn btn-ghost btn-sm btn-danger-ghost" onclick="Admin.deleteTeam('${escJs(tid)}')">Delete</button>
         </div>
       </div>
       <div class="dash-section-label" style="margin-top:var(--space-5);margin-bottom:var(--space-3);">Members</div>
@@ -180,7 +180,7 @@ const Admin = {
             return `<tr>
               <td>${esc(l.name)}</td>
               <td>${roleChip}</td>
-              <td><button class="btn btn-ghost btn-sm" onclick="Admin.moveLearner('${l.id}')">Move</button></td>
+              <td><button class="btn btn-ghost btn-sm" onclick="Admin.moveLearner('${escJs(l.id)}')">Move</button></td>
             </tr>`;
           }).join('')}</tbody>
         </table></div>`;
@@ -213,8 +213,8 @@ const Admin = {
               <td>${statusChip}</td>
               <td>${expires}</td>
               <td style="white-space:nowrap;">${state === 'active' ? `
-                <button class="btn btn-ghost btn-sm" onclick="App.copyInviteLink('${esc(inv.code)}')">Copy link</button>
-                <button class="btn btn-ghost btn-sm" onclick="Admin.copyInviteMessage('${esc(inv.code)}','${esc(team.name)}','${inv.role}')" title="Copy a ready-to-send message">Copy message</button>
+                <button class="btn btn-ghost btn-sm" onclick="App.copyInviteLink('${escJs(inv.code)}')">Copy link</button>
+                <button class="btn btn-ghost btn-sm" onclick="Admin.copyInviteMessage('${escJs(inv.code)}','${escJs(team.name)}','${escJs(inv.role)}')" title="Copy a ready-to-send message">Copy message</button>
                 <button class="btn btn-ghost btn-sm btn-danger-ghost" onclick="Admin.revokeInvite(${inv.id})">Revoke</button>
               ` : '—'}</td>
             </tr>`;
@@ -274,7 +274,7 @@ const Admin = {
   openAddManager(teamId, teamName) {
     App._editLearnerId = null;
     $$('al-modal-title').textContent = 'Add Manager';
-    $$('al-modal-sub').textContent = `Create a manager account for team: ${esc(teamName)}`;
+    $$('al-modal-sub').textContent = `Create a manager account for team: ${teamName}`;
     $$('al-name').value = ''; $$('al-email').value = ''; $$('al-pw1').value = ''; $$('al-pw2').value = '';
     $$('al-role').value = 'manager';
     const sel = $$('al-team');
@@ -321,8 +321,8 @@ const Admin = {
           <td>${expires}</td>
           <td style="white-space:nowrap;">
             ${!inv.used ? `
-              <button class="btn btn-outline btn-sm" onclick="Admin.copyInviteCode('${esc(inv.code)}')">Copy Code</button>
-              <button class="btn btn-ghost btn-sm" onclick="Admin.copyInviteMessage('${esc(inv.code)}','${teamName}')" title="Copy a ready-to-send onboarding message">Copy Message</button>
+              <button class="btn btn-outline btn-sm" onclick="Admin.copyInviteCode('${escJs(inv.code)}')">Copy Code</button>
+              <button class="btn btn-ghost btn-sm" onclick="Admin.copyInviteMessage('${escJs(inv.code)}','${escJs(inv.team_name)}')" title="Copy a ready-to-send onboarding message">Copy Message</button>
               <button class="btn btn-ghost btn-sm btn-danger-ghost" onclick="Admin.revokeInvite(${inv.id})">Revoke</button>
             ` : '—'}
           </td>
@@ -366,7 +366,7 @@ const Admin = {
       el.innerHTML = tags.map(t => `
         <div style="display:flex;align-items:center;justify-content:space-between;padding:var(--space-2) 0;border-bottom:1px solid var(--rule);">
           <span class="chip chip-info">${esc(t.name)}</span>
-          <button class="btn btn-ghost btn-sm" style="color:var(--fail);" onclick="Admin.deleteTag('${t.id}')">✕</button>
+          <button class="btn btn-ghost btn-sm" style="color:var(--fail);" onclick="Admin.deleteTag('${escJs(t.id)}')">✕</button>
         </div>`).join('');
     } catch(e) { Toast.err(e.message); }
   },
@@ -405,8 +405,8 @@ const Admin = {
       }
       list.innerHTML = allTags.map(t => `
         <div style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-2) 0;border-bottom:1px solid var(--rule);">
-          <input type="checkbox" id="lt-${t.id}" ${assigned.has(t.id) ? 'checked' : ''}
-            onchange="Admin.toggleLearnerTag('${learnerId}','${t.id}',this.checked)">
+          <input type="checkbox" id="lt-${esc(t.id)}" ${assigned.has(t.id) ? 'checked' : ''}
+            onchange="Admin.toggleLearnerTag('${escJs(learnerId)}','${escJs(t.id)}',this.checked)">
           <label for="lt-${t.id}" style="margin:0;">${esc(t.name)}</label>
         </div>`).join('');
     } catch(e) { if(list) list.innerHTML = `<div style="color:var(--fail);">${esc(e.message)}</div>`; }
@@ -522,9 +522,9 @@ const Admin = {
           <div style="font-weight:600;color:var(--ink-1);">${esc(r.name)}</div>
           <div style="font-size:var(--text-sm);color:var(--ink-3);">${esc(r.email)}${r.message ? ' · ' + esc(r.message) : ''}</div>
         </div>
-        <select id="ar-team-${r.id}" class="btn btn-outline btn-sm" style="width:auto;" aria-label="Team for ${esc(r.name)}">${opts}</select>
-        <button class="btn btn-primary btn-sm" onclick="App.approveAccess('${r.id}')">Approve</button>
-        <button class="btn btn-ghost btn-sm" onclick="App.dismissAccess('${r.id}')">Dismiss</button>
+        <select id="ar-team-${esc(r.id)}" class="btn btn-outline btn-sm" style="width:auto;" aria-label="Team for ${esc(r.name)}">${opts}</select>
+        <button class="btn btn-primary btn-sm" onclick="App.approveAccess('${escJs(r.id)}')">Approve</button>
+        <button class="btn btn-ghost btn-sm" onclick="App.dismissAccess('${escJs(r.id)}')">Dismiss</button>
       </div>`).join('');
   },
   async approveAccess(id) {
@@ -609,16 +609,16 @@ const Admin = {
         : '<span class="chip chip-success">User</span>') + (Number(l.is_admin) === 1 ? ' <span class="chip chip-warning">Admin</span>' : '');
       const isChecked = Admin._selectedUsers.has(l.id);
       return `<tr>
-        <td style="width:36px;"><input type="checkbox" data-id="${l.id}" ${isChecked ? 'checked' : ''} onchange="Admin.toggleUserSelect('${l.id}', this.checked)"></td>
+        <td style="width:36px;"><input type="checkbox" data-id="${esc(l.id)}" ${isChecked ? 'checked' : ''} onchange="Admin.toggleUserSelect('${escJs(l.id)}', this.checked)"></td>
         <td>${esc(l.name || 'Unnamed')} ${l.overdue_count ? `<span class="chip chip-danger">${l.overdue_count} overdue</span>` : ''}</td>
         <td>${roleChip}</td>
-        <td><button class="btn btn-ghost btn-sm" onclick="App.openEditLearner('${l.id}','${esc(l.name)}','${l.team_id||''}','${l.role||'learner'}')">${teamHtml}</button></td>
+        <td><button class="btn btn-ghost btn-sm" onclick="App.openEditLearner('${escJs(l.id)}','${escJs(l.name)}','${escJs(l.team_id||'')}','${escJs(l.role||'learner')}')">${teamHtml}</button></td>
         <td>${l.last_login_at ? new Date(l.last_login_at*1000).toLocaleDateString() : '—'}</td>
         <td>${l.completion_count || 0}</td>
         <td style="white-space:nowrap;text-align:right;">
-          <button class="btn btn-ghost btn-sm icon-btn" title="Reset password" aria-label="Reset password" onclick="App.openResetPw('${l.id}','${esc(l.name)}')">${Admin._ico.key}</button>
-          <button class="btn btn-ghost btn-sm icon-btn" title="Edit user" aria-label="Edit user" onclick="App.openEditLearner('${l.id}','${esc(l.name)}','${l.team_id||''}','${l.role||'learner'}')">${Admin._ico.pencil}</button>
-          <button class="btn btn-ghost btn-sm icon-btn btn-danger-ghost" title="Delete user" aria-label="Delete user" onclick="App.openDeleteLearner('${l.id}','${esc(l.name)}','${l.role||'learner'}')">${Admin._ico.trash}</button>
+          <button class="btn btn-ghost btn-sm icon-btn" title="Reset password" aria-label="Reset password" onclick="App.openResetPw('${escJs(l.id)}','${escJs(l.name)}')">${Admin._ico.key}</button>
+          <button class="btn btn-ghost btn-sm icon-btn" title="Edit user" aria-label="Edit user" onclick="App.openEditLearner('${escJs(l.id)}','${escJs(l.name)}','${escJs(l.team_id||'')}','${escJs(l.role||'learner')}')">${Admin._ico.pencil}</button>
+          <button class="btn btn-ghost btn-sm icon-btn btn-danger-ghost" title="Delete user" aria-label="Delete user" onclick="App.openDeleteLearner('${escJs(l.id)}','${escJs(l.name)}','${escJs(l.role||'learner')}')">${Admin._ico.trash}</button>
         </td>
       </tr>`;
     }).join('');
@@ -823,7 +823,7 @@ const Admin = {
         <td>${r.score}%</td>
         <td>${r.passed ? '<span class="chip chip-success">Passed</span>' : '<span class="chip chip-danger">Failed</span>'}</td>
         <td>${new Date(r.completed_at * 1000).toLocaleDateString()}</td>
-        <td style="font-family:monospace;font-size:11px;">${r.cert_id || '—'}</td>
+        <td style="font-family:monospace;font-size:11px;">${esc(r.cert_id || '—')}</td>
       </tr>`).join('');
     } catch(e) { tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--fail);">${esc(e.message)}</td></tr>`; }
   },
@@ -903,7 +903,7 @@ const Admin = {
 
   _moveButtons(s) {
     const can = dir => moveSectionOrder(sectionsCache, s.id, dir) !== null;
-    const btn = (dir, label, icon) => `<button type="button" class="icon-btn" data-move="${dir}" aria-label="Move ${esc(s.name)} ${label}" title="Move ${label}"${can(dir) ? '' : ' disabled'} onclick="Admin.moveSection('${s.id}',${dir})">${icon}</button>`;
+    const btn = (dir, label, icon) => `<button type="button" class="icon-btn" data-move="${dir}" aria-label="Move ${esc(s.name)} ${label}" title="Move ${label}"${can(dir) ? '' : ' disabled'} onclick="Admin.moveSection('${escJs(s.id)}',${dir})">${icon}</button>`;
     return `<span class="sec-move">${btn(-1, 'up', Admin._ico.up)}${btn(1, 'down', Admin._ico.down)}</span>`;
   },
 
@@ -929,9 +929,9 @@ const Admin = {
     bar.innerHTML = sections.map(s => `
       <span class="sec-chip"${s.depth ? ' style="margin-left:var(--space-3);"' : ''}>
         ${s.depth ? '↳ ' : ''}${esc(s.name)}
-        ${s.depth ? '' : `<button class="icon-btn" title="Add sub-section" aria-label="Add sub-section" onclick="Admin.openCreateSection('${s.id}')">+</button>`}
-        <button class="icon-btn" title="Rename section" aria-label="Rename section" onclick="Admin.openRenameSection('${s.id}','${esc(s.name)}')">${Admin._ico.pencil}</button>
-        <button class="icon-btn danger" title="Delete section" aria-label="Delete section" onclick="Admin.deleteSection('${s.id}')">${Admin._ico.x}</button>
+        ${s.depth ? '' : `<button class="icon-btn" title="Add sub-section" aria-label="Add sub-section" onclick="Admin.openCreateSection('${escJs(s.id)}')">+</button>`}
+        <button class="icon-btn" title="Rename section" aria-label="Rename section" onclick="Admin.openRenameSection('${escJs(s.id)}','${escJs(s.name)}')">${Admin._ico.pencil}</button>
+        <button class="icon-btn danger" title="Delete section" aria-label="Delete section" onclick="Admin.deleteSection('${escJs(s.id)}')">${Admin._ico.x}</button>
       </span>`).join('');
   },
 
@@ -959,17 +959,17 @@ const Admin = {
           <div class="cc-title">${esc(c.title)}</div>
           <div class="cc-meta">
             ${enrollBadge}
-            ${sections.length ? `<select class="cc-select" aria-label="Section" onchange="Admin.setCourseSection('${c.id}',this.value)">
+            ${sections.length ? `<select class="cc-select" aria-label="Section" onchange="Admin.setCourseSection('${escJs(c.id)}',this.value)">
               <option value="">No section</option>${secOpts}
             </select>` : ''}
           </div>
         </div>
       </div>
       <div class="cc-actions">
-        <button class="btn btn-primary btn-sm" onclick="App.openAssign('${c.id}','${esc(c.title)}')">${Admin._ico.userPlus} Assign</button>
-        <button class="btn btn-outline btn-sm" onclick="App.openBuilder('${c.id}')">Edit</button>
-        <button class="btn btn-outline btn-sm" onclick="Admin.previewCourse('${c.id}')">Preview</button>
-        <button class="btn btn-ghost btn-sm icon-btn btn-danger-ghost" title="Delete course" aria-label="Delete course" onclick="Admin.deleteCourse('${c.id}','${esc(c.title)}')">${Admin._ico.trash}</button>
+        <button class="btn btn-primary btn-sm" onclick="App.openAssign('${escJs(c.id)}','${escJs(c.title)}')">${Admin._ico.userPlus} Assign</button>
+        <button class="btn btn-outline btn-sm" onclick="App.openBuilder('${escJs(c.id)}')">Edit</button>
+        <button class="btn btn-outline btn-sm" onclick="Admin.previewCourse('${escJs(c.id)}')">Preview</button>
+        <button class="btn btn-ghost btn-sm icon-btn btn-danger-ghost" title="Delete course" aria-label="Delete course" onclick="Admin.deleteCourse('${escJs(c.id)}','${escJs(c.title)}')">${Admin._ico.trash}</button>
       </div>
     </div>`;
   },

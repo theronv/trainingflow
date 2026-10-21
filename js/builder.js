@@ -10,7 +10,7 @@ const Builder = {
     const selected = courseIconName(emoji);
     $$('cb-icon-grid').innerHTML = COURSE_ICON_GROUPS.map((g) => `<div class="icon-group-label" aria-hidden="true">${g.label}</div>` +
       COURSE_ICON_CHOICES.filter((i) => i.group === g.label).map(({ name, emoji: e }) =>
-        `<button type="button" class="icon-choice" role="radio" aria-checked="${name === selected}" aria-label="${name}" title="${name}" onclick="Builder.pickIcon('${e}')">${courseIcon(e)}</button>`).join('')).join('');
+        `<button type="button" class="icon-choice" role="radio" aria-checked="${name === selected}" aria-label="${name}" title="${name}" onclick="Builder.pickIcon('${escJs(e)}')">${courseIcon(e)}</button>`).join('')).join('');
   },
   pickIcon(emoji) {
     Builder.setIcon(emoji);
@@ -184,7 +184,7 @@ const Builder = {
     if (btn) btn.textContent = all.length && all.every(id => Builder._sel.has(id)) ? 'Deselect all' : 'Select all';
   },
   courseCheckbox(id, title) {
-    return `<label class="cc-check"><input type="checkbox" data-id="${id}" aria-label="Select ${esc(title)}" ${Builder._sel.has(id) ? 'checked' : ''} onchange="Builder.toggleCourseSel('${id}', this.checked)"></label>`;
+    return `<label class="cc-check"><input type="checkbox" data-id="${esc(id)}" aria-label="Select ${esc(title)}" ${Builder._sel.has(id) ? 'checked' : ''} onchange="Builder.toggleCourseSel('${escJs(id)}', this.checked)"></label>`;
   },
   openAssignSelected() {
     const ids = [...Builder._sel];
@@ -251,7 +251,7 @@ const Builder = {
     html += st.people.map(l => {
       const done = pending(l.id) === 0;
       const team = st.teams_.find(t => t.id === l.team_id);
-      return row(`Builder._assignToggleLearner('${l.id}', this.checked)`, esc(l.name),
+      return row(`Builder._assignToggleLearner('${escJs(l.id)}', this.checked)`, esc(l.name),
         done ? `<span class="chip chip-success">Assigned</span>`
              : chip(team ? esc(team.name) : 'No team'),
         done || st.learners.has(l.id) || st.teams.has(l.team_id), done, l.name);
@@ -261,7 +261,7 @@ const Builder = {
       html += st.managers.map(l => {
         const done = pending(l.id) === 0;
         const team = st.teams_.find(t => t.id === l.team_id);
-        return row(`Builder._assignToggleLearner('${l.id}', this.checked)`, esc(l.name),
+        return row(`Builder._assignToggleLearner('${escJs(l.id)}', this.checked)`, esc(l.name),
           done ? `<span class="chip chip-success">Assigned</span>` : chip(team ? esc(team.name) : 'Manager'),
           done || st.learners.has(l.id), done, l.name);
       }).join('');
