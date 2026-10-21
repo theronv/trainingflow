@@ -246,7 +246,7 @@ const COURSE_ICONS = {
   cap:    '<path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>',
 };
 const COURSE_ICON_MAP = {
-  star: '⭐🌟✨', users: '🤝👥👤🧑‍🤝‍🧑🙋', trophy: '🏆🥇🥈🥉🏅🎖', activity: '🏀⚽🏈⚾🎾🏐🏒🏉⛳🏃💪🏋',
+  star: '⭐🌟✨', users: '🤝👥👤🧑‍🤝‍🧑🙋', trophy: '🏆🥇🥈🥉🏅🎖', activity: '🏀⚽🏈⚾🥎🎾🏐🏒🏉⛳🏃💪🏋',
   book: '📚📖📕📗📘📙📓📔', shield: '🛡🔰⚠🚨🦺', clipboard: '📋📝✅☑🗒', chart: '📊📈📉',
   laptop: '💻🖥⌨🖱🖨', phone: '📞📱☎', target: '🎯', bulb: '💡🧠', heart: '❤💙💚🏥🩺',
   briefcase: '💼🏢', lock: '🔒🔐🔑', zap: '⚡🚀🔥', globe: '🌐🌍🌎🌏', dollar: '💰💵💳💲',

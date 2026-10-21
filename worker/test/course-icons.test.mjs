@@ -20,6 +20,7 @@ describe('course icons', () => {
   })
   it('resolves emoji variants to the same icon', () => {
     expect(courseIconName('⚾')).toBe('activity')
+    expect(courseIconName('🥎')).toBe('activity')
     expect(courseIconName('📞')).toBe('phone')
     expect(courseIcon('📞')).toContain(COURSE_ICONS.phone)
   })
