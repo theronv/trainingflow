@@ -737,10 +737,7 @@ app.post('/api/learners/bulk/delete', requireAdmin, async (c) => {
   const ids = body.ids || []
   if (!ids.length) return c.json({ error: 'No ids provided' }, 400)
   const db = getDb(c.env)
-  await db.execute({
-    sql: `DELETE FROM users WHERE id IN (${ids.map(() => '?').join(',')})`,
-    args: ids
-  })
+  await deleteAccounts(db, ids.map(String))
   return c.json({ ok: true, deleted: ids.length })
 })
 
@@ -781,6 +778,32 @@ app.get('/api/learners/me', requireLearner, async (c) => {
   return c.json({ id: user.id, name: user.name, email: row.email || '', email_notifications: Number(row.email_notifications ?? 1) === 1 })
 })
 
+/**
+ * Delete accounts and everything that points at them. Explicit rather than relying on ON DELETE CASCADE alone:
+ * invite_codes.used_by has no cascade, and some tables are created lazily without foreign keys.
+ */
+async function deleteAccounts(db, ids) {
+  if (!ids.length) return
+  await ensureSetup(db)
+  await ensureInviteSchema(db)
+  await db.execute(QUIZ_DDL) // created lazily elsewhere; make sure the DELETEs below have a table to hit
+  await db.execute(PROGRESS_DDL)
+  const marks = ids.map(() => '?').join(',')
+  const stmts = [
+    `DELETE FROM question_responses WHERE completion_id IN (SELECT id FROM completions WHERE learner_id IN (${marks}))`,
+    `DELETE FROM completions WHERE learner_id IN (${marks})`,
+    `DELETE FROM module_progress WHERE learner_id IN (${marks})`,
+    `DELETE FROM course_progress WHERE learner_id IN (${marks})`,
+    `DELETE FROM quiz_answers WHERE learner_id IN (${marks})`,
+    `DELETE FROM assignments WHERE learner_id IN (${marks})`,
+    `DELETE FROM learner_tags WHERE learner_id IN (${marks})`,
+    `DELETE FROM user_tags WHERE user_id IN (${marks})`,
+    `UPDATE invite_codes SET used_by = NULL WHERE used_by IN (${marks})`,
+    `DELETE FROM users WHERE id IN (${marks})`,
+  ]
+  await db.batch(stmts.map(sql => ({ sql, args: ids })), 'write')
+}
+
 app.patch('/api/learners/me', requireLearner, async (c) => {
   const user = c.get('user')
   const body = await c.req.json().catch(() => ({}))
@@ -803,6 +826,56 @@ app.patch('/api/learners/me', requireLearner, async (c) => {
     return c.json({ ok: true, name: body.name.trim(), ...(session && { session }) })
   }
   return c.json({ ok: true, ...(session && { session }) })
+})
+
+// Everything the app holds about the signed-in person, as one JSON download (no password hash, nobody else's data).
+app.get('/api/learners/me/export', requireLearner, async (c) => {
+  const user = c.get('user')
+  const db = getDb(c.env)
+  await ensureSetup(db)
+  const profile = toObj(await db.execute({
+    sql: 'SELECT u.id, u.name, u.email, u.role, u.is_admin, u.email_notifications, u.last_login_at, u.created_at, t.name AS team FROM users u LEFT JOIN teams t ON u.team_id = t.id WHERE u.id = ?',
+    args: [user.id],
+  }))
+  if (!profile) return c.json({ error: 'Not found' }, 404)
+  const rows = async (sql) => toObjs(await db.execute({ sql, args: [user.id] }))
+  c.header('Content-Disposition', 'attachment; filename="my-data.json"')
+  return c.json({
+    format: 'pregame-academy-personal-data',
+    exported_at: new Date().toISOString(),
+    profile: { ...profile, is_admin: Number(profile.is_admin) === 1, email_notifications: Number(profile.email_notifications) === 1 },
+    assignments: await rows('SELECT co.title AS course, a.assigned_at, a.due_at FROM assignments a JOIN courses co ON co.id = a.course_id WHERE a.learner_id = ? ORDER BY a.assigned_at'),
+    completions: (await rows('SELECT c.cert_id, co.title AS course, c.score, c.passed, c.completed_at FROM completions c LEFT JOIN courses co ON co.id = c.course_id WHERE c.learner_id = ? ORDER BY c.completed_at'))
+      .map(r => ({ ...r, passed: !!r.passed })),
+    module_progress: (await rows('SELECT p.course_id, m.title AS module, p.passed, p.score, p.completed_at FROM module_progress p LEFT JOIN modules m ON m.id = p.module_id WHERE p.learner_id = ? ORDER BY p.completed_at'))
+      .map(r => ({ ...r, passed: !!r.passed })),
+  })
+})
+
+// Delete my account. Re-checks who is asking (password, or a fresh email sign-in for email-only accounts) and
+// refuses to remove the last administrator. Certificates stop verifying: they are the person's own data.
+app.delete('/api/learners/me', requireLearner, async (c) => {
+  const user = c.get('user')
+  const body = await c.req.json().catch(() => ({}))
+  const db = getDb(c.env)
+  await ensureSetup(db)
+  const lockKey = accountKey(user.name)
+  const locked = await lockoutResponse(c, db, lockKey)
+  if (locked) return locked
+  const row = toObj(await db.execute({ sql: 'SELECT password_hash, clerk_id, is_admin FROM users WHERE id = ?', args: [user.id] }))
+  if (!row) return c.json({ error: 'Not found' }, 404)
+  let proven
+  if (typeof body.password === 'string' && body.password) proven = await pbkdf2Verify(body.password, row.password_hash)
+  else if (typeof body.clerk_token === 'string' && row.clerk_id) proven = (await verifyClerkToken(c.env, body.clerk_token))?.sub === row.clerk_id
+  else return c.json({ error: 'Confirm with your password.' }, 400)
+  if (!proven) { await recordFailure(db, lockKey); return c.json({ error: 'That did not match. Check your password and try again.' }, 400) }
+  await clearFailures(db, lockKey)
+  if (Number(row.is_admin) === 1) {
+    const admins = toObj(await db.execute('SELECT COUNT(*) AS n FROM users WHERE is_admin = 1'))
+    if (Number(admins.n) <= 1) return c.json({ error: 'You are the only administrator. Make someone else an administrator before deleting your account.' }, 409)
+  }
+  await deleteAccounts(db, [user.id])
+  return c.json({ ok: true })
 })
 
 app.get('/api/learners/:id', requireManager, async (c) => {
@@ -853,7 +926,7 @@ app.patch('/api/learners/:id', requireAdmin, async (c) => {
 
 app.delete('/api/learners/:id', requireAdmin, async (c) => {
   const db = getDb(c.env)
-  await db.execute({ sql: 'DELETE FROM users WHERE id = ?', args: [c.req.param('id')] })
+  await deleteAccounts(db, [c.req.param('id')])
   return c.json({ ok: true })
 })
 

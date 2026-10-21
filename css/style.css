@@ -1974,3 +1974,15 @@ button, .nav-btn, .quiz-opt, .course-card, .role-tile, label { touch-action: man
 /* Account: notification switch */
 .pref-row { display: flex; align-items: center; gap: var(--space-3); min-height: 44px; cursor: pointer; font-size: var(--text-base); color: var(--ink-1); }
 .pref-hint { margin-top: var(--space-2); font-size: var(--text-sm); color: var(--ink-3); }
+
+/* Privacy & terms page */
+.policy-wrap { width: 100%; max-width: 720px; margin: auto; padding: var(--space-6) var(--space-4); }
+.policy { padding: var(--space-8) var(--space-6); line-height: 1.6; color: var(--ink-2); }
+.policy-title { margin: 0 0 var(--space-1); font-size: var(--text-2xl); font-weight: 700; color: var(--ink-1); }
+.policy-meta { margin: 0 0 var(--space-5); font-size: var(--text-sm); color: var(--ink-3); }
+.policy h2 { margin: var(--space-6) 0 var(--space-2); font-size: var(--text-lg); font-weight: 700; color: var(--ink-1); }
+.policy p, .policy ul { margin: 0 0 var(--space-3); }
+.policy ul { padding-left: var(--space-5); }
+.policy li { margin-bottom: var(--space-2); }
+.policy a { color: var(--accent-strong); }
+.policy-back { margin-top: var(--space-5); text-align: center; }

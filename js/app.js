@@ -98,6 +98,32 @@ const AppProxy = {
   closeCert: () => $$('cert-overlay').classList.add('hidden'),
   downloadCertPDF: () => Certificate.downloadPdf(),
   leaveVerify: () => { location.href = location.pathname + location.search; },
+  openPrivacy: () => { App.show('screen-privacy'); window.scrollTo(0, 0); },
+  leavePrivacy: () => { location.href = location.pathname + location.search; },
+
+  // Account → Your data. `who` is 'learner' or 'manager' (decides which API/token to use).
+  downloadMyData: async (who) => {
+    if (isDemo) return Toast.err('Not available in the demo.');
+    try {
+      const data = await (who === 'manager' ? managerApi : learnerApi)('/api/learners/me/export');
+      const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+      const link = Object.assign(document.createElement('a'), { href: url, download: 'my-data.json' });
+      document.body.appendChild(link); link.click(); link.remove();
+      URL.revokeObjectURL(url);
+      Toast.ok('Your data was downloaded.');
+    } catch(e) { Toast.err(e.message); }
+  },
+  deleteMyAccount: async (who, prefix) => {
+    if (isDemo) return Toast.err('Not available in the demo.');
+    const password = $$(`${prefix}-del-pw`).value;
+    if (!await Confirm.ask({ title: 'Delete your account?', body: 'Your profile, progress and certificates will be removed for good, and your certificates will stop verifying. This cannot be undone.', confirmLabel: 'Delete my account', danger: true })) return;
+    try {
+      const body = password ? { password } : { clerk_token: await ClerkAuth.token() };
+      await (who === 'manager' ? managerApi : learnerApi)('/api/learners/me', { method: 'DELETE', body: JSON.stringify(body) });
+      Auth._signOut();
+      Toast.ok('Your account was deleted.');
+    } catch(e) { Toast.err(e.message); }
+  },
 
   // Missing Mappings
   changePw: async () => {
@@ -495,6 +521,7 @@ const AppProxy = {
     // A certificate's QR code (#/verify/<id>) opens the public check page, for anyone, signed in or not.
     const verifyId = Certificate.idFromHash(window.location.hash);
     if (verifyId) { Certificate.showVerify(verifyId); return; }
+    if (window.location.hash === '#/privacy') { App.openPrivacy(); return; }
     // An invite link (#invite=CODE) always lands on the join screen, even if someone is signed in.
     const inviteMatch = window.location.hash.match(/invite=([A-Za-z0-9]+)/);
     if (inviteMatch) {

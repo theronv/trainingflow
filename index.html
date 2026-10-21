@@ -69,8 +69,10 @@
       <button type="button" class="ldg-link" aria-expanded="false" onclick="const g=document.getElementById('ldg-pw-signin');g.classList.toggle('hidden');this.setAttribute('aria-expanded',!g.classList.contains('hidden'));if(event.detail)this.blur()">Name &amp; password</button>
       <span aria-hidden="true">·</span>
       <button type="button" class="ldg-link" onclick="App.startDemo()">Demo</button>
+      <span aria-hidden="true">·</span>
+      <button type="button" class="ldg-link" onclick="App.openPrivacy()">Privacy</button>
     </nav>
-    <p class="landing-foot">Your data stays private — no third-party tracking.</p>
+    <p class="landing-foot">No advertising or tracking. See Privacy for how your data is handled.</p>
   </footer>
 </div>
 
@@ -340,6 +342,17 @@
             <div class="field"><label>Confirm New Password</label><input type="password" id="mcp-confirm" placeholder="Confirm new password…"></div>
             <button type="button" class="btn btn-primary" onclick="App.changeManagerPw()">Update Password</button>
           </div>
+          <div class="card">
+            <div class="card-title">Your data</div>
+            <p class="pref-hint">Download everything held about you, or delete your account for good. <a href="#/privacy" onclick="event.preventDefault();App.openPrivacy()">Privacy &amp; terms</a></p>
+            <button type="button" class="btn btn-ghost" onclick="App.downloadMyData('manager')">Download my data</button>
+          </div>
+          <div class="card danger-zone">
+            <div class="card-title">Delete account</div>
+            <p class="pref-hint">This permanently removes your profile, progress and certificates. It cannot be undone.</p>
+            <div class="field"><label for="mcp-del-pw">Password</label><input type="password" id="mcp-del-pw" autocomplete="current-password" placeholder="Your password (leave empty if you sign in with email)"></div>
+            <button type="button" class="btn btn-danger" onclick="App.deleteMyAccount('manager','mcp')">Delete my account</button>
+          </div>
         </div>
       </div>
     </div>
@@ -436,6 +449,17 @@
             <div class="field"><label>New Password</label><input type="password" id="lcp-new" placeholder="New password (8+ characters)…"></div>
             <div class="field"><label>Confirm New Password</label><input type="password" id="lcp-confirm" placeholder="Confirm new password…"></div>
             <button type="button" class="btn btn-primary" onclick="App.changeLearnerPw()">Update Password</button>
+          </div>
+          <div class="card">
+            <div class="card-title">Your data</div>
+            <p class="pref-hint">Download everything held about you, or delete your account for good. <a href="#/privacy" onclick="event.preventDefault();App.openPrivacy()">Privacy &amp; terms</a></p>
+            <button type="button" class="btn btn-ghost" onclick="App.downloadMyData('learner')">Download my data</button>
+          </div>
+          <div class="card danger-zone">
+            <div class="card-title">Delete account</div>
+            <p class="pref-hint">This permanently removes your profile, progress and certificates. It cannot be undone.</p>
+            <div class="field"><label for="lcp-del-pw">Password</label><input type="password" id="lcp-del-pw" autocomplete="current-password" placeholder="Your password (leave empty if you sign in with email)"></div>
+            <button type="button" class="btn btn-danger" onclick="App.deleteMyAccount('learner','lcp')">Delete my account</button>
           </div>
         </div>
       </div>
@@ -1441,6 +1465,52 @@
       <button type="button" class="btn btn-outline btn-sm" onclick="Certificate.addToLinkedIn()">Add to LinkedIn</button>
     </div>
   </div>
+</div>
+
+<!-- ══════════ PRIVACY & TERMS ══════════ -->
+<div id="screen-privacy" class="screen">
+  <main class="policy-wrap">
+    <article class="card policy">
+      <h1 class="policy-title">Privacy &amp; terms</h1>
+      <p class="policy-meta">Last updated 21 October 2026</p>
+
+      <h2>Who runs this</h2>
+      <p>This training site is run by your organisation (your employer or training provider), who decides who gets an account and what training you are given. Pregame Academy is the software it runs on. For any question about your data, ask your organisation’s administrator.</p>
+
+      <h2>What we keep about you</h2>
+      <ul>
+        <li><strong>Account:</strong> your name, your team, your role, and, if you use email sign-in, your email address. Passwords are stored only as a salted one-way hash.</li>
+        <li><strong>Training activity:</strong> courses assigned to you, your place in each course, your quiz answers and scores, and the certificates you earn.</li>
+        <li><strong>Sign-in details:</strong> when you last signed in. Your browser keeps a sign-in token and a few preferences (theme, collapsed sections) in its own storage; there are no advertising or tracking cookies.</li>
+      </ul>
+
+      <h2>Who else handles it</h2>
+      <ul>
+        <li><strong>Cloudflare</strong> runs the application’s servers, and <strong>GitHub Pages</strong> serves the web pages.</li>
+        <li><strong>Turso</strong> hosts the database.</li>
+        <li><strong>Clerk</strong> handles email sign-in (your email address).</li>
+        <li><strong>Resend</strong> sends certificate emails (your email address, name, course name, score and certificate ID), unless you switch them off under Account.</li>
+      </ul>
+      <p>We do not sell your data or use it for advertising.</p>
+
+      <h2>Who can see it</h2>
+      <p>Your team’s managers and your organisation’s administrators can see your progress, scores and certificates. Anyone with a certificate’s link or QR code can check that it is genuine; that page shows only your name, the course, the organisation and the date.</p>
+
+      <h2>Your choices</h2>
+      <ul>
+        <li><strong>Download your data:</strong> Account → Your data → Download my data gives you a file of everything held about you.</li>
+        <li><strong>Delete your account:</strong> Account → Your data → Delete my account removes your profile, progress, quiz answers and certificates for good. Your certificates then stop verifying. The only administrator of a site cannot delete their account until someone else is made an administrator.</li>
+        <li><strong>Emails:</strong> switch certificate emails off under Account → Email.</li>
+      </ul>
+
+      <h2>How long we keep it</h2>
+      <p>Until your account is deleted, by you or by your organisation’s administrator.</p>
+
+      <h2>Using the service</h2>
+      <p>Use your own account, keep your password private, and do not share quiz answers or copy course material beyond what your organisation allows. Certificates show training you completed in this system; they are issued by your organisation, not by Pregame Academy. The service is provided as is, and your organisation may change or remove training at any time.</p>
+    </article>
+    <p class="policy-back"><button type="button" class="btn btn-ghost" onclick="App.leavePrivacy()">Back</button></p>
+  </main>
 </div>
 
 <!-- ══════════ PUBLIC CERTIFICATE CHECK ══════════ -->
