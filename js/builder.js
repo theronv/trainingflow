@@ -8,8 +8,9 @@ const Builder = {
   setIcon(emoji) {
     $$('cb-icon').value = emoji;
     const selected = courseIconName(emoji);
-    $$('cb-icon-grid').innerHTML = COURSE_ICON_CHOICES.map(({ name, emoji: e }) =>
-      `<button type="button" class="icon-choice" role="radio" aria-checked="${name === selected}" aria-label="${name}" title="${name}" onclick="Builder.pickIcon('${e}')">${courseIcon(e)}</button>`).join('');
+    $$('cb-icon-grid').innerHTML = COURSE_ICON_GROUPS.map((g) => `<div class="icon-group-label" aria-hidden="true">${g.label}</div>` +
+      COURSE_ICON_CHOICES.filter((i) => i.group === g.label).map(({ name, emoji: e }) =>
+        `<button type="button" class="icon-choice" role="radio" aria-checked="${name === selected}" aria-label="${name}" title="${name}" onclick="Builder.pickIcon('${e}')">${courseIcon(e)}</button>`).join('')).join('');
   },
   pickIcon(emoji) {
     Builder.setIcon(emoji);
