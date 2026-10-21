@@ -72,6 +72,7 @@ function initDialogA11y() {
     const open = [...document.querySelectorAll('.overlay:not(.hidden)')].filter(o => o.id !== 'first-run-overlay');
     const top = open[open.length - 1];
     if (!top) return;
+    if (top.id === 'confirm-overlay') return Confirm.cancel();
     if (top.id === 'builder-overlay' && typeof Builder !== 'undefined') return Builder.closeBuilder();
     top.classList.add('hidden');
   });
@@ -245,7 +246,7 @@ const COURSE_ICONS = {
   cap:    '<path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>',
 };
 const COURSE_ICON_MAP = {
-  star: '⭐🌟✨', users: '🤝👥👤🧑‍🤝‍🧑🙋', trophy: '🏆🥇🥈🥉🏅🎖', activity: '🏀⚽🏈⚾🎾🏐🏒🏉⛳🏃💪🏋',
+  star: '⭐🌟✨', users: '🤝👥👤🧑‍🤝‍🧑🙋', trophy: '🏆🥇🥈🥉🏅🎖', activity: '🏀⚽🏈⚾🥎🎾🏐🏒🏉⛳🏃💪🏋',
   book: '📚📖📕📗📘📙📓📔', shield: '🛡🔰⚠🚨🦺', clipboard: '📋📝✅☑🗒', chart: '📊📈📉',
   laptop: '💻🖥⌨🖱🖨', phone: '📞📱☎', target: '🎯', bulb: '💡🧠', heart: '❤💙💚🏥🩺',
   briefcase: '💼🏢', lock: '🔒🔐🔑', zap: '⚡🚀🔥', globe: '🌐🌍🌎🌏', dollar: '💰💵💳💲',
@@ -256,9 +257,14 @@ const _courseIconLookup = (() => {
   for (const [name, chars] of Object.entries(COURSE_ICON_MAP)) for (const ch of Array.from(chars)) m[ch] = name;
   return m;
 })();
-function courseIcon(emoji) {
+// One representative emoji per icon, in picker order. The emoji is what the API stores.
+const COURSE_ICON_CHOICES = Object.entries(COURSE_ICON_MAP).map(([name, chars]) => ({ name, emoji: Array.from(chars)[0] }));
+function courseIconName(emoji) {
   const first = Array.from(String(emoji || '').replace(/[︎️‍]/g, ''))[0];
-  const body = COURSE_ICONS[_courseIconLookup[first]] || COURSE_ICONS.cap;
+  return _courseIconLookup[first] || 'cap';
+}
+function courseIcon(emoji) {
+  const body = COURSE_ICONS[courseIconName(emoji)];
   return `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
 }
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }

@@ -168,7 +168,7 @@ const Admin = {
           <button class="btn btn-outline btn-sm" onclick="Admin.openAddManager('${tid}','${esc(team.name)}')">+ Manager</button>
           <button class="btn btn-outline btn-sm" onclick="Admin.openGenerateInvite('${tid}','${esc(team.name)}')">+ Invite</button>
           <button class="btn btn-outline btn-sm" onclick="Admin.openRenameTeam('${tid}','${esc(team.name)}')">Rename</button>
-          <button class="btn btn-outline btn-sm" style="color:var(--fail);border-color:var(--fail);" onclick="Admin.deleteTeam('${tid}')">Delete</button>
+          <button class="btn btn-ghost btn-sm btn-danger-ghost" onclick="Admin.deleteTeam('${tid}')">Delete</button>
         </div>
       </div>
       <div class="dash-section-label" style="margin-top:var(--space-5);margin-bottom:var(--space-3);">Members</div>
@@ -302,7 +302,7 @@ const Admin = {
     setTimeout(() => $$('al-name').focus(), CONFIG.FOCUS_DELAY);
   },
   async deleteTeam(id) {
-    if (!confirm('Delete this team? All members will become unassigned. This cannot be undone.')) return;
+    if (!await Confirm.ask({ title: 'Delete team?', body: 'All members will become unassigned. This cannot be undone.', confirmLabel: 'Delete team', danger: true })) return;
     try {
       await api(`/api/admin/teams/${id}`, { method: 'DELETE' });
       if (String(Admin._selectedTeamId) === String(id)) Admin._selectedTeamId = null;
@@ -336,7 +336,7 @@ const Admin = {
             ${!inv.used ? `
               <button class="btn btn-outline btn-sm" onclick="Admin.copyInviteCode('${esc(inv.code)}')">Copy Code</button>
               <button class="btn btn-ghost btn-sm" onclick="Admin.copyInviteMessage('${esc(inv.code)}','${teamName}')" title="Copy a ready-to-send onboarding message">Copy Message</button>
-              <button class="btn btn-ghost btn-sm" style="color:var(--fail)" onclick="Admin.revokeInvite(${inv.id})">Revoke</button>
+              <button class="btn btn-ghost btn-sm btn-danger-ghost" onclick="Admin.revokeInvite(${inv.id})">Revoke</button>
             ` : '—'}
           </td>
         </tr>`;
@@ -357,7 +357,7 @@ const Admin = {
   },
 
   async revokeInvite(id) {
-    if(!confirm('Revoke this invite code?')) return;
+    if (!await Confirm.ask({ title: 'Revoke invite code?', body: 'People who have not signed up yet will no longer be able to use it.', confirmLabel: 'Revoke', danger: true })) return;
     try {
       await api(`/api/admin/invites/${id}`, { method:'DELETE' });
       Toast.ok('Invite revoked.');
@@ -394,7 +394,7 @@ const Admin = {
     } catch(e) { Toast.err(e.message); }
   },
   async deleteTag(id) {
-    if (!confirm('Delete this tag? It will be removed from all learners.')) return;
+    if (!await Confirm.ask({ title: 'Delete tag?', body: 'It will be removed from all learners.', confirmLabel: 'Delete tag', danger: true })) return;
     try {
       await api(`/api/admin/tags/${id}`, { method: 'DELETE' });
       await Admin.loadTagsList();
@@ -480,7 +480,7 @@ const Admin = {
   async bulkDelete() {
     const ids = Array.from(Admin._selectedUsers);
     if (!ids.length) return;
-    if (!confirm(`Permanently delete ${ids.length} user(s)? This cannot be undone.`)) return;
+    if (!await Confirm.ask({ title: `Delete ${ids.length} user${ids.length === 1 ? '' : 's'}?`, body: 'This cannot be undone.', confirmLabel: 'Delete', danger: true })) return;
     try {
       await api('/api/learners/bulk/delete', { method: 'POST', body: JSON.stringify({ ids }) });
       Toast.ok(`${ids.length} user(s) deleted.`);
@@ -710,17 +710,14 @@ const Admin = {
       Admin.renderLearners();
     } catch(e) { Toast.err(e.message); }
   },
-  openDeleteLearner(id, name, role) {
-    const label = role === 'manager' ? 'Manager' : 'User';
-    $$('confirm-delete-title').textContent = `Delete ${label}`;
-    $$('confirm-delete-msg').textContent = `Permanently delete "${name}"? This cannot be undone.`;
-    $$('confirm-delete-btn').onclick = () => Admin.submitDeleteLearner(id);
-    $$('confirm-delete-overlay').classList.remove('hidden');
+  async openDeleteLearner(id, name, role) {
+    const label = role === 'manager' ? 'manager' : 'user';
+    if (!await Confirm.ask({ title: `Delete ${label}?`, body: `Permanently delete "${name}"? This cannot be undone.`, confirmLabel: `Delete ${label}`, danger: true })) return;
+    await Admin.submitDeleteLearner(id);
   },
   async submitDeleteLearner(id) {
     try {
       await api(`/api/learners/${id}`, { method:'DELETE' });
-      $$('confirm-delete-overlay').classList.add('hidden');
       Toast.ok('User deleted.');
       Admin.renderLearners();
     } catch(e) { Toast.err(e.message); }
@@ -1015,7 +1012,7 @@ const Admin = {
   },
 
   async deleteCourse(courseId, title) {
-    if (!confirm(`Delete "${title}"? This will remove all modules, questions, assignments, and completion records for this course.`)) return;
+    if (!await Confirm.ask({ title: `Delete "${title}"?`, body: 'This removes all modules, questions, assignments, and completion records for this course.', confirmLabel: 'Delete course', danger: true })) return;
     try {
       await api(`/api/courses/${courseId}`, { method:'DELETE' });
       Admin.renderCourses();
@@ -1057,7 +1054,7 @@ const Admin = {
     catch(e) { Toast.err(e.message); }
   },
   async deleteSection(id) {
-    if(!confirm('Delete this section? Its courses will become unsectioned and any sub-sections become top-level.')) return;
+    if (!await Confirm.ask({ title: 'Delete section?', body: 'Its courses will become unsectioned and any sub-sections become top-level.', confirmLabel: 'Delete section', danger: true })) return;
     try { await api(`/api/sections/${id}`, { method:'DELETE' }); Admin.renderCourses(); }
     catch(e) { Toast.err(e.message); }
   },
@@ -1114,7 +1111,11 @@ const Admin = {
       URL.revokeObjectURL(a.href);
     } catch(e) { Toast.err(e.message); }
   },
-  async clearRecords() { if(confirm('Clear all completion records? This cannot be undone — learner progress, quiz scores, and certificates will be permanently deleted.')){ await api('/api/completions', { method:'DELETE' }); Admin.renderDash(); } },
+  async clearRecords() {
+    if (!await Confirm.ask({ title: 'Clear all completion records?', body: 'Learner progress, quiz scores, and certificates will be permanently deleted. This cannot be undone.', confirmLabel: 'Clear all records', danger: true })) return;
+    await api('/api/completions', { method:'DELETE' });
+    Admin.renderDash();
+  },
 
   // AI Importer methods live in js/importer.js (const Importer)
   // Legacy shims so existing HTML onclick="Admin.saveAiKeys()" etc. keep working

@@ -31,6 +31,22 @@ None found. (No data-loss, auth bypass or crash-on-launch evidence.) Closest: CI
 | A11-02 | 4.11 | A11y | Contrast test covers ink/accent text only; status text (`--success/--warning/--danger`), chips and button text are unchecked and the test ignores tokens redefined inside `@media` | `worker/test/contrast.test.mjs` | Medium | S | Extend pairs once status/chip tokens are consolidated (VIS-02) | Open |
 | TST-02 | 2.2 | Lint | `no-unused-vars` is off for `js/` (cross-file globals) and Prettier is not enforced; implicit globals like `sectionsCache` are not detected | `eslint.config.mjs` | Low | M | Declare globals explicitly during ARC-01 split, then enable the rule | Open |
 
+## UX-01 findings (audit 2026-10-20, details in `COMPONENTS.md`)
+
+| ID | Phase | Area | Finding | Evidence | Severity | Effort | Fix | Status |
+|---|---|---|---|---|---|---|---|---|
+| UX-02 | 4.2 | Consistency | 12 destructive actions use native `confirm()` while a styled confirm modal exists; look and wording differ, unusable on some mobile browsers, not themable | `admin.js:305,360,397,483,1018,1060,1117`, `manager.js:152`, `builder.js:34`, `importer.js:314,969,1049` | High | M | One `Confirm.ask({title, body, confirmLabel, danger})` helper built on the modal; migrate all call sites; test | Fixed (polish/phase-4; `js/confirm.js`, 0 native `confirm()` left, old user-delete overlay removed; awaiting 🔍 review) |
+| UX-03 | 4.1 | Consistency | Destructive buttons styled four ways, same verb uses outline vs ghost | `admin.js:171,231,339`, `builder.js:48`, `importer.js:916` | Medium | S | Single `btn-danger-ghost` for row actions, `btn-danger` for confirm; remove inline colours | Fixed (polish/phase-4; also undefined `btn-secondary` → `btn-outline`) |
+| UX-04 | 4.1 | Consistency | Two empty-state systems; most empties give no next step | `empty-state-sm` x7 vs `.empty`; `style.css:612,791` | Medium | M | `emptyState({icon,title,hint,action})` helper; use for lists and tables; drop `-sm` and inline `grid-column` | Open |
+| UX-05 | 4.1 | Consistency | Chip names are colours not meanings; green forced uppercase; amber hardcoded hex | `style.css:297-302,1862-1865` | Medium | S | `chip-success/danger/warning/info/neutral` + `statusChip()` helper; fold into VIS-02 and A11-02 | Open |
+| UX-06 | 4.2 | Scale | Tables other than Users lack search/pagination; completions table duplicated in two portals | `index.html:319,906`; SCL-02 | High | M | One `dataTable()` renderer (columns, sort, filter, page), shared by Admin/Manager; pairs with SCL-02 | Open |
+| UX-07 | 4.11 | A11y | Clickable `div`s without role/keyboard; modals missing dialog semantics (6 attrs for 14 overlays) | `admin.js:102,141,1005`, `learner.js:282`, `index.html` overlays | Medium | S | Use `button`/`role=button tabindex=0` + Enter/Space; add `role=dialog aria-modal aria-labelledby` to every overlay. Merge with A11-01 | Open |
+| UX-08 | 4.1 | Consistency | Inline `style=` bypasses the system: 229 in index.html, 146 in js | grep counts | Medium | L | Replace with utility/component classes in batches, by screen, after VIS-02 | Open |
+| UX-09 | 4.4 | States | Spinners/"Loading…" text where skeletons exist | `admin.js:175,177,406`, `manager.js:417` | Low | S | Use `skelList` helpers | Open |
+| UX-10 | 4.2 | Safety | No undo for deletes; bulk "clear all completions" has a single OK dialog | `admin.js:1117` | Medium | M | Typed confirmation for irreversible bulk deletes; undo toast where soft delete is feasible (needs schema, ask first) | Open |
+
+Proposed order: UX-02 and UX-03 first (shared helper + button rule), then UX-04/05 with VIS-02 (CSS consolidation), then UX-06 with SCL-02, then UX-07/08/09.
+
 ## Suggested order (given your priorities)
 1. CI-01 + TST-01 (safe to change things)  2. VIS-01/VIS-02 + UX-01 (consistency foundation, then 4.x fix passes)  3. SCL-02, then SCL-01 decision  4. SEC-01, OBS-01, PRV-01, SEC-02  5. A11-01, REL-01, ARC-01.
 

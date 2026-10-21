@@ -196,7 +196,6 @@ const AppProxy = {
   closeTagsModal: () => $$('tags-modal').classList.add('hidden'),
   closeLearnerTagsModal: () => $$('learner-tags-modal').classList.add('hidden'),
   createTag: () => Admin.createTag(),
-  closeConfirmDelete: () => $$('confirm-delete-overlay').classList.add('hidden'),
   copyInviteCode: (code) => {
     const c = code || $$('generated-code').textContent;
     navigator.clipboard.writeText(c).then(() => Toast.ok('Code copied!')).catch(() => Toast.info(c));

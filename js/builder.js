@@ -4,10 +4,21 @@
 
 const Builder = {
   // ─── COURSE BUILDER ───
+  // The icon is stored as an emoji; the picker shows the line icon each emoji maps to.
+  setIcon(emoji) {
+    $$('cb-icon').value = emoji;
+    const selected = courseIconName(emoji);
+    $$('cb-icon-grid').innerHTML = COURSE_ICON_CHOICES.map(({ name, emoji: e }) =>
+      `<button type="button" class="icon-choice" role="radio" aria-checked="${name === selected}" aria-label="${name}" title="${name}" onclick="Builder.pickIcon('${e}')">${courseIcon(e)}</button>`).join('');
+  },
+  pickIcon(emoji) {
+    Builder.setIcon(emoji);
+    Builder._dirty = true;
+  },
   openBuilder(editId = null) {
     cbState = { editId, mods: [] };
     $$('cb-title').value = '';
-    $$('cb-icon').value = '';
+    Builder.setIcon(COURSE_ICON_CHOICES.find(i => i.name === 'cap').emoji);
     $$('cb-desc').value = '';
     $$('cb-ref-url').value = '';
     $$('mods-builder').innerHTML = '';
@@ -22,7 +33,7 @@ const Builder = {
       api(`/api/courses/${editId}`).then(c => {
         const nc = normCourse(c);
         $$('cb-title').value = nc.title;
-        $$('cb-icon').value = nc.icon;
+        Builder.setIcon(nc.icon);
         $$('cb-desc').value = nc.desc;
         $$('cb-ref-url').value = nc.refUrl;
         cbState.mods = nc.mods.map(m => ({ id: m.id, title: m.title, content: m.content, summary: m.summary || '', reference_url: m.refUrl || '', learning_objectives: m.objectives || [], questions: m.questions }));
@@ -30,8 +41,8 @@ const Builder = {
       }).catch(() => {});
     }
   },
-  closeBuilder(force) {
-    if (!force && Builder._dirty && !confirm('Discard your unsaved changes to this course?')) return;
+  async closeBuilder(force) {
+    if (!force && Builder._dirty && !await Confirm.ask({ title: 'Discard changes?', body: 'Your unsaved changes to this course will be lost.', confirmLabel: 'Discard changes', cancelLabel: 'Keep editing', danger: true })) return;
     Builder._dirty = false;
     $$('builder-overlay').classList.add('hidden');
   },
@@ -45,7 +56,7 @@ const Builder = {
       <div class="card" style="margin-bottom:var(--space-4);">
         <div style="display:flex;justify-content:space-between;margin-bottom:var(--space-3);">
           <div style="font-weight:700;">Module ${i+1}</div>
-          <button class="btn btn-ghost btn-sm" style="color:var(--fail);" onclick="Builder.delMod(${i})">Remove</button>
+          <button class="btn btn-ghost btn-sm btn-danger-ghost" onclick="Builder.delMod(${i})">Remove</button>
         </div>
         <div class="field"><label>Title</label><input type="text" value="${esc(m.title)}" oninput="cbState.mods[${i}].title=this.value" placeholder="e.g. Introduction"></div>
         <div class="field"><label>Content (Markdown)</label><textarea style="min-height:120px;" oninput="cbState.mods[${i}].content=this.value" placeholder="Module text here...">${esc(m.content)}</textarea></div>

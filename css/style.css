@@ -2343,3 +2343,15 @@ button, .nav-btn, .quiz-opt, .course-card, .role-tile, label { touch-action: man
 .sec-move .icon-btn { width: 44px; height: 44px; border-radius: var(--radius-md); }
 .sec-move .icon-btn svg { width: 18px; height: 18px; }
 .icon-btn:disabled { opacity: 0.35; cursor: default; pointer-events: none; }
+
+/* Course icon picker (course builder) */
+.field-label { display: block; margin-bottom: var(--space-2); font-size: var(--text-sm); font-weight: 600; color: var(--ink-2); }
+.icon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: var(--space-2); }
+.icon-choice {
+  display: grid; place-items: center; min-height: 44px; padding: 0;
+  background: var(--surface); color: var(--ink-2);
+  border: 1px solid var(--border); border-radius: var(--radius-md); cursor: pointer;
+}
+.icon-choice:hover { border-color: var(--border-2); color: var(--ink-1); }
+.icon-choice[aria-checked="true"] { background: var(--brand-glow); color: var(--brand); border-color: var(--brand); }
+.icon-choice:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }

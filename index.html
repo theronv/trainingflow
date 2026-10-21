@@ -1219,21 +1219,6 @@ if (typeof marked !== 'undefined') {
 </div>
 
 <!-- ══════════ MODAL: CONFIRM DELETE ══════════ -->
-<div class="overlay hidden" id="confirm-delete-overlay">
-  <div class="modal">
-    <div class="modal-head">
-      <div class="modal-title" id="confirm-delete-title">Delete User</div>
-    </div>
-    <div class="modal-body">
-      <p id="confirm-delete-msg" style="color:var(--danger);"></p>
-    </div>
-    <div class="modal-foot">
-      <button type="button" class="btn btn-ghost" onclick="App.closeConfirmDelete()">Cancel</button>
-      <button type="button" class="btn btn-danger" id="confirm-delete-btn">Delete</button>
-    </div>
-  </div>
-</div>
-
 <!-- ══════════ MODAL: COURSE BUILDER ══════════ -->
 <div class="overlay hidden" id="builder-overlay">
   <div class="modal modal-wide">
@@ -1247,8 +1232,12 @@ if (typeof marked !== 'undefined') {
         <button type="button" class="btn btn-primary" onclick="App.saveCourse(this)">Save Course</button>
       </div>
       <div class="field-row">
-        <div class="field"><label>Title</label><input type="text" id="cb-title" placeholder="e.g. Q2 Compliance Training"></div>
-        <div class="field"><label>Icon</label><input type="text" id="cb-icon" placeholder="📋" maxlength="4"></div>
+        <div class="field"><label for="cb-title">Title</label><input type="text" id="cb-title" placeholder="e.g. Q2 Compliance Training"></div>
+      </div>
+      <div class="field">
+        <span class="field-label" id="cb-icon-label">Icon</span>
+        <input type="hidden" id="cb-icon">
+        <div class="icon-grid" id="cb-icon-grid" role="radiogroup" aria-labelledby="cb-icon-label"></div>
       </div>
       <div class="field"><label>Description</label><input type="text" id="cb-desc" placeholder="Brief description for learners…"></div>
       <div class="field">
@@ -1437,6 +1426,7 @@ if (typeof marked !== 'undefined') {
 
 <script src="js/core.js"></script>
 <script src="js/sections.js"></script>
+<script src="js/confirm.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/admin.js"></script>
 <script src="js/importer.js"></script>
