@@ -179,6 +179,8 @@ All routes in `worker/index.js`. Auth middleware: `requireAdmin`, `requireManage
 | `POST` | `/api/learners` | Admin/Manager | Create a learner (team_id locked to manager's team) |
 | `POST` | `/api/learners/bulk` | Admin/Manager | Bulk create from CSV |
 | `GET` | `/api/learners/me` | Any account | Get own profile (`id, name, email, email_notifications`) |
+| `GET` | `/api/learners/me/export` | Any account | Download my data: profile, assignments, completions, module progress (no hashes, nobody else's data) |
+| `DELETE` | `/api/learners/me` | Any account | Delete my account: needs `{password}` (or `{clerk_token}`); 409 for the last admin; removes all my rows via `deleteAccounts()`, so my certificates stop verifying |
 | `PATCH` | `/api/learners/me` | Any account | Update own name/password/`email_notifications` |
 | `GET` | `/api/learners/:id` | Admin/Manager | Get learner (managers: team-scoped) |
 | `PATCH` | `/api/learners/:id` | Admin | Edit user (name, team, role, email, `is_admin`) |
@@ -327,6 +329,10 @@ Finishing a course is a designed moment, not a toast.
 - **Sharing:** copy verify link, native share sheet (where available) and LinkedIn "Add to profile".
 - **Wall and badges:** My Certificates is a grid of cards plus a badge grid. Badges (`js/milestones.js`: first certificate, hat trick, ten, perfect score, first try, comeback, section complete) are derived from completions and the course list, never stored. Admin and Manager dashboards use `activityListHtml()` so a pass reads "Certificate · 92%".
 - **Emails (`worker/email.js`, Resend):** when a learner passes, `POST /api/completions` sends them a "You earned a certificate" email and each of their team's managers (role `manager`, same team, not the learner, max 20) a "[Name] earned a certificate" email, in the background via `waitUntil`, only for a course's first pass (retakes mint new certificates but send nothing). Needs `RESEND_API_KEY`; without it nothing is sent. No address, or `users.email_notifications = 0`, means no email; failures are logged (never the address) and never fail the completion. All of a certificate's emails go in one `POST /emails/batch` call (Resend allows ~2 requests/second) with `Idempotency-Key: cert-<certId>`. Links use `APP_URL` (default `https://pregame-academy.vickerydigital.com`) and `#/verify/<certId>`. Users switch it off under Account (`PATCH /api/learners/me {email_notifications}`; `GET` returns `email` and `email_notifications`). No PDF attachment (the PDF is drawn in the browser). Not built: assignment/overdue emails, digests.
+
+## Privacy & self-service — 2026-10-21
+
+Public privacy & terms page at `#/privacy` (`screen-privacy`, linked from the landing footer and Account); it names the processors (Cloudflare, GitHub Pages, Turso, Clerk, Resend) and points people to their organisation's administrator. Account → Your data (learner and manager) downloads the personal-data JSON and deletes the account (`App.downloadMyData` / `App.deleteMyAccount`). `deleteAccounts(db, ids)` in the worker is the one place that removes a user and every row that points at them (also used by the admin single and bulk deletes; it fixed stray `quiz_answers`/`course_progress` rows and the `invite_codes.used_by` reference). Keep it in step with any new table that holds a user id.
 
 ## Bulk assignment — 2026-10-20
 
