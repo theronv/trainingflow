@@ -52,3 +52,34 @@ Proposed order: UX-02 and UX-03 first (shared helper + button rule), then UX-04/
 
 ## Housekeeping
 - Done: `.DS_Store` untracked; CLAUDE.md AI-proxy notes corrected. The 6 deleted content JSONs are left uncommitted pending your call.
+
+## Phase 3.1 Security audit (2026-10-20)
+
+Scope: OWASP Top 10 pass over `worker/index.js` (70 routes), the SPA shell, git history and dependencies. Recorded, not fixed: waiting for approval (see order at the end).
+
+| ID | Phase | Area | Finding | Evidence | Severity | Effort | Fix | Status |
+|---|---|---|---|---|---|---|---|---|
+| SEC-03 | 3.1 | Secrets | `worker/.dev.vars` was committed to the **public** repo and is still in history: a `GEMINI_API_KEY` in real Google key format (39 chars), a `JWT_SECRET` placeholder starting "super" (39 chars), a dev `ADMIN_PASSWORD_HASH`, and a mock `TURSO_TOKEN` (10 chars). Untracked in b6b03dd but never purged | `git log --all -- worker/.dev.vars` → 808778e, d120300, 8321ad3; `gh repo view` → PUBLIC | **Critical if the key is live or production reuses these values** | S | **Owner actions:** revoke/rotate that Gemini key in Google AI Studio; confirm production `JWT_SECRET` and admin password differ from the committed dev values (rotate if unsure: rotating `JWT_SECRET` signs everyone out). Claude cannot read production secrets, so this cannot be checked from here. **Do not rewrite history**: rotation makes the leaked values worthless. | Open (owner) |
+| SEC-04 | 3.1 | Dependencies | `hono` resolves to ≤4.13.10 (we pin `^4.7.0`): 2 high advisories in `npm audit --omit=dev`. Relevant to what we use: `hono/jwt` verify accepts invalid NumericDate claims (GHSA-hm8q-7f3q-5f36) and the CORS middleware has a ReDoS (GHSA-8j4g-w8fx-2239); also `bodyLimit` bypass (needed for SEC-06). `ws` (via `@libsql/client`) has a memory-exhaustion DoS. Root package: 0 vulnerabilities | `cd worker && npm audit --omit=dev`; `worker/package.json:13-14` | High | S | `npm update hono` (to 4.13.13) and `npm audit fix` for `ws`, run the suite, deploy. Needs your OK (dependency change) | Open |
+| SEC-05 | 3.1 | Authorization | Roles and `team_id` are read from the JWT only (`bearer()`, `requireAdmin/Manager/Learner`, `index.js:164-196`). A deleted, demoted or team-moved user keeps their old access until the token expires (learner 24 h, admin/manager 8 h); a password change or reset does not end existing sessions | `index.js:158-196`; no DB check in middleware | Medium | M | Re-check the user row (exists, role, `is_admin`, `team_id`) on admin/manager routes, or add a `sessions_valid_after` column and reject older tokens. Touches auth: needs your decision | Open |
+| SEC-06 | 3.1 | Abuse/cost | No request body size limit anywhere; `/api/ai/generate` accepts any `prompt` length and a client-chosen `max_tokens`. Admin-only, so the risk is a compromised admin or runaway import | `index.js:1533-1555`; grep `bodyLimit` → none | Low–Medium | S | Cap prompt (~200k chars) and `max_tokens` (≤ 8000); add body limit after SEC-04 | Open |
+| SEC-07 | 3.1 | Auth hardening | Login rate limiting is per-IP and per-isolate (`_rateCheck`), so it resets on cold start and is bypassed by rotating IPs; no per-account lockout or backoff. `GET /api/verify/:id` shares the limit. Old certificates (`TF-`/`PG-` 8 hex, 32 bits) are enumerable in principle | `index.js:257-263` | Medium | M | Durable limiter (Cloudflare Rate Limiting rule or KV/DO) on login and verify; per-account failed-attempt counter. Folds into REL-01 | Open |
+| SEC-08 | 3.1 | Privacy/ops | Resend is now a sub-processor: recipient email, learner name, course, score and cert id are sent to it on first passes | `worker/email.js` | Info | S | Record in the privacy policy (PRV-01) and the data map (3.3) | Open |
+
+**Updates to existing items**
+- **SEC-01 (headers):** still no CSP or security headers (grep: none in `worker/index.js` or `index.html`). GitHub Pages cannot set response headers and `<meta>` CSP cannot set `frame-ancestors`, so clickjacking protection and HSTS are impossible on Pages alone. The custom domain's DNS is on Cloudflare (per Resend): if the app record is proxied, Cloudflare Transform Rules can add CSP/HSTS/X-Frame-Options with no code. API side: Hono `secureHeaders()` is a one-line add. Inline `onclick` handlers mean a strict script CSP needs the handler refactor or `unsafe-inline` for now.
+- **SEC-02 (XSS):** a crude scan of 64 candidate interpolations found **no confirmed unescaped sink**; spot checks (`admin.js:534`, `auth.js:137/255`, `admin.js:702/1006`) go to `Toast`/`textContent`/`Confirm`, which escape or avoid HTML. Not proven safe: replace the heuristic with a real test that fails on any `${…}` inside an `innerHTML` template that isn't `esc()`/known-safe. New code (verify page, ceremony, wall, emails) escapes everything.
+- **REL-01:** also covers SEC-07.
+
+**Checked and fine**
+- Authorization map: every one of the 70 routes carries a middleware except the 11 intended-public ones (brand GET, three logins, invite preview, access-request POST, Clerk login, two registers, verify). Manager-scoped mutations (password reset, invite delete, tag routes) check team ownership and return 404 for other teams (`index.js:532-545`, `433-443`, `1983-2025`); admin-only routes use `requireAdmin`.
+- JWT: HS256 pinned on sign and verify, `exp` set (8 h / 24 h); passwords PBKDF2-SHA256 100k with per-user salt.
+- CORS: explicit allow-list echoed back, never a wildcard (the wildcard advisory does not apply).
+- SQL: parameterised throughout (spot-checked all new routes).
+- 500s return a generic message; errors never echo DB detail except `PUT /api/brand` (returns `detail: e.message`, `index.js:~506`): fold into SEC-06's batch.
+
+**Proposed order (approve to proceed)**
+1. SEC-03 now (owner actions, 10 minutes, nothing to code). It is the only Critical.
+2. SEC-04 (dependency bump + tests), then SEC-01 API headers + the Cloudflare rule if the record is proxied, then SEC-06.
+3. SEC-05 (needs your decision on the approach), SEC-07, then the real SEC-02 scanner test.
+4. Then 3.2 Reliability and 3.3 Privacy (PRV-01, SEC-08); re-score at the end of Phase 3.
