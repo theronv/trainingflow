@@ -1,10 +1,11 @@
 {
-  "css/style.css": 79,
+  "css/style.css": 75,
   "index.html": 44,
   "js/admin.js": 0,
   "js/app.js": 1,
   "js/auth.js": 1,
   "js/builder.js": 0,
+  "js/confirm.js": 0,
   "js/core.js": 13,
   "js/demo.js": 0,
   "js/importer.js": 0,
