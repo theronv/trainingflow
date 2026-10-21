@@ -85,3 +85,8 @@ Scope: OWASP Top 10 pass over `worker/index.js` (70 routes), the SPA shell, git 
 4. Then 3.2 Reliability and 3.3 Privacy (PRV-01, SEC-08); re-score at the end of Phase 3.
 
 | TST-03 | 3.1 | Dependencies | Vitest and its helpers have 3 advisories (1 moderate, 2 critical: tinypool prototype pollution, `@vitest/mocker` file read). Dev-only; they matter only if the test runner processes untrusted input, which it does not. Fix is a forced major upgrade | `cd worker && npm audit` | Low | M | Upgrade vitest in its own change with the suite as the safety net (dependency change: ask) | Open |
+
+### SEC-02 follow-up (2026-10-20)
+- **SEC-10 (High, fixed):** lesson Markdown was rendered with `marked.parse()` straight into `innerHTML`; marked passes raw HTML and `javascript:` links through, and lesson text can come from scraped pages or AI. New `js/markdown.js` rebuilds marked's output from an allow-list of tags and attributes (links forced to `noopener`, safe URL schemes only, raster `data:` images only). All 110 lessons in `content/synergy` render the same apart from lazy-loaded images. Tests: `markdown-ui`.
+- **SEC-09 (Medium, fixed):** backup restore accepted any text as an id, and ids are interpolated into inline `onclick="…('${id}')"` handlers. Restore now requires `[A-Za-z0-9_-]{1,64}`. Tests: `id-safety`.
+- Still open: a lint-time scan that fails on any `${…}` in an `innerHTML` template that is not `esc()`/known-safe (about 200 distinct expressions need triage; most are numbers, ids from the Worker, or inner templates).

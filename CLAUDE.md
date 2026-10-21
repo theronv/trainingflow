@@ -42,6 +42,7 @@ js/
 ├── celebrate.js      # Course result ceremony (pass reveal, retake screen) — see "Certificates" below
 ├── certificate.js    # Certificate sheet, native PDF, QR, share, public verify page
 ├── milestones.js     # Badges derived from completions (nothing stored)
+├── markdown.js       # Markdown.render(): marked + allow-list HTML sanitiser for lesson content
 ├── confirm.js        # Confirm.ask({title, body, confirmLabel, danger}) → Promise<boolean>; replaces native confirm()
 ├── builder.js        # Course builder — module/question editor (148 lines)
 ├── demo.js           # Interactive demo sandbox — fixture team + playable course, in-memory fake API (see Demo below)
@@ -368,7 +369,7 @@ F1–F12 are fixed and covered by `worker/test/`. **F1/F2 were regressed and are
 - **Unauthenticated catalog closed:** `GET /api/courses` and `GET /api/sections` now require a token (demo mode uses a built-in sample catalog, `DEMO_COURSES` in `js/core.js`).
 - **Known residual risk:** because retakes are allowed and the key is revealed per answered question, a determined learner can probe answers by repeated attempts. This is inherent to retake-friendly quizzes; add attempt limits/cooldowns if certificates need stronger assurance.
 
-- **Hardening (2026-10-20, SEC-01/04/06):** every `/api/*` response carries `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy`, HSTS, a deny-all CSP; signed-in and write responses are `Cache-Control: no-store` (`secureHeaders()` in `worker/index.js`). `hono` 4.13.13 / `ws` 8.22 (runtime audit clean). `/api/ai/generate` accepts only text prompts up to 200k chars and clamps `max_tokens` to 8000. 500 responses never include database error text. Open: Pages-shell headers/CSP, token revocation (SEC-05), durable rate limiting (SEC-07) — see `.polish/BACKLOG.md`.
+- **Hardening (2026-10-20, SEC-01/04/06):** every `/api/*` response carries `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy`, HSTS, a deny-all CSP; signed-in and write responses are `Cache-Control: no-store` (`secureHeaders()` in `worker/index.js`). `hono` 4.13.13 / `ws` 8.22 (runtime audit clean). `/api/ai/generate` accepts only text prompts up to 200k chars and clamps `max_tokens` to 8000. 500 responses never include database error text. Lesson Markdown goes through `js/markdown.js` (allow-list sanitiser) before `innerHTML`; backup restore only accepts ids matching `[A-Za-z0-9_-]{1,64}`. Open: Pages-shell headers/CSP, token revocation (SEC-05), durable rate limiting (SEC-07) — see `.polish/BACKLOG.md`.
 
 Verified present:
 - **F3–F8 (HIGH):** Team ownership enforced on manager routes; `requireLearner` checks `role === 'learner'` (`worker/index.js:152`); `team_id` locked to manager's own team

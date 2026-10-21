@@ -1903,6 +1903,9 @@ app.get('/api/admin/backup', requireAdmin, async (c) => {
 })
 
 const isText = (v) => typeof v === 'string' && v.trim().length > 0
+// Ids end up inside inline onclick="…('${id}')" handlers in the SPA. The Worker mints hex ids itself; a backup file
+// is the only way to supply one, so it must look like one (letters, digits, _ and -).
+const isId = (v) => typeof v === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(v)
 
 // Returns an error message for the first structural problem, or null. Accepts files from
 // before versioning (just { courses: [...] }) as long as the courses are well-formed.
@@ -1913,13 +1916,13 @@ function validateBackup(body) {
   if (!Array.isArray(body.courses)) return 'Invalid backup file: no courses list found.'
   if (body.courses.length > BACKUP_MAX_COURSES) return `Backup has more than ${BACKUP_MAX_COURSES} courses.`
   if (body.sections !== undefined && !Array.isArray(body.sections)) return 'Invalid backup file: sections must be a list.'
-  for (const s of body.sections || []) if (!isText(s?.id) || !isText(s?.name)) return 'Invalid backup file: every section needs an id and name.'
+  for (const s of body.sections || []) if (!isId(s?.id) || !isText(s?.name)) return 'Invalid backup file: every section needs a name and an id made of letters, digits, _ or - (up to 64 characters).'
   for (const co of body.courses) {
-    if (!isText(co?.id) || !isText(co?.title)) return 'Invalid backup file: every course needs an id and title.'
+    if (!isId(co?.id) || !isText(co?.title)) return 'Invalid backup file: every course needs a title and an id made of letters, digits, _ or - (up to 64 characters).'
     for (const m of co.modules || []) {
-      if (!isText(m?.id) || !isText(m?.title)) return `Invalid backup file: a module in "${co.title}" is missing its id or title.`
+      if (!isId(m?.id) || !isText(m?.title)) return `Invalid backup file: a module in "${co.title}" needs a title and a valid id.`
       for (const q of m.questions || []) {
-        if (!isText(q?.id) || !isText(q?.question)) return `Invalid backup file: a question in "${co.title}" is missing its id or text.`
+        if (!isId(q?.id) || !isText(q?.question)) return `Invalid backup file: a question in "${co.title}" needs text and a valid id.`
       }
     }
   }
