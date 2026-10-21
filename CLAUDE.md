@@ -80,7 +80,7 @@ cd worker && npm run test:watch  # watch mode
 
 Lint: `npm install && npm run lint` at the repo root (ESLint + `@html-eslint` for `index.html` + `scripts/check-tokens.mjs`, a ratchet on raw colour literals — lower `scripts/token-baseline.json` as they migrate to tokens). `worker/test/contrast.test.mjs` checks WCAG AA contrast of the CSS text/background tokens in both themes. A project Stop hook (`scripts/stop-check.sh`, wired in `.claude/settings.json`) runs lint + worker tests when code files changed. CI (`.github/workflows/ci.yml`) runs lint and tests on every PR.
 
-Coverage: `worker/test/` — `auth` (login + rate limiting), `rbac` (role gates + manager team scoping), `scoring` (answer-key stripping, server-side grading and score computation), `scrape` (URL import validation). `importer` (the frontend `js/importer.js` loaded with browser globals stubbed: reply parsing, question validation, answer shuffling, prompt building, reply merging, save validation). `learner` (the source-link visibility helper), `assign-bulk` (multi-course bulk assignment) and `assign-ui` (`js/builder.js` course selection + assign counts), `sections-ui` (`js/sections.js`: section move/collapse logic), `confirm-ui` (`js/confirm.js`: shared confirm dialog) and `sections` (incl. the order endpoint). The rest of `js/` has no tests yet.
+Coverage: `worker/test/` — `auth` (login + rate limiting), `rbac` (role gates + manager team scoping), `scoring` (answer-key stripping, server-side grading and score computation), `scrape` (URL import validation). `importer` (the frontend `js/importer.js` loaded with browser globals stubbed: reply parsing, question validation, answer shuffling, prompt building, reply merging, save validation). `backup` (content export/restore round trip, atomicity, validation), `course-icons` (icon picker mapping), `learner` (the source-link visibility helper), `assign-bulk` (multi-course bulk assignment) and `assign-ui` (`js/builder.js` course selection + assign counts), `sections-ui` (`js/sections.js`: section move/collapse logic), `confirm-ui` (`js/confirm.js`: shared confirm dialog) and `sections` (incl. the order endpoint). The rest of `js/` has no tests yet.
 
 ## Environment Variables
 
@@ -192,7 +192,8 @@ All routes in `worker/index.js`. Auth middleware: `requireAdmin`, `requireManage
 | `GET` | `/api/admin/completions` | Admin/Manager | Completion log (filterable, team-scoped) |
 | `DELETE` | `/api/completions` | Admin | Clear all completion records |
 | `GET` | `/api/admin/trouble-spots` | Admin/Manager | Courses with highest failure rates |
-| `POST` | `/api/admin/backup/restore` | Admin | Import courses from JSON backup |
+| `GET` | `/api/admin/backup` | Admin | Content backup: one versioned JSON (`format: pregame-academy-content`, `version`, `counts`, sections, courses → modules → questions with answer keys). No users, assignments or completions |
+| `POST` | `/api/admin/backup/restore` | Admin | Validate and restore a backup in one atomic batch; adds missing sections/courses, skips existing ids, never overwrites. Accepts older un-versioned `{courses}` files |
 | `GET` | `/api/assignments` | Admin/Manager | List assignments |
 | `GET` | `/api/assignments/me` | Learner | Own assignments with status |
 | `POST` | `/api/assignments` | Admin/Manager | Assign a course (team-scoped for managers) |

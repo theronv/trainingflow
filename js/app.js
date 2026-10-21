@@ -370,25 +370,27 @@ const AppProxy = {
   // Settings backup
   exportBackup: async () => {
     try {
-      const [summaries, learners, comps] = await Promise.all([api('/api/courses'), api('/api/learners'), api('/api/admin/completions')]);
-      const courses = await Promise.all(summaries.map(c => api(`/api/courses/${c.id}`)));
-      const blob = new Blob([JSON.stringify({ courses, learners, completions: comps }, null, 2)], { type: 'application/json' });
-      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'pregame-academy-backup.json'; a.click();
-    } catch(e) { Toast.err(e.message); }
+      const backup = await api('/api/admin/backup');
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `pregame-academy-content-backup-${backup.exported_at.slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      const n = backup.counts;
+      Toast.ok(`Backup downloaded: ${n.courses} courses, ${n.modules} modules, ${n.questions} questions.`);
+    } catch(e) { Toast.err('Backup failed: ' + e.message); }
   },
   importBackup: () => {
     const inp = document.createElement('input');
     inp.type = 'file'; inp.accept = '.json,application/json';
     inp.onchange = async e => {
       const file = e.target.files[0]; if (!file) return;
+      let data;
+      try { data = JSON.parse(await file.text()); } catch { return Toast.err('That file is not valid JSON. Choose a backup downloaded from this page.'); }
       try {
-        const text = await file.text();
-        const data = JSON.parse(text);
-        if (!data.courses || !Array.isArray(data.courses)) return Toast.err('Invalid backup file — no courses array found.');
-        // Enrich backup with full course details if modules are missing
-        const courses = data.courses;
-        const res = await api('/api/admin/backup/restore', { method: 'POST', body: JSON.stringify({ courses }) });
-        Toast.ok(`Restored ${res.imported} course(s). ${res.skipped} already existed and were skipped.`);
+        const res = await api('/api/admin/backup/restore', { method: 'POST', body: JSON.stringify(data) });
+        Toast.ok(`Restored ${res.imported} course(s) and ${res.sections} section(s). ${res.skipped} course(s) already existed and were skipped.`);
         Admin.renderCourses();
       } catch(e) { Toast.err('Restore failed: ' + e.message); }
     };
