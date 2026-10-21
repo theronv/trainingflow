@@ -332,9 +332,14 @@ const Demo = {
       const score = Math.round(right / qs_.length * 100);
       const passed = score >= (brandCache.pass || CONFIG.DEFAULT_PASS);
       const cert_id = passed ? 'DEMO-' + Math.random().toString(36).slice(2, 8).toUpperCase() : null;
+      const attempt = S.completions.filter(x => x.learner_id === me && x.course_id === body.course_id).length + 1;
+      const breakdown = DEMO_COURSE.modules.map(mod => ({
+        module_id: mod.id, title: mod.title, total: mod.questions.length,
+        correct: mod.questions.filter(x => S.answers[x.id] === x.correct_index).length
+      }));
       S.completions.push({ id: 'dc-' + (S.completions.length + 1), course_id: body.course_id, learner_id: me, score, passed, completed_at: now, cert_id });
       qs_.forEach(x => { delete S.answers[x.id]; });
-      return { cert_id, score, passed };
+      return { cert_id, score, passed, pass_mark: brandCache.pass || CONFIG.DEFAULT_PASS, attempt, breakdown };
     }
 
     // ── Team management in the manager view: update the sandbox where it is cheap ──

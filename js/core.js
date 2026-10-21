@@ -203,7 +203,7 @@ let coursesCache = [];
 let assignCache  = [];
 let sectionsCache = [];
 let isDemo       = false;
-let brandCache   = { name: CONFIG.DEFAULT_BRAND_NAME, tagline: CONFIG.DEFAULT_TAGLINE, logo: '', c1: CONFIG.DEFAULT_C1, c2: CONFIG.DEFAULT_C2, c3: CONFIG.DEFAULT_C3, pass: CONFIG.DEFAULT_PASS, font: CONFIG.DEFAULT_FONT, fontUrl: '' };
+let brandCache   = { name: CONFIG.DEFAULT_BRAND_NAME, tagline: CONFIG.DEFAULT_TAGLINE, logo: '', c1: CONFIG.DEFAULT_C1, c2: CONFIG.DEFAULT_C2, c3: CONFIG.DEFAULT_C3, pass: CONFIG.DEFAULT_PASS, font: CONFIG.DEFAULT_FONT, fontUrl: '', signName: '', signTitle: '' };
 
 // Parents first, each followed by its sub-sections. Adds `label` ("Parent › Child") and `depth`.
 function orderSections(sections) {
@@ -338,6 +338,23 @@ function normCourse(c) {
     }))
   };
 }
+// Recent completions as a feed: a pass reads as a certificate earned, a miss as an attempt.
+function activityListHtml(items) {
+  return `<div class="activity-list">${items.map(c => {
+    const date = new Date(c.completed_at * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    const chip = c.passed
+      ? `<span class="chip chip-success">${ICON.award} Certificate · ${c.score}%</span>`
+      : `<span class="chip chip-danger">Not passed · ${c.score}%</span>`;
+    return `<div class="activity-item">
+      <div class="activity-info">
+        <div class="activity-name">${esc(c.user_name)}</div>
+        <div class="activity-course">${esc(c.course_title)}</div>
+      </div>
+      <div class="activity-meta">${chip}<span class="activity-date">${date}</span></div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
 function normRecord(r) { return { cid: r.course_id, learner: r.learner_name, score: r.score, passed: Boolean(r.passed), date: (r.completed_at || 0) * 1000, cid2: r.cert_id || '', }; }
 // Values the app shipped with before the Pregame Academy rebrand. Rows still holding them are
 // treated as "unset" so they pick up the new defaults; anything an admin customised is kept.
@@ -360,6 +377,8 @@ function normBrand(b) {
     pass:    b.pass_threshold ?? CONFIG.DEFAULT_PASS,
     font:    legacy(b.font_family, LEGACY_BRAND.fonts) ? CONFIG.DEFAULT_FONT : b.font_family,
     fontUrl: b.font_url || '',
+    signName:  b.signatory_name || '',
+    signTitle: b.signatory_title || '',
   };
 }
 
@@ -408,8 +427,6 @@ function applyBrand() {
 
   // Org name across all surfaces
   ['ldg-brand', 'l-brand', 'a-brand', 'm-brand'].forEach(id => { const el = $$(id); if(el) el.textContent = b.name; });
-  const certSig = $$('c-sig-dept');
-  if(certSig) certSig.textContent = b.name + ' Training Department';
 
   // Tagline (dynamic)
   const taglineEl = $$('ldg-tagline');

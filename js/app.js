@@ -96,35 +96,8 @@ const AppProxy = {
 
   // Learner Extra
   closeCert: () => $$('cert-overlay').classList.add('hidden'),
-  downloadCertPDF: () => {
-    const jspdf = window.jspdf;
-    if (!jspdf) { Toast.err('PDF library not loaded.'); return; }
-    if (typeof html2canvas !== 'function') { Toast.err('Canvas library not loaded.'); return; }
-    const { jsPDF } = jspdf;
-    const doc = new jsPDF('l', 'mm', 'a4');
-    const sheet = $$('cert-sheet');
-    if (!sheet) { Toast.err('Certificate sheet not found.'); return; }
-
-    Toast.info('Generating PDF...');
-    // The phone preview is scaled to fit (CSS zoom); capture at full size so the PDF isn't shrunk.
-    const prevZoom = sheet.style.zoom; sheet.style.zoom = '';
-    html2canvas(sheet, { scale: 2, useCORS: true, logging: false }).finally(() => { sheet.style.zoom = prevZoom; }).then(canvas => {
-      const img = canvas.toDataURL('image/png');
-      doc.addImage(img, 'PNG', 0, 0, 297, 210);
-
-      // Official Filename: Certificate_CourseName_LearnerName.pdf
-      const slug = s => s.replace(/[^a-z0-9]+/gi, '_').replace(/^_|_$/g, '');
-      const cName = slug($$('c-course')?.textContent || 'Course');
-      const lName = slug($$('c-name')?.textContent || 'Learner');
-      const filename = `Certificate_${cName}_${lName}.pdf`;
-
-      doc.save(filename);
-      Toast.ok('Certificate downloaded.');
-    }).catch(e => {
-      console.error('PDF Error:', e);
-      Toast.err('Failed to generate PDF.');
-    });
-  },
+  downloadCertPDF: () => Certificate.downloadPdf(),
+  leaveVerify: () => { location.href = location.pathname + location.search; },
 
   // Missing Mappings
   changePw: async () => {
@@ -517,6 +490,9 @@ const AppProxy = {
       applyBrand();
     }
     await App.baseInit();
+    // A certificate's QR code (#/verify/<id>) opens the public check page, for anyone, signed in or not.
+    const verifyId = Certificate.idFromHash(window.location.hash);
+    if (verifyId) { Certificate.showVerify(verifyId); return; }
     // An invite link (#invite=CODE) always lands on the join screen, even if someone is signed in.
     const inviteMatch = window.location.hash.match(/invite=([A-Za-z0-9]+)/);
     if (inviteMatch) {
@@ -542,3 +518,8 @@ Object.assign(App, AppProxy);
 
 // Auto-init on load
 document.addEventListener('DOMContentLoaded', () => App.init());
+window.addEventListener('hashchange', () => {
+  const id = Certificate.idFromHash(window.location.hash);
+  if (id) Certificate.showVerify(id);
+  else if ($$('screen-verify').classList.contains('active')) location.reload(); // e.g. an invite link pasted into this tab
+});

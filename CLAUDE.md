@@ -21,7 +21,7 @@ Pregame Academy is a full-stack LMS for professional teams. AI-assisted course c
 | Database | Turso (libSQL/SQLite) via `@libsql/client` v0.14.0 — raw SQL, no Drizzle |
 | Auth | Custom JWT + PBKDF2-SHA256 (100k iterations); Clerk email sign-in exchanges for the same app JWT |
 | AI | Anthropic Claude (`claude-sonnet-4-6`) + Google Gemini 1.5 Flash — direct browser calls, keys in localStorage |
-| PDF | jsPDF + html2canvas — client-side |
+| PDF | jsPDF (drawn natively, no screenshot) + qrcode-generator — client-side |
 | Build | None — static HTML + Wrangler v4.75.0 deploy |
 
 ---
@@ -39,6 +39,9 @@ js/
 ├── importer.js       # AI Importer (555 lines — split out of admin.js)
 ├── manager.js        # Manager portal (460 lines)
 ├── learner.js        # Learner portal (530 lines)
+├── celebrate.js      # Course result ceremony (pass reveal, retake screen) — see "Certificates" below
+├── certificate.js    # Certificate sheet, native PDF, QR, share, public verify page
+├── milestones.js     # Badges derived from completions (nothing stored)
 ├── confirm.js        # Confirm.ask({title, body, confirmLabel, danger}) → Promise<boolean>; replaces native confirm()
 ├── builder.js        # Course builder — module/question editor (148 lines)
 ├── demo.js           # Interactive demo sandbox — fixture team + playable course, in-memory fake API (see Demo below)
@@ -81,7 +84,7 @@ cd worker && npm run test:watch  # watch mode
 
 Lint: `npm install && npm run lint` at the repo root (ESLint + `@html-eslint` for `index.html` + `scripts/check-tokens.mjs`, a ratchet on raw colour literals — lower `scripts/token-baseline.json` as they migrate to tokens). `worker/test/contrast.test.mjs` checks WCAG AA contrast of the CSS text/background tokens in both themes. A project Stop hook (`scripts/stop-check.sh`, wired in `.claude/settings.json`) runs lint + worker tests when code files changed. CI (`.github/workflows/ci.yml`) runs lint and tests on every PR.
 
-Coverage: `worker/test/` — `auth` (login + rate limiting), `rbac` (role gates + manager team scoping), `scoring` (answer-key stripping, server-side grading and score computation), `scrape` (URL import validation). `importer` (the frontend `js/importer.js` loaded with browser globals stubbed: reply parsing, question validation, answer shuffling, prompt building, reply merging, save validation). `backup` (content export/restore round trip, atomicity, validation), `course-icons` (47 course icons in Sports/Learning/Technology/General groups, emoji→icon mapping), `learner` (the source-link visibility helper), `assign-bulk` (multi-course bulk assignment) and `assign-ui` (`js/builder.js` course selection + assign counts), `sections-ui` (`js/sections.js`: section move/collapse logic), `confirm-ui` (`js/confirm.js`: shared confirm dialog), `css-audit` (the stylesheet has no dead rules, declarations, tokens or keyframes, and nothing left that can be merged safely) and `sections` (incl. the order endpoint). The rest of `js/` has no tests yet.
+Coverage: `worker/test/` — `auth` (login + rate limiting), `rbac` (role gates + manager team scoping), `scoring` (answer-key stripping, server-side grading and score computation), `scrape` (URL import validation). `importer` (the frontend `js/importer.js` loaded with browser globals stubbed: reply parsing, question validation, answer shuffling, prompt building, reply merging, save validation). `backup` (content export/restore round trip, atomicity, validation), `ceremony` (completion result: attempt + per-module breakdown), `verify` (public certificate check, signatory branding), `celebrate-ui` / `certificate-ui` / `milestones-ui` (the pure helpers in `js/celebrate.js`, `js/certificate.js`, `js/milestones.js`), `course-icons` (47 course icons in Sports/Learning/Technology/General groups, emoji→icon mapping), `learner` (the source-link visibility helper), `assign-bulk` (multi-course bulk assignment) and `assign-ui` (`js/builder.js` course selection + assign counts), `sections-ui` (`js/sections.js`: section move/collapse logic), `confirm-ui` (`js/confirm.js`: shared confirm dialog), `css-audit` (the stylesheet has no dead rules, declarations, tokens or keyframes, and nothing left that can be merged safely) and `sections` (incl. the order endpoint). The rest of `js/` has no tests yet.
 
 ## Environment Variables
 
@@ -136,7 +139,7 @@ All tables defined in `schema.sql`. The `course_progress` table is also created 
 | `course_progress` | `PK (learner_id, course_id)`, `module_idx INTEGER`, `modules TEXT` (JSON) | Resume position; created lazily by worker |
 | `quiz_answers` | `PK (learner_id, question_id)`, `selected_index`, `is_correct`, `answered_at` | Latest server-graded answer per learner/question; source of truth for completion scores; consumed on completion |
 | `question_responses` | `completion_id → completions CASCADE`, `question_id → questions CASCADE`, `is_correct INTEGER` | Used for server-side score verification |
-| `brand` | `id TEXT PK DEFAULT 'default'`, `org_name`, `tagline`, `logo_url`, `primary_color`, `secondary_color`, `pass_threshold INTEGER` | Single row; `accent_color` added via ALTER in worker |
+| `brand` | `id TEXT PK DEFAULT 'default'`, `org_name`, `tagline`, `logo_url`, `primary_color`, `secondary_color`, `pass_threshold INTEGER` | Single row; `accent_color`, `signatory_name`, `signatory_title` added via ALTER in worker |
 | `tags` | `id TEXT PK`, `name TEXT UNIQUE` | UI stub — schema exists, Admin UI is "coming soon" |
 | `learner_tags` | `PK (learner_id, tag_id)` | Tag assignments to learners |
 | `tag_assignments` | `PK (course_id, tag_id)`, `due_at TEXT` | Tag assignments to courses |
@@ -202,7 +205,8 @@ All routes in `worker/index.js`. Auth middleware: `requireAdmin`, `requireManage
 | `DELETE` | `/api/assignments` | Admin/Manager | Remove an assignment (team-scoped for managers) |
 | `GET` | `/api/completions/me` | Learner | Own completion records |
 | `POST` | `/api/quiz/answer` | Learner | Grade one answer server-side; returns `{correct, correct_index, explanation}` |
-| `POST` | `/api/completions` | Learner | Finish a course — score/passed computed server-side from `quiz_answers`; returns `{cert_id, score, passed}` |
+| `POST` | `/api/completions` | Learner | Finish a course — score/passed computed server-side from `quiz_answers`; returns `{cert_id, score, passed, attempt, breakdown}` (`breakdown` = per-module `{module_id, title, correct, total}`) |
+| `GET` | `/api/verify/:certId` | — | Public certificate check (QR target): `{valid, cert_id, name, course, org, completed_at}` for a passed certificate, else 404 `{valid:false}`. 30 lookups/min per IP |
 | `GET` | `/api/progress/me` | Learner | Own module progress |
 | `POST` | `/api/progress` | Learner | Save module progress |
 | `DELETE` | `/api/progress/:course_id` | Learner | Clear progress for a course |
@@ -306,6 +310,16 @@ Renamed from TrainFlow and re-skinned to match the Pregame site (pregame.vickery
 - Logo: `assets/academy-icon-{192,512}.png` (graduation cap over the three-bar Pregame motif; source `assets/academy-icon.svg`) is the default logo/favicon on every surface; an admin-uploaded logo overrides it.
 - Legacy defaults (`TrainFlow`, old blues/purples, `Inter`) saved in the `brand` row are migrated to the new defaults at runtime by `normBrand()`; customised values are kept.
 - Deliberately **not** renamed (internal identifiers): the Worker/DB names (`trainflow-worker`, `trainflow-theronv`), repo/Pages path (`/trainingflow/`), and `trainflow_*` localStorage/sessionStorage keys — changing them would break the deployed URL and sign users out.
+
+## Certificates — 2026-10-20
+
+Finishing a course is a designed moment, not a toast.
+- **Result ceremony (`js/celebrate.js`):** `Learner.completeCourse()` posts to `/api/completions`, then `Celebrate.showPass()` runs a short reveal: "Checking your answers…", score ring + count-up, stats (answers correct, first try / attempt N, session time), any new badges, a next-up course (soonest-due assigned, unpassed) and "View your certificate". Brand-coloured confetti, optional chime (off by default, `trainflow_cert_sound` in localStorage) and a haptic. `prefers-reduced-motion` skips the animation. A fail shows `Celebrate.showFail()`: score vs pass mark, the modules to revisit, "Retake the course".
+- **Certificate (`js/certificate.js`):** the on-screen sheet is an A4-landscape preview scaled with container units (always a light sheet). The PDF is drawn natively with jsPDF (selectable text, vector QR) — keep `Certificate.buildPdf()` and the sheet markup in `index.html` visually aligned. Standard PDF fonts are Latin-1 only; `pdfText()` folds punctuation and turns other characters into `?`. Signatory name/title come from Admin → Branding.
+- **Verification:** each certificate's QR opens `<app url>#/verify/<certId>`, handled before sign-in in `App.init()`; the page calls the public `/api/verify/:certId`, which reveals only name, course, organisation and date. Deleted/cleared completions stop verifying. New IDs are `PG-XXXXXXXX`; old `TF-` ones still verify.
+- **Sharing:** copy verify link, native share sheet (where available) and LinkedIn "Add to profile".
+- **Wall and badges:** My Certificates is a grid of cards plus a badge grid. Badges (`js/milestones.js`: first certificate, hat trick, ten, perfect score, first try, comeback, section complete) are derived from completions and the course list, never stored. Admin and Manager dashboards use `activityListHtml()` so a pass reads "Certificate · 92%".
+- **Not done:** emailing the certificate (needs the email-notification work).
 
 ## Bulk assignment — 2026-10-20
 
