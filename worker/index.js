@@ -1760,36 +1760,130 @@ app.patch('/api/managers/me', requireManager, async (c) => {
 })
 
 
-app.post('/api/admin/backup/restore', requireAdmin, async (c) => {
-  const body = await c.req.json().catch(() => ({}))
+// ── Content backup ───────────────────────────────────────────────────────────
+// One self-contained JSON file of the training content: sections, courses, modules and
+// questions (answer keys included, so admin only). Learner accounts, assignments and
+// completions are deliberately not part of it.
+
+const BACKUP_FORMAT = 'pregame-academy-content'
+const BACKUP_VERSION = 1
+const BACKUP_MAX_COURSES = 500
+
+app.get('/api/admin/backup', requireAdmin, async (c) => {
   const db = getDb(c.env)
-  const courses = body.courses || []
-  let imported = 0, skipped = 0
-  for (const course of courses) {
-    const existing = toObj(await db.execute({ sql: 'SELECT id FROM courses WHERE id = ?', args: [course.id] }))
-    if (existing) { skipped++; continue }
-    await db.execute({
-      sql: 'INSERT INTO courses (id, title, description, icon, reference_url) VALUES (?, ?, ?, ?, ?)',
-      args: [course.id, course.title, course.description || '', course.icon || '📋', course.reference_url || null]
-    })
-    for (let mi = 0; mi < (course.modules || []).length; mi++) {
-      const mod = course.modules[mi]
-      await db.execute({
-        sql: 'INSERT INTO modules (id, course_id, title, content, summary, reference_url, learning_objectives, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        args: [mod.id, course.id, mod.title, mod.content || '', mod.summary || '', mod.reference_url || null, mod.learning_objectives || null, mi]
-      })
-      for (let qi = 0; qi < (mod.questions || []).length; qi++) {
-        const q = mod.questions[qi]
-        const opts = q.options || []
-        await db.execute({
-          sql: 'INSERT INTO questions (id, module_id, question, option_a, option_b, option_c, option_d, correct_index, explanation, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-          args: [q.id, mod.id, q.question, q.option_a||opts[0]||'', q.option_b||opts[1]||'', q.option_c||opts[2]||'', q.option_d||opts[3]||'', q.correct_index||0, q.explanation||'', qi]
-        })
+  await ensureSetup(db)
+  const [sections, courses, modules, questions] = await Promise.all([
+    db.execute('SELECT id, name, parent_id, sort_order FROM sections ORDER BY sort_order, name'),
+    db.execute('SELECT id, icon, title, description, reference_url, section_id FROM courses ORDER BY title'),
+    db.execute('SELECT id, course_id, title, content, summary, reference_url, learning_objectives, sort_order FROM modules ORDER BY course_id, sort_order'),
+    db.execute('SELECT id, module_id, question, option_a, option_b, option_c, option_d, correct_index, explanation, sort_order FROM questions ORDER BY module_id, sort_order'),
+  ])
+  const qByModule = new Map()
+  for (const q of toObjs(questions)) {
+    const { module_id, ...rest } = q
+    if (!qByModule.has(module_id)) qByModule.set(module_id, [])
+    qByModule.get(module_id).push(rest)
+  }
+  const mByCourse = new Map()
+  for (const m of toObjs(modules)) {
+    const { course_id, ...rest } = m
+    if (!mByCourse.has(course_id)) mByCourse.set(course_id, [])
+    mByCourse.get(course_id).push({ ...rest, questions: qByModule.get(m.id) || [] })
+  }
+  const courseList = toObjs(courses).map(co => ({ ...co, modules: mByCourse.get(co.id) || [] }))
+  return c.json({
+    format: BACKUP_FORMAT,
+    version: BACKUP_VERSION,
+    exported_at: new Date().toISOString(),
+    counts: {
+      sections: sections.rows.length,
+      courses: courseList.length,
+      modules: modules.rows.length,
+      questions: questions.rows.length,
+    },
+    sections: toObjs(sections),
+    courses: courseList,
+  })
+})
+
+const isText = (v) => typeof v === 'string' && v.trim().length > 0
+
+// Returns an error message for the first structural problem, or null. Accepts files from
+// before versioning (just { courses: [...] }) as long as the courses are well-formed.
+function validateBackup(body) {
+  if (!body || typeof body !== 'object') return 'Backup file is not valid JSON.'
+  if (body.format !== undefined && body.format !== BACKUP_FORMAT) return 'This file is not a Pregame Academy content backup.'
+  if (body.version !== undefined && body.version > BACKUP_VERSION) return 'This backup was made by a newer version of the app.'
+  if (!Array.isArray(body.courses)) return 'Invalid backup file: no courses list found.'
+  if (body.courses.length > BACKUP_MAX_COURSES) return `Backup has more than ${BACKUP_MAX_COURSES} courses.`
+  if (body.sections !== undefined && !Array.isArray(body.sections)) return 'Invalid backup file: sections must be a list.'
+  for (const s of body.sections || []) if (!isText(s?.id) || !isText(s?.name)) return 'Invalid backup file: every section needs an id and name.'
+  for (const co of body.courses) {
+    if (!isText(co?.id) || !isText(co?.title)) return 'Invalid backup file: every course needs an id and title.'
+    for (const m of co.modules || []) {
+      if (!isText(m?.id) || !isText(m?.title)) return `Invalid backup file: a module in "${co.title}" is missing its id or title.`
+      for (const q of m.questions || []) {
+        if (!isText(q?.id) || !isText(q?.question)) return `Invalid backup file: a question in "${co.title}" is missing its id or text.`
       }
     }
+  }
+  return null
+}
+
+// Restore adds what is missing and never overwrites: courses and sections whose id already
+// exists are skipped. Everything is written in one batch, so a bad file changes nothing.
+app.post('/api/admin/backup/restore', requireAdmin, async (c) => {
+  const body = await c.req.json().catch(() => null)
+  const problem = validateBackup(body)
+  if (problem) return c.json({ error: problem }, 400)
+  const db = getDb(c.env)
+  await ensureSetup(db)
+
+  const existingSections = new Set(toObjs(await db.execute('SELECT id FROM sections')).map(r => r.id))
+  const existingCourses = new Set(toObjs(await db.execute('SELECT id FROM courses')).map(r => r.id))
+  const stmts = []
+  let sectionsAdded = 0, imported = 0, skipped = 0
+
+  // Parents before children, so a sub-section never points at a missing parent.
+  const sections = [...(body.sections || [])].sort((a, b) => (a.parent_id ? 1 : 0) - (b.parent_id ? 1 : 0))
+  for (const s of sections) {
+    if (existingSections.has(s.id)) continue
+    const parent = s.parent_id && existingSections.has(s.parent_id) ? s.parent_id : null
+    stmts.push({ sql: 'INSERT INTO sections (id, name, sort_order, created_at, parent_id) VALUES (?, ?, ?, ?, ?)', args: [s.id, s.name.trim(), Number(s.sort_order) || 0, Math.floor(Date.now() / 1000), parent] })
+    existingSections.add(s.id)
+    sectionsAdded++
+  }
+
+  for (const course of body.courses) {
+    if (existingCourses.has(course.id)) { skipped++; continue }
+    const sectionId = course.section_id && existingSections.has(course.section_id) ? course.section_id : null
+    stmts.push({
+      sql: 'INSERT INTO courses (id, title, description, icon, reference_url, section_id) VALUES (?, ?, ?, ?, ?, ?)',
+      args: [course.id, course.title, course.description || '', course.icon || '📋', course.reference_url || null, sectionId],
+    })
+    ;(course.modules || []).forEach((mod, mi) => {
+      const objectives = Array.isArray(mod.learning_objectives) ? JSON.stringify(mod.learning_objectives) : (mod.learning_objectives || null)
+      stmts.push({
+        sql: 'INSERT INTO modules (id, course_id, title, content, summary, reference_url, learning_objectives, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        args: [mod.id, course.id, mod.title, mod.content || '', mod.summary || '', mod.reference_url || null, objectives, mi],
+      })
+      ;(mod.questions || []).forEach((q, qi) => {
+        const opts = q.options || []
+        stmts.push({
+          sql: 'INSERT INTO questions (id, module_id, question, option_a, option_b, option_c, option_d, correct_index, explanation, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          args: [q.id, mod.id, q.question, q.option_a || opts[0] || '', q.option_b || opts[1] || '', q.option_c || opts[2] || '', q.option_d || opts[3] || '', q.correct_index || 0, q.explanation || '', qi],
+        })
+      })
+    })
     imported++
   }
-  return c.json({ ok: true, imported, skipped })
+
+  try {
+    if (stmts.length) await db.batch(stmts, 'write')
+  } catch {
+    return c.json({ error: 'Restore failed and nothing was changed. The file may reuse ids that already exist in another course.' }, 409)
+  }
+  return c.json({ ok: true, imported, skipped, sections: sectionsAdded })
 })
 
 // ── Tags ─────────────────────────────────────────────────────────────────────

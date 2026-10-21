@@ -1074,12 +1074,11 @@ if (typeof marked !== 'undefined') {
             <button type="button" class="btn btn-primary" onclick="App.changePw()">Update Password</button>
           </div>
           <div class="card">
-            <div class="card-title">Data Backup</div>
-            <div class="card-sub" style="margin-bottom:var(--space-4);">Export or restore all courses and records.</div>
+            <div class="card-title">Content Backup</div>
+            <div class="card-sub" style="margin-bottom:var(--space-4);">Download every course, module, question and section as one file, including answer keys, so keep it private. Learner accounts and completion records are not included. Restoring adds anything missing and never overwrites existing courses.</div>
             <div style="display:flex;gap:var(--space-3);flex-wrap:wrap;">
-              <button type="button" class="btn btn-outline" onclick="App.exportBackup()">↓ Export Backup</button>
-              <button type="button" class="btn btn-outline" onclick="document.getElementById('restore-file').click()">↑ Import Backup</button>
-              <input type="file" id="restore-file" accept=".json" class="hidden" onchange="App.importBackup(event)">
+              <button type="button" class="btn btn-primary" onclick="App.exportBackup()">↓ Download Backup</button>
+              <button type="button" class="btn btn-outline" onclick="App.importBackup()">↑ Restore from File</button>
             </div>
           </div>
           <div class="card danger-zone">
