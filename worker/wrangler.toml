@@ -7,6 +7,8 @@ compatibility_date = "2025-01-01"
 TURSO_URL      = "libsql://trainflow-theronv.aws-us-west-2.turso.io"
 # Comma-separated list; both origins are allowed during the move to the custom domain.
 ALLOWED_ORIGIN = "https://theronv.github.io,https://pregame-academy.vickerydigital.com"
+# Certificate emails (Resend). The sender domain must be verified in Resend; the key is the RESEND_API_KEY secret below.
+EMAIL_FROM     = "Pregame Academy <academy@vickerydigital.com>"
 
 # ── Secrets (never commit values — set via CLI) ───────────────────────────────
 # Run each of these once before your first deploy:
@@ -14,6 +16,7 @@ ALLOWED_ORIGIN = "https://theronv.github.io,https://pregame-academy.vickerydigit
 #   wrangler secret put TURSO_TOKEN
 #   wrangler secret put JWT_SECRET          # any long random string, 32+ chars
 #   wrangler secret put ADMIN_PASSWORD_HASH # PBKDF2 hash — see below
+#   wrangler secret put RESEND_API_KEY      # optional: without it no email is sent
 #
 # To generate ADMIN_PASSWORD_HASH, run from the project root:
 #   node scripts/hash-password.mjs <your-password>

@@ -334,6 +334,14 @@ if (typeof marked !== 'undefined') {
             <button type="button" class="btn btn-primary" onclick="App.updateManagerName()">Update Name</button>
           </div>
           <div class="card">
+            <div class="card-title">Email</div>
+            <label class="pref-row" for="m-email-pref">
+              <input type="checkbox" id="m-email-pref" disabled onchange="EmailPref.toggle(this)">
+              <span>Email me about certificates</span>
+            </label>
+            <div class="pref-hint" id="m-email-hint">Loading…</div>
+          </div>
+          <div class="card">
             <div class="card-title">Change Password</div>
             <div class="field"><label>Current Password</label><input type="password" id="mcp-cur" placeholder="Current password…"></div>
             <div class="field"><label>New Password</label><input type="password" id="mcp-new" placeholder="New password (8+ characters)…"></div>
@@ -421,6 +429,14 @@ if (typeof marked !== 'undefined') {
               <input type="text" id="lcp-name" placeholder="Your full name…">
             </div>
             <button type="button" class="btn btn-primary" onclick="App.updateLearnerName()">Update Name</button>
+          </div>
+          <div class="card">
+            <div class="card-title">Email</div>
+            <label class="pref-row" for="l-email-pref">
+              <input type="checkbox" id="l-email-pref" disabled onchange="EmailPref.toggle(this)">
+              <span>Email me about certificates</span>
+            </label>
+            <div class="pref-hint" id="l-email-hint">Loading…</div>
           </div>
           <div class="card">
             <div class="card-title">Change Password</div>

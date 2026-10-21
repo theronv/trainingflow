@@ -84,7 +84,7 @@ cd worker && npm run test:watch  # watch mode
 
 Lint: `npm install && npm run lint` at the repo root (ESLint + `@html-eslint` for `index.html` + `scripts/check-tokens.mjs`, a ratchet on raw colour literals — lower `scripts/token-baseline.json` as they migrate to tokens). `worker/test/contrast.test.mjs` checks WCAG AA contrast of the CSS text/background tokens in both themes. A project Stop hook (`scripts/stop-check.sh`, wired in `.claude/settings.json`) runs lint + worker tests when code files changed. CI (`.github/workflows/ci.yml`) runs lint and tests on every PR.
 
-Coverage: `worker/test/` — `auth` (login + rate limiting), `rbac` (role gates + manager team scoping), `scoring` (answer-key stripping, server-side grading and score computation), `scrape` (URL import validation). `importer` (the frontend `js/importer.js` loaded with browser globals stubbed: reply parsing, question validation, answer shuffling, prompt building, reply merging, save validation). `backup` (content export/restore round trip, atomicity, validation), `ceremony` (completion result: attempt + per-module breakdown), `verify` (public certificate check, signatory branding), `celebrate-ui` / `certificate-ui` / `milestones-ui` (the pure helpers in `js/celebrate.js`, `js/certificate.js`, `js/milestones.js`), `course-icons` (47 course icons in Sports/Learning/Technology/General groups, emoji→icon mapping), `learner` (the source-link visibility helper), `assign-bulk` (multi-course bulk assignment) and `assign-ui` (`js/builder.js` course selection + assign counts), `sections-ui` (`js/sections.js`: section move/collapse logic), `confirm-ui` (`js/confirm.js`: shared confirm dialog), `css-audit` (the stylesheet has no dead rules, declarations, tokens or keyframes, and nothing left that can be merged safely) and `sections` (incl. the order endpoint). The rest of `js/` has no tests yet.
+Coverage: `worker/test/` — `auth` (login + rate limiting), `rbac` (role gates + manager team scoping), `scoring` (answer-key stripping, server-side grading and score computation), `scrape` (URL import validation). `importer` (the frontend `js/importer.js` loaded with browser globals stubbed: reply parsing, question validation, answer shuffling, prompt building, reply merging, save validation). `backup` (content export/restore round trip, atomicity, validation), `email` (Resend certificate emails with `fetch` stubbed; opt-out; account preference), `ceremony` (completion result: attempt + per-module breakdown), `verify` (public certificate check, signatory branding), `celebrate-ui` / `certificate-ui` / `milestones-ui` (the pure helpers in `js/celebrate.js`, `js/certificate.js`, `js/milestones.js`), `course-icons` (47 course icons in Sports/Learning/Technology/General groups, emoji→icon mapping), `learner` (the source-link visibility helper), `assign-bulk` (multi-course bulk assignment) and `assign-ui` (`js/builder.js` course selection + assign counts), `sections-ui` (`js/sections.js`: section move/collapse logic), `confirm-ui` (`js/confirm.js`: shared confirm dialog), `css-audit` (the stylesheet has no dead rules, declarations, tokens or keyframes, and nothing left that can be merged safely) and `sections` (incl. the order endpoint). The rest of `js/` has no tests yet.
 
 ## Environment Variables
 
@@ -97,6 +97,9 @@ JWT_SECRET=32-char-random-string            # Signs all JWTs (min 32 chars)
 ADMIN_PASSWORD_HASH=pbkdf2v1:salt:hash      # node scripts/hash-password.mjs <password>
 GEMINI_API_KEY=AIza...                      # Used as AI Importer fallback in worker
 ALLOWED_ORIGIN=https://theronv.github.io    # CORS — falls back to production domain if unset
+RESEND_API_KEY=re_...                       # Optional. Certificate emails (Resend); unset = no email is sent
+EMAIL_FROM=Pregame Academy <academy@vickerydigital.com>  # Plain var in wrangler.toml; domain verified in Resend
+APP_URL=https://...                         # Optional. Base URL for links in emails (default pregame-academy.vickerydigital.com)
 ```
 
 > Keys entered per-session in Admin → AI Importer ("Use an API key instead") are stored in `localStorage` and used for direct browser calls; they are not sent to the Worker. The default Importer route goes through the admin-only `/api/ai/generate` proxy, which uses the Worker's own secrets.
@@ -173,8 +176,8 @@ All routes in `worker/index.js`. Auth middleware: `requireAdmin`, `requireManage
 | `GET` | `/api/learners` | Admin/Manager | List learners (team-scoped for managers) |
 | `POST` | `/api/learners` | Admin/Manager | Create a learner (team_id locked to manager's team) |
 | `POST` | `/api/learners/bulk` | Admin/Manager | Bulk create from CSV |
-| `GET` | `/api/learners/me` | Any account | Get own profile |
-| `PATCH` | `/api/learners/me` | Any account | Update own name/password |
+| `GET` | `/api/learners/me` | Any account | Get own profile (`id, name, email, email_notifications`) |
+| `PATCH` | `/api/learners/me` | Any account | Update own name/password/`email_notifications` |
 | `GET` | `/api/learners/:id` | Admin/Manager | Get learner (managers: team-scoped) |
 | `PATCH` | `/api/learners/:id` | Admin | Edit user (name, team, role, email, `is_admin`) |
 | `DELETE` | `/api/learners/:id` | Admin | Delete learner |
@@ -319,7 +322,7 @@ Finishing a course is a designed moment, not a toast.
 - **Verification:** each certificate's QR opens `<app url>#/verify/<certId>`, handled before sign-in in `App.init()`; the page calls the public `/api/verify/:certId`, which reveals only name, course, organisation and date. Deleted/cleared completions stop verifying. New IDs are `PG-XXXXXXXX`; old `TF-` ones still verify.
 - **Sharing:** copy verify link, native share sheet (where available) and LinkedIn "Add to profile".
 - **Wall and badges:** My Certificates is a grid of cards plus a badge grid. Badges (`js/milestones.js`: first certificate, hat trick, ten, perfect score, first try, comeback, section complete) are derived from completions and the course list, never stored. Admin and Manager dashboards use `activityListHtml()` so a pass reads "Certificate · 92%".
-- **Not done:** emailing the certificate (needs the email-notification work).
+- **Emails (`worker/email.js`, Resend):** when a learner passes, `POST /api/completions` sends them a "You earned a certificate" email and each of their team's managers (role `manager`, same team, not the learner, max 20) a "[Name] earned a certificate" email, in the background via `waitUntil`. Needs `RESEND_API_KEY`; without it nothing is sent. No address, or `users.email_notifications = 0`, means no email; failures are logged (never the address) and never fail the completion. Sends carry an `Idempotency-Key` (`cert-<certId>-<userId>`). Links use `APP_URL` (default `https://pregame-academy.vickerydigital.com`) and `#/verify/<certId>`. Users switch it off under Account (`PATCH /api/learners/me {email_notifications}`; `GET` returns `email` and `email_notifications`). No PDF attachment (the PDF is drawn in the browser). Not built: assignment/overdue emails, digests.
 
 ## Bulk assignment — 2026-10-20
 

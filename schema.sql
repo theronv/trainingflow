@@ -32,7 +32,8 @@ CREATE TABLE IF NOT EXISTS users (
   last_login_at INTEGER,
   created_at    INTEGER NOT NULL DEFAULT (unixepoch()),
   email         TEXT,                     -- optional; used for Clerk email sign-in
-  clerk_id      TEXT                      -- Clerk user id, set on first email sign-in
+  clerk_id      TEXT,                     -- Clerk user id, set on first email sign-in
+  email_notifications INTEGER NOT NULL DEFAULT 1 -- 0 = no certificate emails
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_clerk_id ON users(clerk_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(lower(email));
