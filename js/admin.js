@@ -67,20 +67,7 @@ const Admin = {
         if (!items.length) {
           recentEl.innerHTML = `<div class="dash-section-label">Recent Activity</div><div class="empty empty-compact">No completions recorded yet.</div>`;
         } else {
-          recentEl.innerHTML = `<div class="dash-section-label">Recent Activity</div>
-            <div class="activity-list">${items.map(c => {
-              const date = new Date(c.completed_at * 1000).toLocaleDateString(undefined, { month:'short', day:'numeric' });
-              const chip = c.passed
-                ? '<span class="chip chip-success">Pass</span>'
-                : '<span class="chip chip-danger">Fail</span>';
-              return `<div class="activity-item">
-                <div class="activity-info">
-                  <div class="activity-name">${esc(c.user_name)}</div>
-                  <div class="activity-course">${esc(c.course_title)}</div>
-                </div>
-                <div class="activity-meta">${chip}<span class="activity-date">${date}</span></div>
-              </div>`;
-            }).join('')}</div>`;
+          recentEl.innerHTML = `<div class="dash-section-label">Recent Activity</div>${activityListHtml(items)}`;
         }
       }
 

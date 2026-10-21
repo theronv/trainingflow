@@ -56,7 +56,7 @@ const Manager = {
       if (!comps.length) {
         $$('m-recent').innerHTML = '<div class="empty"><div class="empty-icon">' + ICON.chart + '</div><div class="empty-title">No activity yet</div><div class="empty-hint">Completions from your team will appear here as learners finish their courses.</div></div>';
       } else {
-        $$('m-recent').innerHTML = `<div class="dash-section-label">Recent team activity</div><div class="table-wrap"><table><thead><tr><th>Learner</th><th>Course</th><th>Score</th><th>Date</th></tr></thead><tbody>${comps.slice(0,5).map(r=>`<tr><td>${esc(r.user_name)}</td><td>${esc(r.course_title)}</td><td>${r.score}%</td><td>${new Date(r.completed_at*1000).toLocaleDateString()}</td></tr>`).join('')}</tbody></table></div>`;
+        $$('m-recent').innerHTML = `<div class="dash-section-label">Recent team activity</div>${activityListHtml(comps.slice(0, 6))}`;
       }
     } catch(e) { 
       statsEl.innerHTML = `<div class="card" style="color:var(--fail);width:100%;">${esc(e.message)}</div>`;

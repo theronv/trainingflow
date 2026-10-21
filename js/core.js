@@ -338,6 +338,23 @@ function normCourse(c) {
     }))
   };
 }
+// Recent completions as a feed: a pass reads as a certificate earned, a miss as an attempt.
+function activityListHtml(items) {
+  return `<div class="activity-list">${items.map(c => {
+    const date = new Date(c.completed_at * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    const chip = c.passed
+      ? `<span class="chip chip-success">${ICON.award} Certificate · ${c.score}%</span>`
+      : `<span class="chip chip-danger">Not passed · ${c.score}%</span>`;
+    return `<div class="activity-item">
+      <div class="activity-info">
+        <div class="activity-name">${esc(c.user_name)}</div>
+        <div class="activity-course">${esc(c.course_title)}</div>
+      </div>
+      <div class="activity-meta">${chip}<span class="activity-date">${date}</span></div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
 function normRecord(r) { return { cid: r.course_id, learner: r.learner_name, score: r.score, passed: Boolean(r.passed), date: (r.completed_at || 0) * 1000, cid2: r.cert_id || '', }; }
 // Values the app shipped with before the Pregame Academy rebrand. Rows still holding them are
 // treated as "unset" so they pick up the new defaults; anything an admin customised is kept.

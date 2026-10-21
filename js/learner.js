@@ -241,27 +241,36 @@ const Learner = {
   _certsCache: [],
   async renderCerts() {
     const seq = Learner._navSeq;
+    const el = $$('l-certs-content');
     if (Learner._preview) {
-      $$('l-certs-content').innerHTML = '<div class="empty"><div class="empty-icon">' + ICON.award + '</div><div class="empty-title">Nothing to show in preview</div><div class="empty-hint">Certificates are issued to learners who pass a course.</div></div>';
+      el.innerHTML = '<div class="empty"><div class="empty-icon">' + ICON.award + '</div><div class="empty-title">Nothing to show in preview</div><div class="empty-hint">Certificates are issued to learners who pass a course.</div></div>';
       return;
     }
+    el.innerHTML = Skeleton.list(3);
     try {
-      const res = await learnerApi('/api/completions/me');
+      const [res, courses] = await Promise.all([learnerApi('/api/completions/me'), learnerApi('/api/courses').catch(() => [])]);
       if (Learner._navSeq !== seq) return;
       Learner._certsCache = (res || []).filter(r => r.passed);
-      $$('l-certs-content').innerHTML = Learner._certsCache.length
-        ? Learner._certsCache.map(r => `<div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);margin-bottom:var(--space-3);">
-            <div>
-              <div style="font-weight:600;">${esc(r.course_title)}</div>
-              <div style="font-size:var(--text-xs);color:var(--ink-4);margin-top:4px;">Passed ${r.score}% · ${new Date(r.completed_at*1000).toLocaleDateString()} · ID: <span style="font-family:monospace;">${r.cert_id || '—'}</span></div>
-            </div>
-            <div class="cert-row-actions">
-              <button class="btn btn-primary btn-sm" onclick="Learner.viewCert('${r.cert_id}')">View</button>
-              <button class="btn btn-outline btn-sm" onclick="Learner.downloadCert('${r.cert_id}')">↓ PDF</button>
-            </div>
-          </div>`).join('')
-        : '<div class="empty"><div class="empty-icon">' + ICON.award + '</div><div class="empty-title">No certificates yet</div><div class="empty-hint">Complete a course and pass its quiz to earn your first certificate.</div></div>';
-    } catch(e) { $$('l-certs-content').innerHTML = `<div class="card" style="color:var(--fail);">${esc(e.message)}</div>`; }
+      if (!Learner._certsCache.length) {
+        el.innerHTML = '<div class="empty"><div class="empty-icon">' + ICON.award + '</div><div class="empty-title">No certificates yet</div><div class="empty-hint">Pass a course quiz and your first certificate lands here, ready to download and share.</div><div class="empty-action"><button type="button" class="btn btn-primary" onclick="Learner.nav(\'courses\')">Browse courses</button></div></div>'
+          + `<div class="dash-section-label">Badges to earn</div>${Milestones.gridHtml(res, courses)}`;
+        return;
+      }
+      const iconOf = id => courseIcon((courses.find(c => c.id === id) || {}).icon);
+      const n = Learner._certsCache.length;
+      el.innerHTML = `<div class="cert-wall-head"><span class="cert-wall-count">${n}</span> certificate${n === 1 ? '' : 's'} earned</div>
+        <div class="cert-wall">${Learner._certsCache.map(r => `<div class="cert-card">
+          <div class="cert-card-icon" aria-hidden="true">${iconOf(r.course_id)}</div>
+          <div class="cert-card-title">${esc(r.course_title)}</div>
+          <div class="cert-card-meta">Passed ${r.score}% · ${new Date(r.completed_at * 1000).toLocaleDateString()}</div>
+          <div class="cert-card-id">${esc(r.cert_id || '')}</div>
+          <div class="cert-row-actions">
+            <button type="button" class="btn btn-primary btn-sm" onclick="Learner.viewCert('${esc(r.cert_id)}')">View</button>
+            <button type="button" class="btn btn-outline btn-sm" onclick="Learner.downloadCert('${esc(r.cert_id)}')">↓ PDF</button>
+          </div>
+        </div>`).join('')}</div>
+        <div class="dash-section-label">Badges</div>${Milestones.gridHtml(res, courses)}`;
+    } catch(e) { el.innerHTML = `<div class="card" style="color:var(--fail);">${esc(e.message)}</div>`; }
   },
 
   // ─── QUIZ ENGINE ───

@@ -161,15 +161,20 @@ const Celebrate = {
     Celebrate._countUp(num, score, 900);
   },
 
-  async _nextUp(courseId) {
-    if (window._adminPreview || Learner._preview) return null;
+  // What the result screen needs beyond the score: the next assigned course and any new badges.
+  async _context(courseId, certId) {
+    if (window._adminPreview || Learner._preview) return { next: null, badges: [] };
     try {
-      const [assigned, comps] = await Promise.all([
+      const [assigned, comps, courses] = await Promise.all([
         learnerApi('/api/assignments/me'),
-        learnerApi('/api/completions/me').catch(() => [])
+        learnerApi('/api/completions/me').catch(() => []),
+        learnerApi('/api/courses').catch(() => [])
       ]);
-      return Celebrate.nextUp(assigned, comps, courseId);
-    } catch { return null; }
+      return {
+        next: Celebrate.nextUp(assigned, comps, courseId),
+        badges: Milestones.fresh(comps.filter(c => c.cert_id !== certId), comps, courses)
+      };
+    } catch { return { next: null, badges: [] }; }
   },
 
   _soundToggleHtml() {
@@ -189,7 +194,7 @@ const Celebrate = {
   async showPass({ res, course, learner, elapsedMs, onCertificate }) {
     const reduced = Celebrate.reducedMotion();
     const el = Celebrate._open(Celebrate._calcHtml('Checking your answers…'));
-    const next = await Celebrate._nextUp(course.id);
+    const { next, badges } = await Celebrate._context(course.id, res.cert_id);
     if (!reduced) await new Promise(r => Celebrate._later(r, 900));
     if (Celebrate._el !== el) return; // dismissed while waiting
 
@@ -202,6 +207,7 @@ const Celebrate = {
       <h2 id="cel-title" class="cel-title cel-rise" style="--i:2">Well done, ${esc(learner.name)}.</h2>
       <p class="cel-sub cel-rise" style="--i:2">You earned a certificate for <strong>${esc(course.title)}</strong>.</p>
       <div class="cel-stats">${stats}</div>
+      ${badges.length ? `<div class="cel-badges cel-rise" style="--i:5"><div class="cel-badges-title">New badge${badges.length > 1 ? 's' : ''} unlocked</div>${Milestones.chipsHtml(badges)}</div>` : ''}
       <div class="cel-actions cel-rise" style="--i:6">
         <button type="button" class="btn btn-primary btn-lg" id="cel-cert">View your certificate</button>
         ${next ? `<button type="button" class="btn btn-outline" id="cel-next">Next up: ${esc(next.course_title || 'your next course')}</button>` : ''}

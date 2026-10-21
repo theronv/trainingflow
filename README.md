@@ -29,7 +29,7 @@ Pregame Academy is a full-stack LMS designed for professional environments where
 | Deployment | Wrangler v4.75.0, GitHub Pages (frontend) |
 | AI — Primary | Anthropic Claude API (`claude-sonnet-4-6`) — direct browser calls |
 | AI — Fallback | Google Gemini 1.5 Flash — direct browser calls |
-| PDF Generation | `jsPDF` + `html2canvas` (client-side) |
+| PDF Generation | `jsPDF` + `qrcode-generator` (client-side) |
 | Auth | JWT + PBKDF2-SHA256 password hashing (100k iterations) |
 
 ---
@@ -44,7 +44,7 @@ graph TD
     Worker --> DB[(Turso / libSQL)]
     JS --> Claude[Anthropic Claude API — AI Importer]
     JS --> Gemini[Google Gemini API — AI Importer fallback]
-    JS --> PDF[jsPDF / html2canvas — client PDF]
+    JS --> PDF[jsPDF — client PDF]
 ```
 
 The frontend is a Single Page Application served from GitHub Pages. All API calls route through a Hono worker on Cloudflare Workers. AI content generation is called **directly from the browser** (Claude → Gemini fallback) with API keys stored in `localStorage`. The database is Turso (globally distributed libSQL). All DB writes to Turso are sent as a single `db.batch()` request to avoid per-statement HTTP round-trips and Worker timeout limits.
@@ -101,7 +101,7 @@ schema.sql          # Initial database schema (run once against Turso)
 - **Course Catalogue** — courses grouped by section; "In Progress" chip on started courses
 - **Course Player** — module-by-module content with progress restored between sessions
 - **Quiz Engine** — per-question feedback (correct/incorrect highlight), correct answer revealed, explanation shown; score summary with pass/fail result; retry support; sidebar locked during active quiz
-- **Certificates** — branded PDF certificates generated client-side on pass; unique verifiable cert ID (format: `PG-XXXXXXXX`; older certificates keep `TF-`)
+- **Certificates** — an animated result screen on pass, then a branded PDF (real text, QR code) with a public verification page, share links and badges; unique verifiable cert ID (format: `PG-XXXXXXXX`; older certificates keep `TF-`)
 - **Progress** — assignment list with due dates and completion status
 
 ### Platform-Wide
