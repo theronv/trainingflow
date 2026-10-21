@@ -126,7 +126,7 @@ const Learner = {
         const pct = prog && totalMods ? Math.min(100, Math.round(modsDone / totalMods * 100)) : 0;
         const bar = prog && totalMods ? `<div class="lc-progress" aria-hidden="true"><span style="width:${pct}%"></span></div>` : '';
         const cta = passed ? 'Review' : (prog ? 'Continue' : 'Start');
-        return `<div class="course-card lc${resume ? ' lc-resume' : ''}" ${attrs} role="button" tabindex="0" onclick="Learner.startCourse('${nc.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();Learner.startCourse('${nc.id}')}">
+        return `<div class="course-card lc${resume ? ' lc-resume' : ''}" ${attrs} role="button" tabindex="0" onclick="Learner.startCourse('${escJs(nc.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();Learner.startCourse('${escJs(nc.id)}')}">
           <div class="lc-top">
             <div class="lc-icon" aria-hidden="true">${courseIcon(nc.icon)}</div>
             <div class="lc-body">
@@ -222,7 +222,7 @@ const Learner = {
               <div style="font-weight:600;">${esc(a.course_title)}</div>
               ${progOf(a.course_id) ? '<span class="chip chip-info">In progress</span> ' : ''}${dueStr}
             </div>
-            <button class="btn btn-primary btn-sm" onclick="Learner.startCourse('${a.course_id}')">${progOf(a.course_id) ? 'Continue' : 'Start'} →</button>
+            <button class="btn btn-primary btn-sm" onclick="Learner.startCourse('${escJs(a.course_id)}')">${progOf(a.course_id) ? 'Continue' : 'Start'} →</button>
           </div>`;
         }).join('');
       }
@@ -265,8 +265,8 @@ const Learner = {
           <div class="cert-card-meta">Passed ${r.score}% · ${new Date(r.completed_at * 1000).toLocaleDateString()}</div>
           <div class="cert-card-id">${esc(r.cert_id || '')}</div>
           <div class="cert-row-actions">
-            <button type="button" class="btn btn-primary btn-sm" onclick="Learner.viewCert('${esc(r.cert_id)}')">View</button>
-            <button type="button" class="btn btn-outline btn-sm" onclick="Learner.downloadCert('${esc(r.cert_id)}')">↓ PDF</button>
+            <button type="button" class="btn btn-primary btn-sm" onclick="Learner.viewCert('${escJs(r.cert_id)}')">View</button>
+            <button type="button" class="btn btn-outline btn-sm" onclick="Learner.downloadCert('${escJs(r.cert_id)}')">↓ PDF</button>
           </div>
         </div>`).join('')}</div>
         <div class="dash-section-label">Badges</div>${Milestones.gridHtml(res, courses)}`;
@@ -630,7 +630,7 @@ const Learner = {
     if (!img) return;
     const z = document.createElement('div');
     z.className = 'img-zoom'; z.setAttribute('role', 'dialog'); z.setAttribute('aria-label', 'Screenshot, full size');
-    z.innerHTML = `<button class="img-zoom-close" aria-label="Close">×</button><img src="${img.currentSrc || img.src}" alt="${esc(img.alt || '')}">`;
+    z.innerHTML = `<button class="img-zoom-close" aria-label="Close">×</button><img src="${esc(img.currentSrc || img.src)}" alt="${esc(img.alt || '')}">`;
     document.body.appendChild(z);
   });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });

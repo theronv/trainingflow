@@ -50,7 +50,7 @@ const SectionFold = {
   // Header with a fold button (chevron + title + count) and optional trailing controls.
   headHtml({ cls, id, parentId = '', title, count, extra = '' }) {
     return `<div class="${cls}" data-sec-head="${esc(id)}"${parentId ? ` data-sec-parent="${esc(parentId)}"` : ''}>
-      <button type="button" class="sec-fold" aria-expanded="true" onclick="SectionFold.toggle('${esc(id)}', this)">
+      <button type="button" class="sec-fold" aria-expanded="true" onclick="SectionFold.toggle('${escJs(id)}', this)">
         <svg class="sec-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
         <span class="sec-title">${esc(title)}</span>${count ? `<span class="sec-count">${esc(count)}</span>` : ''}
       </button>${extra}

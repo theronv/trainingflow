@@ -84,7 +84,7 @@ const Manager = {
             </div>
           </div>
           <div class="cc-actions">
-            <button class="btn btn-primary btn-sm" onclick="Manager.openTeamAssign('${nc.id}', '${esc(nc.title)}')">Assign to team</button>
+            <button class="btn btn-primary btn-sm" onclick="Manager.openTeamAssign('${escJs(nc.id)}', '${escJs(nc.title)}')">Assign to team</button>
           </div>
         </div>`;
       };
@@ -142,7 +142,7 @@ const Manager = {
           <td>${Number(inv.use_count) || 0} / ${Number(inv.max_uses) || 1}</td>
           <td>${inv.expires_at ? new Date(inv.expires_at).toLocaleDateString() : 'Never'}</td>
           <td style="white-space:nowrap;">
-            <button class="btn btn-ghost btn-sm" onclick="App.copyInviteLink('${esc(inv.code)}')">Copy link</button>
+            <button class="btn btn-ghost btn-sm" onclick="App.copyInviteLink('${escJs(inv.code)}')">Copy link</button>
             <button class="btn btn-ghost btn-sm btn-danger-ghost" onclick="Manager.revokeInvite(${inv.id})">Revoke</button>
           </td>
         </tr>`).join('')}</tbody></table></div>`;
@@ -173,7 +173,7 @@ const Manager = {
         <td>${l.assignment_count || 0}</td>
         <td>${l.completion_count || 0}</td>
         <td>${l.pass_rate != null ? l.pass_rate + '%' : '—'}</td>
-        <td><button class="btn btn-ghost btn-sm" onclick="Manager.openResetPw('${l.id}','${esc(l.name)}')">Reset PW</button></td>
+        <td><button class="btn btn-ghost btn-sm" onclick="Manager.openResetPw('${escJs(l.id)}','${escJs(l.name)}')">Reset PW</button></td>
       </tr>`).join('');
     } catch(e) { tbody.innerHTML = `<tr><td colspan="5" style="color:var(--fail);padding:16px;">${esc(e.message)}</td></tr>`; }
   },
@@ -326,7 +326,7 @@ const Manager = {
                 const err = !r.name ? 'Missing name' : (!r.password || r.password.length < 8) ? 'Password < 8 chars' : null;
                 return `<tr>
                   <td>${esc(r.name || '—')}</td>
-                  <td style="font-family:monospace;font-size:12px;color:${autogen ? 'var(--brand)' : 'var(--ink-4)'};">${r.password || '—'}</td>
+                  <td style="font-family:monospace;font-size:12px;color:${autogen ? 'var(--brand)' : 'var(--ink-4)'};">${esc(r.password || '—')}</td>
                   <td>${err ? `<span class="chip chip-danger">${esc(err)}</span>` : '<span class="chip chip-success">✓ OK</span>'}</td>
                 </tr>`;
               }).join('')}
