@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@libsql/client": "^0.14.0",
-    "hono": "^4.7.0"
+    "hono": "^4.13.13"
   },
   "devDependencies": {
     "vitest": "^3.0.0",

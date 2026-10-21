@@ -17,7 +17,7 @@ Pregame Academy is a full-stack LMS for professional teams. AI-assisted course c
 | Layer | Technology |
 |---|---|
 | Frontend | Vanilla JS (ES6), HTML5, CSS3 — SPA served from GitHub Pages |
-| Edge Worker | Hono 4.7.0 on **Cloudflare Workers** (not Vercel Edge) |
+| Edge Worker | Hono 4.13 on **Cloudflare Workers** (not Vercel Edge) |
 | Database | Turso (libSQL/SQLite) via `@libsql/client` v0.14.0 — raw SQL, no Drizzle |
 | Auth | Custom JWT + PBKDF2-SHA256 (100k iterations); Clerk email sign-in exchanges for the same app JWT |
 | AI | Anthropic Claude (`claude-sonnet-4-6`) + Google Gemini 1.5 Flash — direct browser calls, keys in localStorage |
@@ -367,6 +367,8 @@ F1–F12 are fixed and covered by `worker/test/`. **F1/F2 were regressed and are
 - **F2 (score integrity):** `POST /api/completions` ignores any client `score`/`passed`. It computes the score from the learner's server-recorded rows in `quiz_answers` (latest answer per question), requires every course question to be answered, writes `completions` + `question_responses` in one batch, and consumes the answers so a certificate can't be re-minted without retaking the quiz.
 - **Unauthenticated catalog closed:** `GET /api/courses` and `GET /api/sections` now require a token (demo mode uses a built-in sample catalog, `DEMO_COURSES` in `js/core.js`).
 - **Known residual risk:** because retakes are allowed and the key is revealed per answered question, a determined learner can probe answers by repeated attempts. This is inherent to retake-friendly quizzes; add attempt limits/cooldowns if certificates need stronger assurance.
+
+- **Hardening (2026-10-20, SEC-01/04/06):** every `/api/*` response carries `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy`, HSTS, a deny-all CSP; signed-in and write responses are `Cache-Control: no-store` (`secureHeaders()` in `worker/index.js`). `hono` 4.13.13 / `ws` 8.22 (runtime audit clean). `/api/ai/generate` accepts only text prompts up to 200k chars and clamps `max_tokens` to 8000. 500 responses never include database error text. Open: Pages-shell headers/CSP, token revocation (SEC-05), durable rate limiting (SEC-07) — see `.polish/BACKLOG.md`.
 
 Verified present:
 - **F3–F8 (HIGH):** Team ownership enforced on manager routes; `requireLearner` checks `role === 'learner'` (`worker/index.js:152`); `team_id` locked to manager's own team

@@ -5,6 +5,7 @@
 import { Hono }           from 'hono'
 import { cors }           from 'hono/cors'
 import { sign, verify }   from 'hono/jwt'
+import { secureHeaders }  from 'hono/secure-headers'
 import { createClient }   from '@libsql/client/web'
 import { notifyCertificateEarned } from './email.js'
 
@@ -117,6 +118,20 @@ const app = new Hono()
 // The matching request origin is echoed back; unknown origins get the first entry (and are
 // therefore rejected by the browser).
 const DEFAULT_ORIGIN = 'https://theronv.github.io'
+// Every API response is JSON for the SPA: no framing, no sniffing, no referrer, HTTPS only; signed-in and
+// write responses are never cached (they can be user-specific). CORP stays cross-origin so the Pages origin can read them.
+app.use('/api/*', secureHeaders({
+  crossOriginResourcePolicy: 'cross-origin',
+  xFrameOptions: 'DENY',
+  strictTransportSecurity: 'max-age=31536000',
+  contentSecurityPolicy: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] },
+}))
+app.use('/api/*', async (c, next) => {
+  await next()
+  // Signed-in reads and every write can be user-specific; anonymous public GETs (brand, verify) may be cached normally.
+  if (!c.res.headers.has('Cache-Control') && (c.req.method !== 'GET' || c.req.header('Authorization'))) c.header('Cache-Control', 'no-store')
+})
+
 app.use('/api/*', async (c, next) => {
   const allowed = String(c.env.ALLOWED_ORIGIN || '').split(',').map(o => o.trim()).filter(Boolean)
   const reqOrigin = c.req.header('origin') || ''
@@ -471,7 +486,8 @@ app.delete('/api/admin/teams/:id', requireAdmin, async (c) => {
     await db.execute({ sql: 'DELETE FROM teams WHERE id = ?', args: [tid] })
     return c.json({ ok: true })
   } catch(e) {
-    return c.json({ error: e.message }, 500)
+    console.error('DELETE /api/admin/teams/:id error:', e.message)
+    return c.json({ error: 'Could not delete the team' }, 500)
   }
 })
 
@@ -507,7 +523,7 @@ app.put('/api/brand', requireAdmin, async (c) => {
     return c.json({ ok: true })
   } catch (e) {
     console.error('PUT /api/brand error:', e)
-    return c.json({ error: 'Failed to save branding', detail: e.message }, 500)
+    return c.json({ error: 'Failed to save branding' }, 500)
   }
 })
 
@@ -562,7 +578,7 @@ app.post('/api/learners/bulk', requireManager, async (c) => {
       await db.execute({ sql: 'INSERT INTO users (id, name, password_hash, role, team_id) VALUES (?, ?, ?, ?, ?)', args: [id, name, hash, 'learner', teamId] })
       created.push({ id, name })
     } catch(e) {
-      errors.push({ name, error: e.message.includes('UNIQUE') ? 'Name already exists' : e.message })
+      errors.push({ name, error: e.message.includes('UNIQUE') ? 'Name already exists' : 'Could not create this account' })
     }
   }
   return c.json({ created: created.length, created_learners: created, errors }, 201)
@@ -1530,10 +1546,19 @@ app.get('/api/scrape', requireAdmin, async (c) => {
 })
 
 // Generic AI proxy — reads keys from env secrets; falls back to request body for self-hosted/dev
+// Bounds on the admin-only AI proxy so one request cannot run up an unbounded bill.
+const AI_MAX_PROMPT_CHARS = 200_000
+const AI_MAX_OUTPUT_TOKENS = 8000
+
 app.post('/api/ai/generate', requireAdmin, async (c) => {
   const body = await c.req.json()
-  const { prompt, system_prompt = '', max_tokens = 1000, claude_key, gemini_key } = body
-  if (!prompt) return c.json({ error: 'prompt is required' }, 400)
+  const { prompt, system_prompt = '', claude_key, gemini_key } = body
+  if (typeof prompt !== 'string' || !prompt) return c.json({ error: 'prompt is required' }, 400)
+  if (typeof system_prompt !== 'string') return c.json({ error: 'system_prompt must be text' }, 400)
+  if (prompt.length > AI_MAX_PROMPT_CHARS || system_prompt.length > AI_MAX_PROMPT_CHARS) {
+    return c.json({ error: 'That request is too large. Split the content into smaller parts.' }, 413)
+  }
+  const max_tokens = Math.min(Math.max(Math.floor(Number(body.max_tokens)) || 1000, 1), AI_MAX_OUTPUT_TOKENS)
 
   const claudeKey = c.env.CLAUDE_API_KEY || claude_key
   const geminiKey = c.env.GEMINI_API_KEY || gemini_key
@@ -1606,7 +1631,8 @@ app.post('/api/courses', requireAdmin, async (c) => {
     await db.batch(stmts, 'write')
   } catch (e) {
     console.error('POST /api/courses batch error:', e.message)
-    return c.json({ error: e.message || 'Failed to save course' }, 500)
+    console.error('Course save error:', e.message)
+    return c.json({ error: 'Failed to save course' }, 500)
   }
 
   return c.json({ id: cid }, 201)
@@ -1674,7 +1700,8 @@ app.put('/api/courses/:id', requireAdmin, async (c) => {
     return c.json({ ok: true })
   } catch (e) {
     console.error('PUT /api/courses/:id error:', e.message)
-    return c.json({ error: e.message || 'Failed to save course' }, 500)
+    console.error('Course save error:', e.message)
+    return c.json({ error: 'Failed to save course' }, 500)
   }
 })
 
@@ -1694,7 +1721,8 @@ app.delete('/api/courses/:id', requireAdmin, async (c) => {
     await db.batch(stmts, 'write')
     return c.json({ ok: true })
   } catch(e) {
-    return c.json({ error: e.message || 'Failed to delete course' }, 500)
+    console.error('Course delete error:', e.message)
+    return c.json({ error: 'Failed to delete course' }, 500)
   }
 })
 
@@ -1714,7 +1742,8 @@ app.post('/api/assignments', requireManager, async (c) => {
     return c.json({ ok: true }, 201)
   } catch (e) {
     if (e.message.includes('UNIQUE')) return c.json({ error: 'Already assigned' }, 409)
-    return c.json({ error: e.message }, 500)
+    console.error('POST /api/assignments error:', e.message)
+    return c.json({ error: 'Could not assign the course' }, 500)
   }
 })
 
