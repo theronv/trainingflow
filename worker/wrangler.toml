@@ -17,6 +17,7 @@ EMAIL_FROM     = "Pregame Academy <academy@vickerydigital.com>"
 #   wrangler secret put JWT_SECRET          # any long random string, 32+ chars
 #   wrangler secret put ADMIN_PASSWORD_HASH # PBKDF2 hash — see below
 #   wrangler secret put RESEND_API_KEY      # optional: without it no email is sent
+#   wrangler secret put SENTRY_DSN          # optional: without it no errors are reported
 #
 # To generate ADMIN_PASSWORD_HASH, run from the project root:
 #   node scripts/hash-password.mjs <your-password>
