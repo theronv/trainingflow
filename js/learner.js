@@ -86,6 +86,7 @@ const Learner = {
       if (Learner._navSeq !== seq) return;
       const recs = apiRecs.map(normRecord);
       const sections = orderSections(apiSections || []);
+      Onboarding.renderLearner(pv ? null : $$('l-welcome'), { name: curLearner.name, team: Auth.user()?.team_name, pass: brandCache?.pass, assignments: apiAssigns, completions: apiRecs, progress: apiProgress });
 
       if (!apiCourses.length) {
         grid.innerHTML = '<div class="empty" style="grid-column:1/-1;"><div class="empty-icon">' + ICON.book + '</div><div class="empty-title">No training assigned yet</div><div class="empty-hint">Your manager will add courses to your plan. Check back soon — or let them know you\'re ready to start.</div></div>';
