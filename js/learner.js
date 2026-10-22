@@ -292,7 +292,7 @@ const Learner = {
       App.show('screen-course');
       // Populate module sidebar
       $$('mod-nav-list').innerHTML = curCourse.mods.map((m, i) => `
-        <div class="mod-item" id="mod-nav-${i}" onclick="Learner.loadMod(${i})">
+        <div class="mod-item" id="mod-nav-${i}" role="button" tabindex="0" onclick="Learner.loadMod(${i})">
           <span class="mod-bullet" id="mod-bullet-${i}">${i + 1}</span>
           <div class="mod-item-body">
             <div class="mod-item-title">${esc(m.title)}</div>

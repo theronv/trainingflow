@@ -63,18 +63,85 @@ function initSortableTables() {
   new MutationObserver(arm).observe(document.body, { childList: true, subtree: true });
 }
 
-// Dialog semantics + Escape-to-close for every modal overlay.
+// Text of the button that dismisses a dialog without side effects ("Cancel", "Close", "Done").
+const DIALOG_DISMISS_RE = /^\W*(cancel|close|done|skip)\b/i;
+
+const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]):not([type="hidden"]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+
+function dialogDismissButton(buttons) {
+  return buttons.find(b => DIALOG_DISMISS_RE.test((b.textContent || '').trim())) || null;
+}
+
+function visibleFocusables(root) {
+  return [...root.querySelectorAll(FOCUSABLE)].filter(el => el.offsetParent !== null);
+}
+
+// Dialog semantics for every modal overlay: role, accessible name, focus in/trap/restore, Escape.
+// confirm-overlay and the result ceremony manage their own focus (confirm.js, celebrate.js).
 function initDialogA11y() {
-  document.querySelectorAll('.overlay > .modal').forEach(m => { m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true'); });
+  const managed = (o) => o.id === 'confirm-overlay';
+  document.querySelectorAll('.overlay > .modal').forEach(m => {
+    m.setAttribute('role', 'dialog');
+    m.setAttribute('aria-modal', 'true');
+    const title = m.querySelector('.modal-title');
+    if (title) {
+      if (!title.id) title.id = `${m.parentElement.id}-title`;
+      m.setAttribute('aria-labelledby', title.id);
+    }
+  });
   document.querySelectorAll('.main').forEach(m => m.setAttribute('role', 'main'));
+
+  const openers = new Map();
+  const watch = new MutationObserver((records) => {
+    for (const r of records) {
+      const o = r.target;
+      if (!o.classList.contains('overlay') || managed(o)) continue;
+      const wasHidden = (r.oldValue || '').split(/\s+/).includes('hidden');
+      const nowHidden = o.classList.contains('hidden');
+      if (wasHidden && !nowHidden) {
+        openers.set(o, document.activeElement);
+        const modal = o.querySelector('.modal');
+        if (modal && !modal.contains(document.activeElement)) {
+          const first = visibleFocusables(modal)[0];
+          if (first) first.focus(); else { modal.tabIndex = -1; modal.focus(); }
+        }
+      } else if (!wasHidden && nowHidden) {
+        const opener = openers.get(o);
+        openers.delete(o);
+        if (opener && opener.isConnected && typeof opener.focus === 'function') opener.focus();
+      }
+    }
+  });
+  document.querySelectorAll('.overlay').forEach(o => watch.observe(o, { attributes: true, attributeFilter: ['class'], attributeOldValue: true }));
+
   document.addEventListener('keydown', (e) => {
-    if (e.key !== 'Escape') return;
+    if (e.key !== 'Escape' && e.key !== 'Tab') return;
     const open = [...document.querySelectorAll('.overlay:not(.hidden)')].filter(o => o.id !== 'first-run-overlay');
     const top = open[open.length - 1];
     if (!top) return;
+    if (e.key === 'Tab') {
+      if (managed(top)) return;
+      const items = visibleFocusables(top);
+      if (!items.length) return;
+      const first = items[0], last = items[items.length - 1];
+      if (!top.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+      else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      return;
+    }
     if (top.id === 'confirm-overlay') return Confirm.cancel();
     if (top.id === 'builder-overlay' && typeof Builder !== 'undefined') return Builder.closeBuilder();
-    top.classList.add('hidden');
+    const dismiss = dialogDismissButton([...top.querySelectorAll('button')]);
+    if (dismiss) dismiss.click(); else top.classList.add('hidden');
+  });
+
+  // Elements that act as buttons but are not <button>: Enter/Space activates them.
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const el = e.target;
+    if (!el || el.getAttribute?.('role') !== 'button' || /^(BUTTON|A|INPUT|SELECT|TEXTAREA)$/.test(el.tagName)) return;
+    e.preventDefault();
+    el.click();
   });
 }
 
