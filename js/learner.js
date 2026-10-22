@@ -74,18 +74,22 @@ const Learner = {
     grid.innerHTML = Skeleton.cards(4);
     try {
       const pv = Learner._preview;
+      // A failed lookup must not read as "nothing started": the first-run card only shows on complete data.
+      let lookupFailed = false;
+      const soft = p => p.catch(() => { lookupFailed = true; return []; });
       const [apiCourses, apiRecs, apiAssigns, apiProgress, apiSections] = pv
         ? await Promise.all([pv.api('/api/courses'), [], [], [], pv.api('/api/sections').catch(() => [])])
         : await Promise.all([
             learnerApi('/api/courses'),
-            learnerApi('/api/completions/me').catch(() => []),
-            learnerApi('/api/assignments/me').catch(() => []),
-            learnerApi('/api/progress/me').catch(() => []),
+            soft(learnerApi('/api/completions/me')),
+            soft(learnerApi('/api/assignments/me')),
+            soft(learnerApi('/api/progress/me')),
             learnerApi('/api/sections').catch(() => [])
           ]);
       if (Learner._navSeq !== seq) return;
       const recs = apiRecs.map(normRecord);
       const sections = orderSections(apiSections || []);
+      Onboarding.renderLearner($$('l-welcome'), pv || lookupFailed ? null : { name: curLearner.name, team: Auth.user()?.team_name, pass: brandCache?.pass, assignments: apiAssigns, completions: apiRecs, progress: apiProgress });
 
       if (!apiCourses.length) {
         grid.innerHTML = '<div class="empty" style="grid-column:1/-1;"><div class="empty-icon">' + ICON.book + '</div><div class="empty-title">No training assigned yet</div><div class="empty-hint">Your manager will add courses to your plan. Check back soon — or let them know you\'re ready to start.</div></div>';
