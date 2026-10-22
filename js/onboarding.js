@@ -59,14 +59,14 @@ const Onboarding = {
 
     return `<section class="onb-card" aria-labelledby="onb-title">
       <h2 class="onb-title" id="onb-title">Welcome${firstName ? ', ' + esc(firstName) : ''}</h2>
-      <p class="onb-leadHtml">${leadHtml}</p>
+      <p class="onb-lead">${leadHtml}</p>
       <ol class="onb-steps">
         <li><span class="onb-step-n" aria-hidden="true">1</span>Learn each module</li>
         <li><span class="onb-step-n" aria-hidden="true">2</span>Answer the quiz</li>
         <li><span class="onb-step-n" aria-hidden="true">3</span>Earn your certificate</li>
       </ol>
       <p class="onb-note">${passHtml} · progress saves automatically · you can retake any course</p>
-      <div class="onb-actionsHtml">${actionsHtml}<button type="button" class="btn btn-ghost" onclick="Onboarding.dismiss()">Got it</button></div>
+      <div class="onb-actions">${actionsHtml}<button type="button" class="btn btn-ghost" onclick="Onboarding.dismiss()">Got it</button></div>
     </section>`;
   },
 
@@ -77,12 +77,12 @@ const Onboarding = {
 
   renderLearner(el, data) {
     if (!el) return;
-    el.innerHTML = curLearner && !Onboarding.seen() ? Onboarding.learnerHtml(data) : '';
+    el.innerHTML = data && curLearner && curLearner.id && !Onboarding.seen() ? Onboarding.learnerHtml(data) : '';
   },
 
   dismiss() {
     if (isDemo) Demo.S.onboardingSeen = true;
-    else if (curLearner) Onboarding.dismissFor('learner', curLearner.id);
+    else if (curLearner && curLearner.id) Onboarding.dismissFor('learner', curLearner.id);
     const el = $$('l-welcome'); if (el) el.innerHTML = '';
   },
 

@@ -94,6 +94,16 @@ describe('Onboarding.learnerHtml', () => {
   })
 })
 
+describe('Onboarding markup', () => {
+  it('only uses onb-* classes that the stylesheet defines', () => {
+    const css = readFileSync(fileURLToPath(new URL('../../css/style.css', import.meta.url)), 'utf8')
+    const html = Onboarding.learnerHtml({ name: 'Jamie', team: 'T', pass: 80, assignments: [a('x', 5 * DAY)] })
+    const used = [...html.matchAll(/class="([^"]+)"/g)].flatMap(m => m[1].split(/\s+/)).filter(c => c.startsWith('onb-'))
+    expect(used.length).toBeGreaterThan(4)
+    for (const c of used) expect(css, c).toContain('.' + c)
+  })
+})
+
 describe('Onboarding dismissal', () => {
   it('remembers per role and user', () => {
     const O = load(memory())
