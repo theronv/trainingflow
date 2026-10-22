@@ -225,7 +225,7 @@ const AppProxy = {
       $$('invite-form').classList.add('hidden');
       $$('invite-result').classList.remove('hidden');
       if (isAdmin && Admin._selectedTeamId) Admin.selectTeam(Admin._selectedTeamId);
-      if (!isAdmin) Manager.renderInvites();
+      if (!isAdmin) { Manager.renderInvites(); if ($$('mp-dashboard')?.classList.contains('active')) Manager.renderDash(); }
     } catch (e) {
       Toast.err(e.message);
       if (btn) { btn.disabled = false; btn.textContent = 'Create invite'; }

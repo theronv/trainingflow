@@ -96,6 +96,65 @@ describe('Onboarding.learnerHtml', () => {
   })
 })
 
+const L = id => ({ id })
+const I = () => ({ code: 'ABC123' })
+const stepIds = (steps, key) => steps.filter(s => s[key]).map(s => s.id)
+
+describe('Onboarding.managerSteps', () => {
+  it('starts with nothing done and assigning locked until someone has joined', () => {
+    const steps = Onboarding.managerSteps({})
+    expect(steps.map(s => s.id)).toEqual(['invite', 'assign', 'progress'])
+    expect(stepIds(steps, 'done')).toEqual([])
+    expect(stepIds(steps, 'locked')).toEqual(['assign'])
+  })
+  it('counts an invite as step 1 even before anyone joins, but keeps assigning locked', () => {
+    const steps = Onboarding.managerSteps({ invites: [I()] })
+    expect(stepIds(steps, 'done')).toEqual(['invite'])
+    expect(stepIds(steps, 'locked')).toEqual(['assign'])
+  })
+  it('unlocks assigning once a learner has joined', () => {
+    const steps = Onboarding.managerSteps({ learners: [L('u1')] })
+    expect(stepIds(steps, 'done')).toEqual(['invite'])
+    expect(stepIds(steps, 'locked')).toEqual([])
+  })
+  it('ticks assign and progress from assignments and completions', () => {
+    const steps = Onboarding.managerSteps({ learners: [L('u1')], assignments: [{ course_id: 'c' }], completions: [{ passed: 1 }] })
+    expect(stepIds(steps, 'done')).toEqual(['invite', 'assign', 'progress'])
+  })
+})
+
+describe('Onboarding.managerHtml', () => {
+  it('renders one primary action: the first open step', () => {
+    const html = Onboarding.managerHtml({ team: 'Patient Services' })
+    expect(html).toContain('Get your team started')
+    expect(html).toContain('Patient Services')
+    expect(html).toContain('0 of 3')
+    expect(html.match(/btn btn-primary/g)).toHaveLength(1)
+    expect(html).toContain("Onboarding.go('invite')")
+    expect(html).not.toContain("Onboarding.go('assign')")
+  })
+  it('moves the primary action to assigning once a learner has joined', () => {
+    const html = Onboarding.managerHtml({ learners: [L('u1')] })
+    expect(html).toContain('1 of 3')
+    expect(html).toContain("Onboarding.go('assign')")
+    expect(html.match(/btn btn-primary/g)).toHaveLength(1)
+    expect(html).toContain('class="sr-only"')
+  })
+  it('is empty once every step is done', () => {
+    expect(Onboarding.managerHtml({ learners: [L('u1')], assignments: [{}], completions: [{}] })).toBe('')
+  })
+  it('escapes the team name', () => {
+    expect(Onboarding.managerHtml({ team: '<img onerror=x>' })).not.toContain('<img')
+  })
+  it('only uses onb-* classes that the stylesheet defines', () => {
+    const css = readFileSync(fileURLToPath(new URL('../../css/style.css', import.meta.url)), 'utf8')
+    const html = Onboarding.managerHtml({ learners: [L('u1')] })
+    const used = [...html.matchAll(/class="([^"]+)"/g)].flatMap(m => m[1].split(/\s+/)).filter(c => c.startsWith('onb-'))
+    expect(used.length).toBeGreaterThan(5)
+    for (const c of used) expect(css, c).toContain('.' + c)
+  })
+})
+
 describe('Onboarding markup', () => {
   it('only uses onb-* classes that the stylesheet defines', () => {
     const css = readFileSync(fileURLToPath(new URL('../../css/style.css', import.meta.url)), 'utf8')

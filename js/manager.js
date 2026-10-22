@@ -31,11 +31,17 @@ const Manager = {
     const statsEl = $$('m-stats'); if(!statsEl) return;
     statsEl.innerHTML = Skeleton.tiles(4);
     try {
-      const [learners, comps] = await Promise.all([
+      // A failed lookup must not read as "nothing done yet": the checklist only shows on complete data.
+      let lookupFailed = false;
+      const soft = p => p.catch(() => { lookupFailed = true; return []; });
+      const [learners, comps, assignments, invites] = await Promise.all([
         managerApi(`/api/learners?team_id=${curManager.team_id}`),
-        managerApi('/api/admin/completions')
+        managerApi('/api/admin/completions'),
+        soft(managerApi('/api/assignments')),
+        soft(managerApi('/api/invites'))
       ]);
       if (Manager._navSeq !== seq) return;
+      const checklistShown = Onboarding.renderManager($$('m-onboarding'), lookupFailed ? null : { team: curManager.team_name, learners, invites: invites.filter(i => inviteState(i) === 'active'), assignments, completions: comps });
       const overdue = learners.reduce((s,l) => s + (l.overdue_count || 0), 0);
       const passed = comps.filter(c => c.passed).length;
       const rate = comps.length ? Math.round(passed/comps.length*100) : 0;
@@ -54,7 +60,8 @@ const Manager = {
       </div>`).join('');
 
       if (!comps.length) {
-        $$('m-recent').innerHTML = '<div class="empty"><div class="empty-icon">' + ICON.chart + '</div><div class="empty-title">No activity yet</div><div class="empty-hint">Completions from your team will appear here as learners finish their courses.</div></div>';
+        const inviteAction = !checklistShown && !learners.length ? '<div class="empty-action"><button type="button" class="btn btn-outline" onclick="Manager.openInviteLearners()">Invite your first learner</button></div>' : '';
+        $$('m-recent').innerHTML = '<div class="empty"><div class="empty-icon">' + ICON.chart + '</div><div class="empty-title">No activity yet</div><div class="empty-hint">Completions from your team will appear here as learners finish their courses.</div>' + inviteAction + '</div>';
       } else {
         $$('m-recent').innerHTML = `<div class="dash-section-label">Recent team activity</div>${activityListHtml(comps.slice(0, 6))}`;
       }

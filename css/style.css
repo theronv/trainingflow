@@ -1816,6 +1816,7 @@ button, .nav-btn, .quiz-opt, .course-card, .role-tile, label { touch-action: man
 /* ── Interactive demo ── */
 .demo-picks { display: grid; gap: var(--space-3); grid-template-columns: 1fr 1fr; }
 @media (max-width: 560px) { .demo-picks { grid-template-columns: 1fr; } }
+.demo-picks .role-tile:last-child:nth-child(odd) { grid-column: 1 / -1; }
 #demo-bar {
   position: fixed; left: 50%; bottom: calc(var(--space-3) + env(safe-area-inset-bottom)); transform: translateX(-50%);
   z-index: 40; display: flex; align-items: center; gap: var(--space-2); max-width: calc(100vw - 24px);
@@ -1997,3 +1998,15 @@ button, .nav-btn, .quiz-opt, .course-card, .role-tile, label { touch-action: man
 .onb-note { margin: 0 0 var(--space-5); font-size: var(--text-sm); color: var(--ink-3); }
 .onb-actions { display: flex; flex-wrap: wrap; gap: var(--space-3); }
 @media (max-width: 600px) { .onb-card { padding: var(--space-5); } .onb-actions .btn-primary { width: 100%; } }
+
+.onb-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); }
+.onb-list { display: flex; flex-direction: column; gap: var(--space-4); margin: 0; padding: 0; list-style: none; }
+.onb-item { display: flex; align-items: flex-start; gap: var(--space-3); }
+.onb-check { display: grid; place-items: center; flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--border-2); background: var(--surface); color: var(--ink-3); font-size: var(--text-sm); font-weight: 700; }
+.onb-item-current .onb-check { background: var(--brand-glow); border-color: var(--brand); color: var(--accent-strong); }
+.onb-item-done .onb-check { background: var(--pass-lt); border-color: var(--pass-border); color: var(--success-text); }
+.onb-item-body { min-width: 0; flex: 1; }
+.onb-item-title { font-size: var(--text-base); font-weight: 600; color: var(--ink-1); }
+.onb-item-done .onb-item-title { color: var(--ink-3); }
+.onb-item-hint { margin-top: 2px; font-size: var(--text-sm); line-height: 1.5; color: var(--ink-3); }
+.onb-item-body .btn { margin-top: var(--space-3); }
