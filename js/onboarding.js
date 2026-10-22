@@ -48,9 +48,9 @@ const Onboarding = {
     let leadHtml, actionsHtml;
     if (first) {
       const due = Onboarding.dueMs(first);
-      const dueHtml = due ? `, the first due ${esc(new Date(due).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }))}` : '';
+      const dueHtml = due ? `, the first due ${esc(new Date(due).toLocaleDateString())}` : '';
       leadHtml = `${teamHtml}You have <strong>${todo.length} ${todo.length === 1 ? 'course' : 'courses'}</strong> to complete${dueHtml}.`;
-      actionsHtml = `<button type="button" class="btn btn-primary" onclick="Onboarding.start('${escJs(first.course_id)}')">Start ${esc(first.course_title)} →</button>`;
+      actionsHtml = `<button type="button" class="btn btn-primary" aria-label="Start your first course: ${esc(first.course_title)}" onclick="Onboarding.start('${escJs(first.course_id)}')">Start your first course →</button>`;
     } else {
       leadHtml = `You're all set up. Your ${team ? esc(team) + ' ' : ''}manager will add courses to your plan. You'll see them here as soon as they do.`;
       actionsHtml = '';
@@ -66,7 +66,7 @@ const Onboarding = {
         <li><span class="onb-step-n" aria-hidden="true">3</span>Earn your certificate</li>
       </ol>
       <p class="onb-note">${passHtml} · progress saves automatically · you can retake any course</p>
-      <div class="onb-actions">${actionsHtml}<button type="button" class="btn btn-ghost" onclick="Onboarding.dismiss()">Got it</button></div>
+      <div class="onb-actions">${actionsHtml}<button type="button" class="btn btn-outline" onclick="Onboarding.dismiss()">Got it</button></div>
     </section>`;
   },
 

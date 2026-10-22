@@ -61,7 +61,9 @@ describe('Onboarding.learnerHtml', () => {
     expect(html).toContain('Patient Services')
     expect(html).toContain('2 courses')
     expect(html).toContain("Onboarding.start('csx')")
-    expect(html).toContain('Customer Service')
+    expect(html).toContain('Start your first course →')
+    expect(html).toContain('aria-label="Start your first course: Customer Service"')
+    expect(html).toContain(new Date(100 * DAY * 1000).toLocaleDateString())
     expect(html).toContain('80%')
   })
   it('uses the singular for one course', () => {
