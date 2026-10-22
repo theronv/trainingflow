@@ -70,13 +70,19 @@ const Onboarding = {
     </section>`;
   },
 
+  // The Demo rebuilds its state on every launch, so a dismissal there lasts only until the launch ends.
+  seen() {
+    return isDemo ? !!Demo.S.onboardingSeen : Onboarding.isDismissed('learner', curLearner.id);
+  },
+
   renderLearner(el, data) {
     if (!el) return;
-    el.innerHTML = curLearner && !Onboarding.isDismissed('learner', curLearner.id) ? Onboarding.learnerHtml(data) : '';
+    el.innerHTML = curLearner && !Onboarding.seen() ? Onboarding.learnerHtml(data) : '';
   },
 
   dismiss() {
-    if (curLearner) Onboarding.dismissFor('learner', curLearner.id);
+    if (isDemo) Demo.S.onboardingSeen = true;
+    else if (curLearner) Onboarding.dismissFor('learner', curLearner.id);
     const el = $$('l-welcome'); if (el) el.innerHTML = '';
   },
 

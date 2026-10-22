@@ -346,7 +346,7 @@ Public privacy & terms page at `#/privacy` (`screen-privacy`, linked from the la
 ## Onboarding — 2026-10-21
 
 Plan: `docs/onboarding-plan.md`. Guidance is derived from data the screens already load; the only stored state is a per-browser "Got it" (`trainflow_onboarding_<role>_<userId>` in localStorage).
-- **Learner welcome card (`js/onboarding.js`, mounted at `#l-welcome` by `Learner.renderCourses()`):** shown while the learner has no completions and no module progress. Greets by first name, names the team, counts assigned courses with the first due date, and offers one primary action that starts the soonest-due unpassed course. With nothing assigned it says what happens next. Dismissed by "Got it" or by starting the course. Not shown in admin preview; shown in the Demo.
+- **Learner welcome card (`js/onboarding.js`, mounted at `#l-welcome` by `Learner.renderCourses()`):** shown while the learner has no completions and no module progress. Greets by first name, names the team, counts assigned courses with the first due date, and offers one primary action that starts the soonest-due unpassed course. With nothing assigned it says what happens next. Dismissed by "Got it" or by starting the course. Not shown in admin preview. In the Demo it shows on every launch (Jamie starts fresh); dismissal there lives in `Demo.S`, not localStorage.
 - **Not built yet:** manager and admin checklists, invite preview polish, emails, invite-attached courses (see the plan's phases).
 
 ## Bulk assignment — 2026-10-20
