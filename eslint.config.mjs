@@ -49,6 +49,9 @@ export default [
       '@html-eslint/require-title': 'error',
       '@html-eslint/no-duplicate-attrs': 'error',
       '@html-eslint/require-meta-viewport': 'error',
+      '@html-eslint/no-positive-tabindex': 'error',
+      '@html-eslint/no-aria-hidden-on-focusable': 'error',
+      '@html-eslint/no-aria-hidden-body': 'error',
     },
   },
 ]
