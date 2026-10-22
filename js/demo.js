@@ -150,6 +150,7 @@ const Demo = {
   S: null,
   _saved: null,
   _noted: false,
+  _fresh: false,
 
   // ─── Fixtures ───
   _build() {
@@ -188,7 +189,8 @@ const Demo = {
     // Jamie — the demo learner: one course waiting
     assign('dl-jamie', C, 7);
     return {
-      team: TEAM, people, assignments, completions,
+      team: TEAM, people: Demo._fresh ? [] : people, assignments: Demo._fresh ? [] : assignments, completions: Demo._fresh ? [] : completions,
+      invites: [],
       courses: [DEMO_COURSE, ...DEMO_OTHER_COURSES.map(c => ({
         id: c.id, icon: c.icon, title: c.title, description: c.description,
         modules: c.modules.map((t, i) => ({ id: `${c.id}-m${i + 1}`, title: t, content: '', questions: [] })),
@@ -202,10 +204,12 @@ const Demo = {
   openPicker() { $$('demo-overlay').classList.remove('hidden'); },
   closePicker() { $$('demo-overlay').classList.add('hidden'); },
 
-  start(role) {
+  // `fresh` launches a manager with an empty team, to see first-run guidance.
+  start(role, fresh = false) {
     Demo.closePicker();
     if (!isDemo) {
       Demo._saved = { brand: brandCache };
+      Demo._fresh = fresh;
       Demo.S = Demo._build();
       isDemo = true;
     }
@@ -309,7 +313,7 @@ const Demo = {
       if (route === '/api/assignments/me') return S.assignments.filter(a => a.learner_id === me).map(a => ({ ...a, course_title: Demo._title(a.course_id) }));
       if (route === '/api/completions/me') return Demo._completionRows(me);
       if (route === '/api/progress/me') return Object.values(S.progress);
-      if (route === '/api/invites') return [];
+      if (route === '/api/invites') return S.invites;
       return [];
     }
 
@@ -353,7 +357,9 @@ const Demo = {
       return { added };
     }
     if (route === '/api/invites' && method === 'POST') {
-      return { id: 1, code: 'DEMO-JOIN', role: 'learner', max_uses: body.max_uses || 25, use_count: 0, expires_at: new Date(Date.now() + (body.expires_in_days || 7) * 86400000).toISOString() };
+      const invite = { id: S.invites.length + 1, code: 'DEMO-JOIN', role: 'learner', max_uses: body.max_uses || 25, use_count: 0, expires_at: new Date(Date.now() + (body.expires_in_days || 7) * 86400000).toISOString() };
+      S.invites.push(invite);
+      return invite;
     }
     if (route === '/api/learners/bulk' && method === 'POST') { Demo._note(); return { created: 0, errors: [], created_learners: [] }; }
 

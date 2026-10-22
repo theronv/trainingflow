@@ -92,6 +92,10 @@
         <span class="role-tile-title">As a learner</span>
         <span class="role-tile-desc">Take Customer Service Excellence from start to finish: lessons, quizzes, and a certificate you can download.</span>
       </button>
+      <button type="button" class="role-tile role-tile-wide" onclick="Demo.start('manager', true)">
+        <span class="role-tile-title">As a new manager</span>
+        <span class="role-tile-desc">Start with an empty team and follow the setup checklist: invite learners, assign a course, watch progress arrive.</span>
+      </button>
     </div>
     <div class="modal-foot">
       <button type="button" class="btn btn-ghost" onclick="Demo.closePicker()">Cancel</button>
@@ -255,6 +259,7 @@
           <div class="page-eyebrow">Team Overview</div>
           <div class="page-title">Dashboard</div>
         </div>
+        <div id="m-onboarding"></div>
         <div class="stats-row" id="m-stats"></div>
         <div id="m-trouble-spots" style="margin-bottom:var(--space-8);"></div>
         <div id="m-recent"></div>
