@@ -80,13 +80,13 @@ const Admin = {
         teamHtml += `<div class="table-wrap"><table>
           <thead><tr><th>Team</th><th>Members</th><th>Managers</th></tr></thead>
           <tbody>${teamsCache.map(t => `<tr>
-            <td><span class="link-cell" onclick="Admin.nav('teams')">${esc(t.name)}</span></td>
+            <td><span class="link-cell" role="button" tabindex="0" onclick="Admin.nav('teams')">${esc(t.name)}</span></td>
             <td>${t.learner_count || 0}</td>
             <td>${t.manager_count || 0}</td>
           </tr>`).join('')}</tbody>
         </table></div>`;
       }
-      if (unassigned > 0) teamHtml += `<div class="card" onclick="Admin.nav('learners')" style="margin-top:var(--space-3);background:var(--fail-lt);color:var(--fail);cursor:pointer;">${unassigned} unassigned learner${unassigned !== 1 ? 's' : ''} found. Click to review.</div>`;
+      if (unassigned > 0) teamHtml += `<div class="card" role="button" tabindex="0" onclick="Admin.nav('learners')" style="margin-top:var(--space-3);background:var(--fail-lt);color:var(--fail);cursor:pointer;">${unassigned} unassigned learner${unassigned !== 1 ? 's' : ''} found. Click to review.</div>`;
       $$('a-course-stats').innerHTML = teamHtml;
 
       Admin.renderTroubleSpots();
@@ -125,7 +125,7 @@ const Admin = {
       }
 
       listEl.innerHTML = teams.map(t => `
-        <div class="team-list-item" id="tli-${esc(t.id)}" onclick="Admin.selectTeam('${escJs(t.id)}')">
+        <div class="team-list-item" id="tli-${esc(t.id)}" role="button" tabindex="0" onclick="Admin.selectTeam('${escJs(t.id)}')">
           <div class="team-list-name">${esc(t.name)}</div>
           <div class="team-list-meta">${t.learner_count || 0} member${t.learner_count !== 1 ? 's' : ''} · ${t.manager_count || 0} manager${t.manager_count !== 1 ? 's' : ''}</div>
         </div>`).join('');
@@ -990,7 +990,7 @@ const Admin = {
       window._adminPreview = true;
       App.show('screen-course');
       $$('mod-nav-list').innerHTML = curCourse.mods.map((m, i) => `
-        <div class="mod-item" id="mod-nav-${i}" onclick="Learner.loadMod(${i})">
+        <div class="mod-item" id="mod-nav-${i}" role="button" tabindex="0" onclick="Learner.loadMod(${i})">
           <span class="mod-bullet" id="mod-bullet-${i}">${i + 1}</span>
           <div class="mod-item-body">
             <div class="mod-item-title">${esc(m.title)}</div>

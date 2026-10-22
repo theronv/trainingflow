@@ -644,7 +644,7 @@
             </div>
           </div>
           <div class="page-sub">Add Markdown files or web pages. Each one becomes a lesson exactly as written. Next, Claude.ai writes the summaries and quiz questions from that text.</div>
-          <div class="upload-zone" id="imp-drop-zone"
+          <div class="upload-zone" id="imp-drop-zone" role="button" tabindex="0" aria-label="Choose Markdown files to import"
             onclick="document.getElementById('md-file-input').click()"
             ondragover="event.preventDefault();this.classList.add('drag-active')"
             ondragleave="this.classList.remove('drag-active')"
@@ -1342,7 +1342,7 @@
         <button type="button" class="btn btn-outline btn-sm" onclick="App.downloadLearnerTemplate()">↓ Download Template</button>
         <span id="lcsv-col-hint" style="font-size:var(--text-sm);color:var(--ink-4);">Columns: <code>name, password</code></span>
       </div>
-      <div class="upload-zone" id="lcsv-drop-zone"
+      <div class="upload-zone" id="lcsv-drop-zone" role="button" tabindex="0" aria-label="Choose a CSV file of learners"
         onclick="document.getElementById('lcsv-file-input').click()"
         ondragover="event.preventDefault();this.classList.add('drag-active')"
         ondragleave="this.classList.remove('drag-active')"
