@@ -100,6 +100,8 @@ GEMINI_API_KEY=AIza...                      # Used as AI Importer fallback in wo
 ALLOWED_ORIGIN=https://theronv.github.io    # CORS — falls back to production domain if unset
 RESEND_API_KEY=re_...                       # Optional. Certificate emails (Resend); unset = no email is sent
 EMAIL_FROM=Pregame Academy <academy@vickerydigital.com>  # Plain var in wrangler.toml; domain verified in Resend
+SENTRY_DSN=https://key@host/123              # Optional. Worker error reporting (Sentry); unset = nothing is sent
+SENTRY_ENVIRONMENT=production              # Optional. Tag on events (default production)
 APP_URL=https://...                         # Optional. Base URL for links in emails (default pregame-academy.vickerydigital.com)
 ```
 
@@ -333,6 +335,10 @@ Finishing a course is a designed moment, not a toast.
 ## Privacy & self-service — 2026-10-21
 
 Public privacy & terms page at `#/privacy` (`screen-privacy`, linked from the landing footer and Account); it names the processors (Cloudflare, GitHub Pages, Turso, Clerk, Resend) and points people to their organisation's administrator. Account → Your data (learner and manager) downloads the personal-data JSON and deletes the account (`App.downloadMyData` / `App.deleteMyAccount`). `deleteAccounts(db, ids)` in the worker is the one place that removes a user and every row that points at them (also used by the admin single and bulk deletes; it fixed stray `quiz_answers`/`course_progress` rows and the `invite_codes.used_by` reference). Keep it in step with any new table that holds a user id.
+
+## Error reporting — 2026-10-21
+
+`worker/sentry.js` reports unhandled route errors (the `app.onError` path) to Sentry's envelope API, with no SDK or dependency. Inert until the `SENTRY_DSN` secret is set (`wrangler secret put SENTRY_DSN`). Only the error type, a scrubbed message and stack (emails and token-like strings removed), the route pattern and the method are sent: never the URL, query, headers, body, IP or user. At most 20 events a minute per isolate; failures to report are logged and never affect the response. Errors that a route catches and answers itself (logged with `console.error`) are not reported. Not built: browser error capture (needs a public DSN in `CONFIG` and a decision on the Sentry browser SDK).
 
 ## Bulk assignment — 2026-10-20
 

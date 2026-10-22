@@ -8,6 +8,7 @@ import { sign, verify }   from 'hono/jwt'
 import { secureHeaders }  from 'hono/secure-headers'
 import { createClient }   from '@libsql/client/web'
 import { notifyCertificateEarned } from './email.js'
+import { captureException } from './sentry.js'
 
 const CONSTANTS = {
   PBKDF2_ITERATIONS: 100000,
@@ -153,6 +154,7 @@ app.use('/api/*', async (c, next) => {
 
 app.onError((err, c) => {
   console.error('API Error:', err)
+  runInBackground(c, captureException(c.env, err, { route: c.req.routePath, method: c.req.method }))
   return c.json({ error: 'Internal server error' }, 500)
 })
 
